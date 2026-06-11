@@ -1,0 +1,21 @@
+{
+  "name": "oracle-financeiro",
+  "version": "1.0.0",
+  "description": "Aplicativo de Controle Financeiro Premium",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "finance",
+    "dashboard",
+    "personal-finance"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
