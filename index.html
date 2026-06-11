@@ -3338,6 +3338,79 @@ document.addEventListener('DOMContentLoaded', function(){
   runSimulation();
 
 
+  // ── EXPORT MONTHLY PDF ───────────────────────────────────────
+  q('#btnExportPDF')?.addEventListener('click', function() {
+    exportMonthlyPDF();
+  });
+
+  // ── AI ASSISTANT CHAT PANEL TOGGLE ───────────────────────────
+  q('#ai-chat-bubble')?.addEventListener('click', function() {
+    const panel = q('#ai-chat-panel');
+    if (panel) {
+      const isVisible = panel.style.display === 'flex';
+      panel.style.display = isVisible ? 'none' : 'flex';
+      if (!isVisible) {
+        q('#aiChatInput')?.focus();
+        scrollChatToBottom();
+      }
+    }
+  });
+
+  q('#btnAiClose')?.addEventListener('click', function() {
+    const panel = q('#ai-chat-panel');
+    if (panel) panel.style.display = 'none';
+  });
+
+  q('#btnAiSend')?.addEventListener('click', function() {
+    sendAiMessage();
+  });
+
+  q('#aiChatInput')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      sendAiMessage();
+    }
+  });
+
+  // ── AI API KEY SAVING ────────────────────────────────────────
+  const aiKeyInput = q('#ai-api-key-input');
+  if (aiKeyInput) {
+    aiKeyInput.value = localStorage.getItem('financeos_ai_api_key') || '';
+  }
+  
+  q('#btnSaveAIKey')?.addEventListener('click', async function() {
+    const key = q('#ai-api-key-input').value.trim();
+    if (key) {
+      localStorage.setItem('financeos_ai_api_key', key);
+    } else {
+      localStorage.removeItem('financeos_ai_api_key');
+    }
+    
+    try {
+      const res = await fetch('/api/save-env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Chave de API salva com sucesso no .env e no app!');
+      } else {
+        alert('Chave salva no navegador! (Nota: erro ao gravar no servidor local: ' + (data.error || 'Erro desconhecido') + ')');
+      }
+    } catch (err) {
+      alert('Chave de API salva no navegador com sucesso!');
+    }
+  });
+
+  // ── LOGO NAVIGATION ──────────────────────────────────────────
+  q('.logo')?.addEventListener('click', function() {
+    navigate('dashboard');
+  });
+
+  // ── BOOT ─────────────────────────────────────────────────────
+  navigate('dashboard');
+});
+
 // ── AI ASSISTANT LOGIC ───────────────────────────────────────────────
 let aiChatHistory = [];
 
@@ -3721,78 +3794,7 @@ function renderInstallmentTracker() {
 }
 
 
-  // ── EXPORT MONTHLY PDF ───────────────────────────────────────
-  q('#btnExportPDF')?.addEventListener('click', function() {
-    exportMonthlyPDF();
-  });
 
-  // ── AI ASSISTANT CHAT PANEL TOGGLE ───────────────────────────
-  q('#ai-chat-bubble')?.addEventListener('click', function() {
-    const panel = q('#ai-chat-panel');
-    if (panel) {
-      const isVisible = panel.style.display === 'flex';
-      panel.style.display = isVisible ? 'none' : 'flex';
-      if (!isVisible) {
-        q('#aiChatInput')?.focus();
-        scrollChatToBottom();
-      }
-    }
-  });
-
-  q('#btnAiClose')?.addEventListener('click', function() {
-    const panel = q('#ai-chat-panel');
-    if (panel) panel.style.display = 'none';
-  });
-
-  q('#btnAiSend')?.addEventListener('click', function() {
-    sendAiMessage();
-  });
-
-  q('#aiChatInput')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      sendAiMessage();
-    }
-  });
-
-  // ── AI API KEY SAVING ────────────────────────────────────────
-  const aiKeyInput = q('#ai-api-key-input');
-  if (aiKeyInput) {
-    aiKeyInput.value = localStorage.getItem('financeos_ai_api_key') || '';
-  }
-  
-  q('#btnSaveAIKey')?.addEventListener('click', async function() {
-    const key = q('#ai-api-key-input').value.trim();
-    if (key) {
-      localStorage.setItem('financeos_ai_api_key', key);
-    } else {
-      localStorage.removeItem('financeos_ai_api_key');
-    }
-    
-    try {
-      const res = await fetch('/api/save-env', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('Chave de API salva com sucesso no .env e no app!');
-      } else {
-        alert('Chave salva no navegador! (Nota: erro ao gravar no servidor local: ' + (data.error || 'Erro desconhecido') + ')');
-      }
-    } catch (err) {
-      alert('Chave de API salva no navegador com sucesso!');
-    }
-  });
-
-  // ── LOGO NAVIGATION ──────────────────────────────────────────
-  q('.logo')?.addEventListener('click', function() {
-    navigate('dashboard');
-  });
-
-  // ── BOOT ─────────────────────────────────────────────────────
-  navigate('dashboard');
-});
 </script>
 <!-- FLOATING AI CHAT WIDGET -->
 <div id="ai-chat-bubble" title="Conversar com FinancesAI">🤖</div>
