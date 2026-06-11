@@ -3417,11 +3417,11 @@ let aiChatHistory = [];
 function getAIApiKey() {
   const localKey = localStorage.getItem('financeos_ai_api_key');
   if (localKey && localKey.trim()) return localKey.trim();
-  try {
-    if (import.meta && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-      return import.meta.env.VITE_GEMINI_API_KEY;
-    }
-  } catch(e) {}
+  
+  // Substituído em tempo de compilação pelo Vite
+  const envKey = '__VITE_GEMINI_API_KEY__';
+  if (envKey && envKey !== '__VITE_GEMINI_API_KEY__') return envKey;
+  
   return 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
 }
 

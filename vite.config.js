@@ -2,7 +2,24 @@ import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
 
+// Parse .env file locally at build-time
+let apiKey = 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
+if (fs.existsSync('.env')) {
+  try {
+    const envContent = fs.readFileSync('.env', 'utf8');
+    const match = envContent.match(/VITE_GEMINI_API_KEY\s*=\s*(.*)/);
+    if (match && match[1]) {
+      apiKey = match[1].trim();
+    }
+  } catch (err) {
+    console.error('Error reading .env file:', err);
+  }
+}
+
 export default defineConfig({
+  define: {
+    '__VITE_GEMINI_API_KEY__': JSON.stringify(apiKey)
+  },
   plugins: [
     {
       name: 'save-env-plugin',
