@@ -3,14 +3,29 @@ import fs from 'fs';
 import path from 'path';
 
 // Parse .env file locally at build-time
-let apiKey = 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
+let geminiApiKey = 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
+let fbApiKey = '';
+let fbAuthDomain = '';
+let fbProjectId = '';
+let fbStorageBucket = '';
+let fbMessagingSenderId = '';
+let fbAppId = '';
+
 if (fs.existsSync('.env')) {
   try {
     const envContent = fs.readFileSync('.env', 'utf8');
-    const match = envContent.match(/VITE_GEMINI_API_KEY\s*=\s*(.*)/);
-    if (match && match[1]) {
-      apiKey = match[1].trim();
-    }
+    const getVal = key => {
+      const match = envContent.match(new RegExp(`${key}\\s*=\\s*([^\\n\\r]*)`));
+      return match && match[1] ? match[1].trim() : '';
+    };
+    
+    geminiApiKey = getVal('VITE_GEMINI_API_KEY') || geminiApiKey;
+    fbApiKey = getVal('VITE_FIREBASE_API_KEY');
+    fbAuthDomain = getVal('VITE_FIREBASE_AUTH_DOMAIN');
+    fbProjectId = getVal('VITE_FIREBASE_PROJECT_ID');
+    fbStorageBucket = getVal('VITE_FIREBASE_STORAGE_BUCKET');
+    fbMessagingSenderId = getVal('VITE_FIREBASE_MESSAGING_SENDER_ID');
+    fbAppId = getVal('VITE_FIREBASE_APP_ID');
   } catch (err) {
     console.error('Error reading .env file:', err);
   }
@@ -18,7 +33,13 @@ if (fs.existsSync('.env')) {
 
 export default defineConfig({
   define: {
-    '__VITE_GEMINI_API_KEY__': JSON.stringify(apiKey)
+    '__VITE_GEMINI_API_KEY__': JSON.stringify(geminiApiKey),
+    '__VITE_FIREBASE_API_KEY__': JSON.stringify(fbApiKey),
+    '__VITE_FIREBASE_AUTH_DOMAIN__': JSON.stringify(fbAuthDomain),
+    '__VITE_FIREBASE_PROJECT_ID__': JSON.stringify(fbProjectId),
+    '__VITE_FIREBASE_STORAGE_BUCKET__': JSON.stringify(fbStorageBucket),
+    '__VITE_FIREBASE_MESSAGING_SENDER_ID__': JSON.stringify(fbMessagingSenderId),
+    '__VITE_FIREBASE_APP_ID__': JSON.stringify(fbAppId)
   },
   plugins: [
     {

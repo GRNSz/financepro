@@ -8,6 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
 <style>
 /* ── RESET & SCROLLBAR ──────────────────────── */
@@ -618,9 +622,92 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
   }
 }
 
+/* ── LOGIN OVERLAY ─────────────────────────── */
+#login-screen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at 50% 50%, var(--s2) 0%, var(--bg) 100%);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: 20px; transition: opacity 0.3s ease;
+}
+body.light #login-screen {
+  background: radial-gradient(circle at 50% 50%, var(--s1) 0%, var(--bg) 100%);
+}
+.login-card {
+  width: 100%; max-width: 420px; background: var(--s1);
+  border: 1px solid var(--bd2); border-radius: 24px; padding: 34px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 20px;
+  backdrop-filter: blur(10px);
+}
+.login-header { text-align: center; margin-bottom: 8px; }
+.login-header h2 { font-size: 24px; font-weight: 800; background: linear-gradient(135deg, var(--acl), #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.login-header p { font-size: 13px; color: var(--tx2); margin-top: 6px; }
+.google-btn {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 11px; background: #fff; color: #1f2937; border: 1px solid #e5e7eb;
+  border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.google-btn:hover { background: #f9fafb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.google-btn svg { width: 18px; height: 18px; }
+.login-sep { display: flex; align-items: center; text-align: center; color: var(--tx3); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+.login-sep::before, .login-sep::after { content: ''; flex: 1; border-bottom: 1px solid var(--bd); }
+.login-sep:not(:empty)::before { margin-right: .5em; }
+.login-sep:not(:empty)::after { margin-left: .5em; }
+
+/* ── PROFILE SECTION ──────────────────────── */
+.profile-card { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
+.profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: linear-gradient(135deg, var(--ac), var(--pu)); display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; box-shadow: 0 4px 15px rgba(99,102,241,0.3); border: 2px solid var(--bd2); overflow: hidden; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-details { display: flex; flex-direction: column; gap: 4px; }
+.profile-name { font-size: 18px; font-weight: 750; color: var(--tx); }
+.profile-email { font-size: 13px; color: var(--tx2); }
+.profile-badge { display: inline-block; align-self: flex-start; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 8px; border-radius: 50px; background: var(--acg); color: var(--acl); margin-top: 4px; border: 1px solid rgba(99,102,241,0.15); }
+
 </style>
 </head>
 <body>
+
+<!-- TELA DE LOGIN / OVERLAY -->
+<div id="login-screen" style="display: none;">
+  <div class="login-card">
+    <div class="login-header">
+      <h2>💸 FinanceOS</h2>
+      <p>Gerencie suas finanças com elegância</p>
+    </div>
+    
+    <!-- Google OAuth Button -->
+    <button class="google-btn" id="btnLoginGoogle">
+      <svg viewBox="0 0 24 24">
+        <path fill="#ea4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.58 15.01 1 12 1 7.35 1 3.39 3.65 1.5 7.5l3.87 3C6.3 7.65 8.94 5.04 12 5.04z"/>
+        <path fill="#4285f4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.7 2.87c2.16-2 3.73-4.96 3.73-8.6z"/>
+        <path fill="#fbbc05" d="M5.37 14.5c-.24-.72-.37-1.49-.37-2.29s.13-1.57.37-2.29L1.5 6.92C.68 8.56.2 10.37.2 12.21c0 1.84.48 3.65 1.3 5.29l3.87-3z"/>
+        <path fill="#34a853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.7-2.87c-1.03.69-2.35 1.1-4.26 1.1-3.06 0-5.7-2.61-6.63-5.46L1.5 15.86C3.39 19.71 7.35 23 12 23z"/>
+      </svg>
+      Entrar com o Google
+    </button>
+    
+    <div class="login-sep">ou</div>
+    
+    <!-- Email Login/Signup Form -->
+    <form id="f-login" style="display:flex;flex-direction:column;gap:12px">
+      <div class="fg">
+        <label>E-mail</label>
+        <input type="email" id="login-email" class="inp" placeholder="seu@email.com" required>
+      </div>
+      <div class="fg">
+        <label>Senha</label>
+        <input type="password" id="login-password" class="inp" placeholder="Sua senha" minlength="6" required>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button type="submit" class="bp sm" style="flex:1" id="btnSignInEmail">Entrar</button>
+        <button type="button" class="bs sm" style="flex:1" id="btnSignUpEmail">Criar Conta</button>
+      </div>
+    </form>
+    
+    <div class="login-sep">acesso rápido</div>
+    
+    <button class="bg sm" id="btnGuestLogin">Entrar como Convidado (Modo Local)</button>
+  </div>
+</div>
 
 <div id="app">
 
@@ -640,6 +727,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
   <button class="nb" data-page="metas"><span class="ni">🎯</span>Metas</button>
   <button class="nb" data-page="calculadora"><span class="ni">🧮</span>Calculadora</button>
   <button class="nb" data-page="notificacoes"><span class="ni">🔔</span>Notificações</button>
+  <button class="nb" data-page="perfil"><span class="ni">👤</span>Meu Perfil</button>
   <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
 
   <div class="sb-foot">
@@ -852,14 +940,14 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
       <div class="card" style="margin-top:20px;">
         <div class="card-h">
           <h3>📥 Importar Extrato Bancário</h3>
-          <span style="font-size:12px; color:var(--tx2);">Suporta arquivos .OFX, .QFX ou .CSV</span>
+          <span style="font-size:12px; color:var(--tx2);">Suporta arquivos .OFX, .QFX, .CSV, .XLS ou .XLSX</span>
         </div>
         <p class="card-desc">Suba o extrato do seu banco para pré-categorizar e adicionar lançamentos em lote.</p>
         
         <div id="drop-zone" style="border: 2px dashed var(--bd2); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; background: var(--s2); transition: all 0.2s;">
           <span style="font-size: 28px; display: block; margin-bottom: 8px;">📂</span>
           <p style="font-size: 13px; color: var(--tx2); margin: 0;">Arraste e solte o arquivo aqui ou <span style="text-decoration: underline; color: var(--ac); font-weight: 700;">clique para navegar</span></p>
-          <input type="file" id="import-file-input" accept=".ofx,.qfx,.csv" style="display: none;">
+          <input type="file" id="import-file-input" accept=".ofx,.qfx,.csv,.xls,.xlsx" style="display: none;">
         </div>
         
         <div id="import-preview-area" style="display: none; margin-top: 16px;">
@@ -1419,6 +1507,23 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
       </div>
     </section>
 
+    <!-- ════ MEU PERFIL ════════════════════════════════════════════ -->
+    <section id="page-perfil" class="page">
+      <div class="sec-h">
+        <h3>Meu Perfil</h3>
+        <button class="brd sm" id="btnSignOut">Sair da Conta</button>
+      </div>
+
+      <div class="profile-card card">
+        <div class="profile-avatar" id="userAvatar">👤</div>
+        <div class="profile-details">
+          <div class="profile-name" id="userName">Usuário Local</div>
+          <div class="profile-email" id="userEmail">local@financeos.app</div>
+          <span class="profile-badge" id="userProvider">Modo Convidado</span>
+        </div>
+      </div>
+    </section>
+
   </div><!-- /pages -->
 </main>
 </div><!-- /app -->
@@ -1847,8 +1952,276 @@ let currentMode = 'monthly'; // 'monthly', 'yearly', 'all'
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth(); // 0-indexed
 
+// ── FIREBASE CONFIG & AUTH STATE ───────────────────────────────────
+let firebaseConfig = null;
+let db = null;
+let auth = null;
+let firebaseUnsub = null;
+let currentUser = null; // { uid, email, name, photoURL, isAnonymous, providerId }
+let guestUser = null;
+
+function loadFirebaseConfig() {
+  try {
+    const envKey = typeof __VITE_FIREBASE_API_KEY__ !== 'undefined' ? __VITE_FIREBASE_API_KEY__ : null;
+    const envDomain = typeof __VITE_FIREBASE_AUTH_DOMAIN__ !== 'undefined' ? __VITE_FIREBASE_AUTH_DOMAIN__ : null;
+    const envProject = typeof __VITE_FIREBASE_PROJECT_ID__ !== 'undefined' ? __VITE_FIREBASE_PROJECT_ID__ : null;
+    const envBucket = typeof __VITE_FIREBASE_STORAGE_BUCKET__ !== 'undefined' ? __VITE_FIREBASE_STORAGE_BUCKET__ : null;
+    const envSender = typeof __VITE_FIREBASE_MESSAGING_SENDER_ID__ !== 'undefined' ? __VITE_FIREBASE_MESSAGING_SENDER_ID__ : null;
+    const envAppId = typeof __VITE_FIREBASE_APP_ID__ !== 'undefined' ? __VITE_FIREBASE_APP_ID__ : null;
+    
+    if (envKey && envKey.trim() !== '' && envKey !== '__VITE_FIREBASE_API_KEY__') {
+      firebaseConfig = {
+        apiKey: envKey,
+        authDomain: envDomain,
+        projectId: envProject,
+        storageBucket: envBucket,
+        messagingSenderId: envSender,
+        appId: envAppId
+      };
+      return;
+    }
+    
+    const raw = localStorage.getItem('financeos_firebase_config');
+    if (raw) firebaseConfig = JSON.parse(raw);
+  } catch (e) {
+    console.error('Error loading firebase config', e);
+  }
+}
+
+function saveFirebaseConfig(config) {
+  if (config) {
+    localStorage.setItem('financeos_firebase_config', JSON.stringify(config));
+    firebaseConfig = config;
+  } else {
+    localStorage.removeItem('financeos_firebase_config');
+    firebaseConfig = null;
+  }
+}
+
+function initFirebase() {
+  if (firebaseUnsub) {
+    firebaseUnsub();
+    firebaseUnsub = null;
+  }
+  
+  if (window.firebase && firebase.apps.length > 0) {
+    firebase.apps.forEach(app => app.delete());
+  }
+
+  if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    console.log('Firebase not configured. Running in Local/Simulated Mode.');
+    db = null;
+    auth = null;
+    return false;
+  }
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    console.log('Firebase initialized successfully!');
+    
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = {
+          uid: user.uid,
+          email: user.email || 'sem-email@financeos.app',
+          name: user.displayName || user.email.split('@')[0],
+          photoURL: user.photoURL || null,
+          isAnonymous: user.isAnonymous,
+          providerId: user.providerData && user.providerData[0] ? user.providerData[0].providerId : 'password'
+        };
+        
+        const loginScreen = q('#login-screen');
+        if (loginScreen) loginScreen.style.display = 'none';
+        
+        updateUserProfileUI();
+        syncWithFirestore(user.uid);
+      } else {
+        currentUser = null;
+        if (!guestUser) {
+          const loginScreen = q('#login-screen');
+          if (loginScreen) loginScreen.style.display = 'flex';
+        }
+      }
+    });
+    return true;
+  } catch (e) {
+    console.error('Failed to initialize Firebase:', e);
+    db = null;
+    auth = null;
+    return false;
+  }
+}
+
+function checkGuestLogin() {
+  try {
+    const raw = localStorage.getItem('financeos_guest_user');
+    if (raw) {
+      guestUser = JSON.parse(raw);
+      currentUser = guestUser;
+      
+      const loginScreen = q('#login-screen');
+      if (loginScreen) loginScreen.style.display = 'none';
+      
+      updateUserProfileUI();
+      load();
+      updateUI();
+    } else {
+      if (!auth) {
+        const loginScreen = q('#login-screen');
+        if (loginScreen) loginScreen.style.display = 'flex';
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function loginWithGoogle() {
+  if (auth) {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .catch(err => {
+        console.error('Google Sign-in failed:', err);
+        alert('Falha na autenticação do Google: ' + err.message);
+      });
+  } else {
+    alert('Configurações do Firebase ausentes no arquivo .env! Adicione VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc. no .env para habilitar o Google Login.');
+  }
+}
+
+function loginWithEmail(email, password, isSignUp = false) {
+  if (auth) {
+    if (isSignUp) {
+      auth.createUserWithEmailAndPassword(email, password)
+        .catch(err => {
+          console.error('Sign-up failed:', err);
+          alert('Erro ao criar conta: ' + err.message);
+        });
+    } else {
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(err => {
+          console.error('Sign-in failed:', err);
+          alert('Erro ao fazer login: ' + err.message);
+        });
+    }
+  } else {
+    alert('Configurações do Firebase ausentes no arquivo .env! Adicione as chaves no .env para habilitar login por E-mail/Senha.');
+  }
+}
+
+function loginAsGuest() {
+  console.log('Logging in as guest...');
+  const mockUser = {
+    uid: 'guest_user_local',
+    email: 'local@financeos.app',
+    name: 'Visitante Local',
+    photoURL: null,
+    isAnonymous: true,
+    providerId: 'anonymous'
+  };
+  
+  localStorage.setItem('financeos_guest_user', JSON.stringify(mockUser));
+  guestUser = mockUser;
+  currentUser = mockUser;
+  
+  const loginScreen = q('#login-screen');
+  if (loginScreen) loginScreen.style.display = 'none';
+  
+  updateUserProfileUI();
+  load();
+  updateUI();
+}
+
+function signOutUser() {
+  if (auth && currentUser && !currentUser.isAnonymous) {
+    auth.signOut()
+      .then(() => {
+        currentUser = null;
+        guestUser = null;
+        localStorage.removeItem('financeos_guest_user');
+        if (firebaseUnsub) {
+          firebaseUnsub();
+          firebaseUnsub = null;
+        }
+        const loginScreen = q('#login-screen');
+        if (loginScreen) loginScreen.style.display = 'flex';
+      })
+      .catch(err => {
+        console.error('Sign-out failed:', err);
+      });
+  } else {
+    localStorage.removeItem('financeos_guest_user');
+    guestUser = null;
+    currentUser = null;
+    const loginScreen = q('#login-screen');
+    if (loginScreen) loginScreen.style.display = 'flex';
+  }
+}
+
+function syncWithFirestore(uid) {
+  if (!db) return;
+  const docRef = db.collection('users').doc(uid);
+  firebaseUnsub = docRef.onSnapshot(doc => {
+    if (doc.exists) {
+      const remoteData = doc.data();
+      console.log('Data loaded from Firestore:', remoteData);
+      S = remoteData;
+      fixState();
+      updateUI();
+    } else {
+      console.log('No data found in Firestore. Creating document with current state.');
+      load();
+      docRef.set(S)
+        .then(() => console.log('Firestore document created!'))
+        .catch(err => console.error('Error creating firestore doc:', err));
+    }
+  }, err => {
+    console.error('Firestore subscription error:', err);
+  });
+}
+
+function updateUserProfileUI() {
+  if (!currentUser) return;
+  const nameEl = q('#userName');
+  const emailEl = q('#userEmail');
+  const providerEl = q('#userProvider');
+  const avatarEl = q('#userAvatar');
+  
+  if (nameEl) nameEl.textContent = currentUser.name;
+  if (emailEl) emailEl.textContent = currentUser.email;
+  
+  if (providerEl) {
+    if (currentUser.isAnonymous) {
+      providerEl.textContent = 'Modo Convidado';
+      providerEl.style.background = 'var(--s3)';
+      providerEl.style.color = 'var(--tx2)';
+    } else {
+      const prov = currentUser.providerId || 'E-mail';
+      providerEl.textContent = prov === 'google.com' ? 'Google OAuth' : 'Conta Firebase';
+      providerEl.style.background = 'var(--acg)';
+      providerEl.style.color = 'var(--acl)';
+    }
+  }
+  
+  if (avatarEl) {
+    if (currentUser.photoURL) {
+      avatarEl.innerHTML = `<img src="${currentUser.photoURL}" alt="Avatar">`;
+    } else {
+      const initial = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '👤';
+      avatarEl.textContent = initial;
+    }
+  }
+}
+
 function save(){ 
   localStorage.setItem(SKEY, JSON.stringify(S)); 
+  if (db && currentUser && !currentUser.isAnonymous) {
+    db.collection('users').doc(currentUser.uid).set(S)
+      .then(() => console.log('Saved to Firestore successfully'))
+      .catch(err => console.error('Error saving to Firestore:', err));
+  }
 }
 
 function load(){
@@ -1898,7 +2271,7 @@ function closeM(id){
 const PAGE_TITLES = {
   dashboard:'Dashboard', calculadora:'Calculadora', lancamentos:'Lançamentos', dividas:'Dívidas',
   guardado:'Dinheiro Guardado', contas:'Contas & Cartões',
-  metas:'Metas', config:'Configurações', notificacoes:'Central de Notificações'
+  metas:'Metas', config:'Configurações', notificacoes:'Central de Notificações', perfil:'Meu Perfil'
 };
 
 let activePage = 'dashboard';
@@ -3845,6 +4218,43 @@ document.addEventListener('DOMContentLoaded', function(){
     if (file) handleImportFile(file);
   });
 
+  // ── AUTH SCREEN LISTENERS ────────────────────────────────────
+  q('#btnLoginGoogle')?.addEventListener('click', function() {
+    loginWithGoogle();
+  });
+
+  q('#btnGuestLogin')?.addEventListener('click', function() {
+    loginAsGuest();
+  });
+
+  q('#btnSignUpEmail')?.addEventListener('click', function() {
+    const email = q('#login-email').value.trim();
+    const password = q('#login-password').value;
+    if (!email || !password) {
+      alert('Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+    loginWithEmail(email, password, true);
+  });
+
+  q('#f-login')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = q('#login-email').value.trim();
+    const password = q('#login-password').value;
+    loginWithEmail(email, password, false);
+  });
+
+  q('#btnSignOut')?.addEventListener('click', function() {
+    signOutUser();
+  });
+
+  // ── FIREBASE INITIALIZATION BOOT ─────────────────────────────
+  loadFirebaseConfig();
+  const fbInitialized = initFirebase();
+  if (!fbInitialized) {
+    checkGuestLogin();
+  }
+
   // ── BOOT ─────────────────────────────────────────────────────
   navigate('dashboard');
   updateNotifications();
@@ -4783,13 +5193,17 @@ window.handleImportFile = function(file) {
   const extension = file.name.split('.').pop().toLowerCase();
   
   reader.onload = function(e) {
-    const text = e.target.result;
     let parsed = [];
     
-    if (extension === 'ofx' || extension === 'qfx') {
-      parsed = parseOFX(text);
-    } else if (extension === 'csv') {
-      parsed = parseCSV(text);
+    if (extension === 'xls' || extension === 'xlsx') {
+      parsed = parseXLS(e.target.result);
+    } else {
+      const text = e.target.result;
+      if (extension === 'ofx' || extension === 'qfx') {
+        parsed = parseOFX(text);
+      } else if (extension === 'csv') {
+        parsed = parseCSV(text);
+      }
     }
     
     if (parsed.length === 0) {
@@ -4800,7 +5214,101 @@ window.handleImportFile = function(file) {
     renderImportPreview(parsed);
   };
   
-  reader.readAsText(file);
+  if (extension === 'xls' || extension === 'xlsx') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+};
+
+function parseXLS(data) {
+  const results = [];
+  try {
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    
+    if (rows.length < 2) return [];
+    
+    const firstRow = rows[0].map(cell => String(cell || '').trim().toLowerCase());
+    
+    let dateIdx = -1;
+    let descIdx = -1;
+    let amountIdx = -1;
+    let typeIdx = -1;
+    
+    firstRow.forEach((val, idx) => {
+      if (val.includes('data') || val.includes('date') || val.includes('vencimento')) dateIdx = idx;
+      else if (val.includes('desc') || val.includes('hist') || val.includes('memo') || val.includes('detalhe') || val.includes('nome')) descIdx = idx;
+      else if (val.includes('val') || val.includes('quant') || val.includes('amt') || val.includes('montante') || val.includes('preço')) amountIdx = idx;
+      else if (val.includes('tipo') || val.includes('type')) typeIdx = idx;
+    });
+    
+    if (dateIdx === -1) dateIdx = 0;
+    if (descIdx === -1) descIdx = Math.min(1, firstRow.length - 1);
+    if (amountIdx === -1) amountIdx = Math.min(2, firstRow.length - 1);
+    
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+      
+      const rawDate = row[dateIdx];
+      const rawDesc = row[descIdx];
+      const rawAmt = row[amountIdx];
+      
+      if (!rawDate || rawAmt === undefined || rawAmt === '') continue;
+      
+      let dateStr = '';
+      if (typeof rawDate === 'number') {
+        const dateObj = new Date((rawDate - 25569) * 86400 * 1000);
+        if (!isNaN(dateObj.getTime())) {
+          dateStr = dateObj.toISOString().split('T')[0];
+        }
+      } else {
+        const strDate = String(rawDate).trim();
+        if (strDate.includes('/')) {
+          const parts = strDate.split('/');
+          if (parts[2] && parts[2].length === 4) {
+            dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          } else if (parts[0] && parts[0].length === 4) {
+            dateStr = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+          }
+        } else if (strDate.includes('-')) {
+          dateStr = strDate.substring(0, 10);
+        }
+      }
+      
+      if (!dateStr) dateStr = isoToday();
+      
+      let val = Math.abs(parseFloat(String(rawAmt).replace('R$', '').replace(/\s/g, '').replace('.', '').replace(',', '.')) || 0);
+      if (isNaN(val)) continue;
+      
+      let type = 'expense';
+      if (typeIdx !== -1 && row[typeIdx]) {
+        const tStr = String(row[typeIdx]).toLowerCase();
+        if (tStr.includes('rec') || tStr.includes('ent') || tStr.includes('inc') || tStr.includes('cred')) {
+          type = 'income';
+        }
+      } else {
+        const numAmt = parseFloat(String(rawAmt).replace('R$', '').replace(/\s/g, '').replace(',', '.'));
+        if (!isNaN(numAmt) && numAmt >= 0) {
+          type = 'income';
+        }
+      }
+      
+      results.push({
+        id: '_xls_' + Math.random().toString(36).slice(2),
+        type: type,
+        description: rawDesc ? String(rawDesc).trim() : 'Lançamento Importado',
+        amount: val,
+        date: dateStr
+      });
+    }
+  } catch (err) {
+    console.error('Error parsing Excel file:', err);
+  }
+  return results;
 };
 
 function parseOFX(text) {
