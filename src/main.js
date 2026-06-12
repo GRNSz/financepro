@@ -109,6 +109,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Logo navigation click listener
+  q('.logo')?.addEventListener('click', () => {
+    navigate('dashboard');
+  });
+
   // Mobile menu sidebar toggle
   q('#menuBtn')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('open');
@@ -656,29 +661,60 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Drag and drop spreadsheet/OFX import zones
-  const dz = q('#dropZone');
-  q('#bankFile')?.addEventListener('change', function(e) {
-    if (e.target.files[0]) handleImportFile(e.target.files[0]);
-  });
-  
-  dz?.addEventListener('click', () => q('#bankFile').click());
-  dz?.addEventListener('dragover', (e) => {
+  // 1. General Import Card
+  const generalDropZone = q('#drop-zone');
+  const generalFileInput = q('#import-file-input');
+
+  generalDropZone?.addEventListener('click', () => generalFileInput?.click());
+  generalDropZone?.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dz.style.borderColor = 'var(--ac)';
+    generalDropZone.style.borderColor = 'var(--ac)';
+    generalDropZone.style.background = 'rgba(99,102,241,0.05)';
   });
-  dz?.addEventListener('dragleave', () => {
-    dz.style.borderColor = '';
+  generalDropZone?.addEventListener('dragleave', () => {
+    generalDropZone.style.borderColor = 'var(--bd2)';
+    generalDropZone.style.background = 'var(--s2)';
   });
-  dz?.addEventListener('drop', (e) => {
+  generalDropZone?.addEventListener('drop', (e) => {
     e.preventDefault();
-    dz.style.borderColor = '';
-    if (e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]);
+    generalDropZone.style.borderColor = 'var(--bd2)';
+    generalDropZone.style.background = 'var(--s2)';
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFile(file);
+  });
+  generalFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleImportFile(file);
+  });
+
+  // 2. Banco Inter Import Card
+  const interDropZone = q('#dropZone');
+  const interFileInput = q('#bankFile');
+
+  interDropZone?.addEventListener('click', () => interFileInput?.click());
+  interDropZone?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    interDropZone.style.borderColor = 'var(--ac)';
+  });
+  interDropZone?.addEventListener('dragleave', () => {
+    interDropZone.style.borderColor = '';
+  });
+  interDropZone?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    interDropZone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFile(file);
+  });
+  interFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleImportFile(file);
   });
 
   q('#btnConfirmImport')?.addEventListener('click', saveImportedTransactions);
   q('#btnCancelImport')?.addEventListener('click', () => {
-    q('#import-file-input').value = '';
-    q('#import-preview-area').style.display = 'none';
+    if (generalFileInput) generalFileInput.value = '';
+    const previewArea = q('#import-preview-area');
+    if (previewArea) previewArea.style.display = 'none';
   });
 
   // 18. Theme Manager (Light/Dark)
