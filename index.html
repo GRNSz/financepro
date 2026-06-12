@@ -52,6 +52,9 @@
         <button type="submit" class="bp sm" style="flex:1" id="btnSignInEmail">Entrar</button>
         <button type="button" class="bs sm" style="flex:1" id="btnSignUpEmail">Criar Conta</button>
       </div>
+      <div style="text-align:right;margin-top:4px">
+        <a href="#" id="btnForgotPassword" style="font-size:12.5px;color:var(--ac);text-decoration:none;font-weight:600">Esqueci minha senha</a>
+      </div>
     </form>
     
     <div class="login-sep">acesso rápido</div>
@@ -873,6 +876,25 @@
           <span class="profile-badge" id="userProvider">Modo Convidado</span>
         </div>
       </div>
+
+      <div class="card" id="profile-edit-card" style="margin-top:20px">
+        <div class="card-h">
+          <h3>Editar Perfil</h3>
+        </div>
+        <form id="f-profile-edit" style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
+          <div class="fg">
+            <label>Alterar Nome</label>
+            <input type="text" id="profile-name-input" class="inp" placeholder="Seu nome completo" required>
+          </div>
+          <div class="fg" id="profile-pass-group">
+            <label>Alterar Senha</label>
+            <input type="password" id="profile-password-input" class="inp" placeholder="Nova senha (mínimo 6 caracteres)">
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button type="submit" class="bp sm">Salvar Alterações</button>
+          </div>
+        </form>
+      </div>
     </section>
 
   </div><!-- /pages -->
@@ -935,6 +957,40 @@
         <div class="fg" id="tx-inst-wrap" style="display:none">
           <label>Número de Parcelas</label>
           <input type="number" id="tx-inst" class="inp" min="1" value="1" placeholder="Ex: 12">
+        </div>
+      </div>
+      
+      <!-- Recurrence Option -->
+      <div class="fr" style="margin-top:10px">
+        <div class="fg" style="justify-content:center;padding-top:18px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="tx-is-recurring" style="width:16px;height:16px"> Lançamento recorrente?
+          </label>
+        </div>
+      </div>
+      <div class="fr" id="tx-rec-wrap" style="display:none;margin-top:10px">
+        <div class="fg">
+          <label>Frequência</label>
+          <select id="tx-rec-freq" class="inp">
+            <option value="monthly">Mensal</option>
+            <option value="weekly">Semanal</option>
+          </select>
+        </div>
+        <div class="fg" id="tx-rec-day-month-wrap">
+          <label>Dia do Mês</label>
+          <input type="number" id="tx-rec-dia" class="inp" min="1" max="31" placeholder="Ex: 10">
+        </div>
+        <div class="fg" id="tx-rec-day-week-wrap" style="display:none">
+          <label>Dia da Semana</label>
+          <select id="tx-rec-dia-semana" class="inp">
+            <option value="0">Domingo</option>
+            <option value="1">Segunda-feira</option>
+            <option value="2">Terça-feira</option>
+            <option value="3">Quarta-feira</option>
+            <option value="4">Quinta-feira</option>
+            <option value="5">Sexta-feira</option>
+            <option value="6">Sábado</option>
+          </select>
         </div>
       </div>
       
@@ -1082,7 +1138,31 @@
         <div class="fg"><label>Categoria</label><select id="rec-cat" class="inp" required></select></div>
         <div class="fg"><label>Conta / Cartão</label><select id="rec-conta" class="inp" required></select></div>
       </div>
-      <div class="fg"><label>Dia do Mês</label><input type="number" id="rec-dia" class="inp" min="1" max="31" placeholder="Ex: 10" required></div>
+      <div class="fr">
+        <div class="fg">
+          <label>Frequência</label>
+          <select id="rec-freq" class="inp">
+            <option value="monthly">Mensal</option>
+            <option value="weekly">Semanal</option>
+          </select>
+        </div>
+        <div class="fg" id="rec-day-month-wrap">
+          <label>Dia do Mês</label>
+          <input type="number" id="rec-dia" class="inp" min="1" max="31" placeholder="Ex: 10">
+        </div>
+        <div class="fg" id="rec-day-week-wrap" style="display:none">
+          <label>Dia da Semana</label>
+          <select id="rec-dia-semana" class="inp">
+            <option value="0">Domingo</option>
+            <option value="1">Segunda-feira</option>
+            <option value="2">Terça-feira</option>
+            <option value="3">Quarta-feira</option>
+            <option value="4">Quinta-feira</option>
+            <option value="5">Sexta-feira</option>
+            <option value="6">Sábado</option>
+          </select>
+        </div>
+      </div>
       <div class="mfooter">
         <button type="button" class="bg sm" data-close="m-rec">Cancelar</button>
         <button type="submit" class="bp sm">Salvar</button>

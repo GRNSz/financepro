@@ -72,18 +72,32 @@ export function updatePeriodLabel() {
   const lbl = q('#pLabel');
   if (!lbl) return;
   
+  const pdfBtn = q('#btnExportPDF');
+  
   if (periodState.currentMode === 'monthly') {
     lbl.textContent = `${MESES[periodState.currentMonth]} de ${periodState.currentYear}`;
     q('#pPrev').disabled = false;
     q('#pNext').disabled = false;
+    if (pdfBtn) {
+      pdfBtn.textContent = '📄 PDF Mensal';
+      pdfBtn.title = 'Gerar Relatório PDF do Mês';
+    }
   } else if (periodState.currentMode === 'yearly') {
     lbl.textContent = `${periodState.currentYear}`;
     q('#pPrev').disabled = false;
     q('#pNext').disabled = false;
+    if (pdfBtn) {
+      pdfBtn.textContent = '📄 PDF Anual';
+      pdfBtn.title = 'Gerar Relatório PDF do Ano';
+    }
   } else {
     lbl.textContent = 'Todo o Período';
     q('#pPrev').disabled = true;
     q('#pNext').disabled = true;
+    if (pdfBtn) {
+      pdfBtn.textContent = '📄 PDF Consolidado';
+      pdfBtn.title = 'Gerar Relatório PDF de Todo o Período';
+    }
   }
 }
 
@@ -767,12 +781,21 @@ window.editTx = function(id){
   
   q('#tx-modal-title').textContent = "Editar Lançamento";
   
-  // Hide keep-open option on edit mode
+  // Hide keep-open and recurrence options on edit mode
   const keepOpenWrap = q('#tx-keep-open-wrap');
   if (keepOpenWrap) {
     keepOpenWrap.style.display = 'none';
     q('#tx-keep-open').checked = false;
   }
+
+  const recIs = q('#tx-is-recurring');
+  if (recIs) {
+    recIs.checked = false;
+    const parentRow = recIs.closest('.fr');
+    if (parentRow) parentRow.style.display = 'none';
+  }
+  const recWrap = q('#tx-rec-wrap');
+  if (recWrap) recWrap.style.display = 'none';
   
   openM('m-tx');
   // Trigger preview update
@@ -1173,9 +1196,17 @@ export function renderRecurring(){
   if(!S.recurring.length){el.innerHTML='<p class="empty">Sem lançamentos fixos.</p>';return;}
   el.innerHTML=S.recurring.map(r=>{
     const c=getCat(r.catId); const pn=getPay(r.payId);
+    const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    let dayText = '';
+    if (r.frequency === 'weekly') {
+      const wDay = r.day !== undefined ? r.day : 0;
+      dayText = weekDays[wDay] ? `Toda ${weekDays[wDay]}` : `Dia de semana ${wDay}`;
+    } else {
+      dayText = `Dia ${r.day || 1}`;
+    }
     return`<div class="li">
       <div class="li-l"><span class="li-ico">${c.icon}</span>
-        <div class="li-inf"><div class="li-name">${r.desc}</div><div class="li-sub">${c.name} · ${pn} · Dia ${r.day}</div></div>
+        <div class="li-inf"><div class="li-name">${r.desc}</div><div class="li-sub">${c.name} · ${pn} · ${dayText}</div></div>
       </div>
       <div class="li-r"><span class="li-val ${r.tipo==='Receita'?'in':'ex'}">${r.tipo==='Receita'?'+':'−'} ${fmt(r.val)}</span><button class="bdel" onclick="delRec('${r.id}')">✕</button></div>
     </div>`;

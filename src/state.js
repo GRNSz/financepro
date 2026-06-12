@@ -21,39 +21,15 @@ export function isoToday(off = 0) {
 
 export function initState() {
   return {
-    accounts:[
-      {id:'ac1',name:'Banco Inter',  type:'Conta Corrente',balance:3450},
-      {id:'ac2',name:'Carteira',     type:'Dinheiro',      balance:250},
-    ],
-    cards:[
-      {id:'cd1',name:'Inter Black',limit:5000,close:5,due:12},
-    ],
+    accounts:[],
+    cards:[],
     categories: JSON.parse(JSON.stringify(DEF_CATS)),
-    transactions:[
-      {id:'t1',tipo:'Receita', desc:'Salário',       val:5500, catId:'c_sal', payId:'ac1',data:isoToday(0), status:'Recebido', inst:null,total:null},
-      {id:'t2',tipo:'Despesa', desc:'Aluguel',        val:1500, catId:'c_mor', payId:'ac1',data:isoToday(-5),status:'Pago',     inst:null,total:null},
-      {id:'t3',tipo:'Despesa', desc:'Supermercado',   val:300,  catId:'c_alim',payId:'cd1',data:isoToday(-4),status:'Pago',     inst:1,   total:3},
-      {id:'t4',tipo:'Despesa', desc:'Gasolina',       val:180,  catId:'c_trsp',payId:'ac1',data:isoToday(-3),status:'Pago',     inst:null,total:null},
-      {id:'t5',tipo:'Despesa', desc:'Netflix (fixo)', val:55.9, catId:'c_laz', payId:'cd1',data:isoToday(-1),status:'Pendente', inst:null,total:null},
-    ],
-    budgets:[
-      {catId:'c_alim',lim:800},
-      {catId:'c_laz', lim:200},
-    ],
-    goals:[
-      {id:'g1',name:'Reserva de Emergência',tgt:15000,cur:4000,dl:'2027-06-01'},
-      {id:'g2',name:'Viagem de Férias',      tgt:8000, cur:2500,dl:'2026-12-20'},
-    ],
-    recurring:[
-      {id:'r1',desc:'Netflix',    tipo:'Despesa',val:55.9, catId:'c_laz', payId:'cd1',day:10,last:null},
-      {id:'r2',desc:'Plano Saúde',tipo:'Despesa',val:350,  catId:'c_sau', payId:'ac1',day:5, last:null},
-    ],
-    savings:[
-      {id:'s1',val:300,data:isoToday(0),desc:'Guardado em junho'},
-    ],
-    debts:[
-      {id:'d1',nome:'Cartão Pai',total:1200,oferta:900,status:'Pendente',forma:'À Vista'},
-    ],
+    transactions:[],
+    budgets:[],
+    goals:[],
+    recurring:[],
+    savings:[],
+    debts:[],
   };
 }
 

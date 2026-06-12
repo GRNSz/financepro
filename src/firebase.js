@@ -1,4 +1,5 @@
-import { S, setS, load, save, q, registerSaveCallback } from './state.js';
+import { S, setS, load, save, q, registerSaveCallback, initState } from './state.js';
+
 
 export let firebaseConfig = null;
 export let db = null;
@@ -200,31 +201,94 @@ export function loginAsGuest(cbUpdateUI) {
   authCallbacks.forEach(cb => cb(currentUser));
 }
 
-export function signOutUser() {
-  if (auth && currentUser && !currentUser.isAnonymous) {
-    auth.signOut()
+export function sendPasswordReset(email) {
+  if (auth) {
+    return auth.sendPasswordResetEmail(email)
       .then(() => {
-        currentUser = null;
-        guestUser = null;
-        localStorage.removeItem('financeos_guest_user');
-        if (firebaseUnsub) {
-          firebaseUnsub();
-          firebaseUnsub = null;
-        }
-        const loginScreen = q('#login-screen');
-        if (loginScreen) loginScreen.style.display = 'flex';
-        authCallbacks.forEach(cb => cb(null));
+        alert('E-mail de redefinição de senha enviado com sucesso! Verifique sua caixa de entrada.');
       })
       .catch(err => {
-        console.error('Sign-out failed:', err);
+        console.error('Password reset failed:', err);
+        alert('Erro ao enviar e-mail de redefinição: ' + err.message);
+        throw err;
       });
   } else {
-    localStorage.removeItem('financeos_guest_user');
-    guestUser = null;
+    alert('Configurações do Firebase ausentes! Não foi possível enviar o e-mail de recuperação.');
+    return Promise.reject(new Error('Firebase not initialized'));
+  }
+}
+
+export function updateUserDisplayName(newName) {
+  if (auth && auth.currentUser) {
+    return auth.currentUser.updateProfile({ displayName: newName })
+      .then(() => {
+        currentUser.name = newName;
+        updateUserProfileUI();
+        save();
+        alert('Nome atualizado com sucesso!');
+      })
+      .catch(err => {
+        console.error('Failed to update display name:', err);
+        alert('Erro ao atualizar nome: ' + err.message);
+        throw err;
+      });
+  } else if (guestUser) {
+    guestUser.name = newName;
+    currentUser.name = newName;
+    localStorage.setItem('financeos_guest_user', JSON.stringify(guestUser));
+    updateUserProfileUI();
+    alert('Nome do visitante atualizado com sucesso!');
+    return Promise.resolve();
+  } else {
+    alert('Usuário não autenticado.');
+    return Promise.reject(new Error('User not authenticated'));
+  }
+}
+
+export function updateUserPassword(newPassword) {
+  if (auth && auth.currentUser) {
+    return auth.currentUser.updatePassword(newPassword)
+      .then(() => {
+        alert('Senha atualizada com sucesso!');
+      })
+      .catch(err => {
+        console.error('Failed to update password:', err);
+        alert('Erro ao atualizar senha: ' + err.message);
+        throw err;
+      });
+  } else {
+    alert('Alteração de senha não disponível para este tipo de login.');
+    return Promise.reject(new Error('Function not available'));
+  }
+}
+
+export function signOutUser() {
+  const resetAndNavigate = () => {
     currentUser = null;
+    guestUser = null;
+    localStorage.removeItem('financeos_guest_user');
+    if (firebaseUnsub) {
+      firebaseUnsub();
+      firebaseUnsub = null;
+    }
+    // Reset local state to blank on sign out
+    setS(initState());
+    save();
+    
     const loginScreen = q('#login-screen');
     if (loginScreen) loginScreen.style.display = 'flex';
     authCallbacks.forEach(cb => cb(null));
+  };
+
+  if (auth && currentUser && !currentUser.isAnonymous) {
+    auth.signOut()
+      .then(resetAndNavigate)
+      .catch(err => {
+        console.error('Sign-out failed:', err);
+        resetAndNavigate();
+      });
+  } else {
+    resetAndNavigate();
   }
 }
 
@@ -238,9 +302,11 @@ export function syncWithFirestore(uid) {
       setS(remoteData);
       syncCallbacks.forEach(cb => cb());
     } else {
-      console.log('No data found in Firestore. Creating document with current state.');
-      load();
-      docRef.set(S)
+      console.log('No data found in Firestore. Creating document with empty/default state.');
+      const cleanState = initState();
+      setS(cleanState);
+      save();
+      docRef.set(cleanState)
         .then(() => console.log('Firestore document created!'))
         .catch(err => console.error('Error creating firestore doc:', err));
     }
@@ -279,6 +345,20 @@ export function updateUserProfileUI() {
       const initial = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '👤';
       avatarEl.textContent = initial;
     }
+  }
+
+  // Configure Profile Edit Inputs
+  const passGroup = q('#profile-pass-group');
+  if (passGroup) {
+    if (currentUser.isAnonymous || currentUser.providerId === 'google.com') {
+      passGroup.style.display = 'none';
+    } else {
+      passGroup.style.display = 'flex';
+    }
+  }
+  const nameInput = q('#profile-name-input');
+  if (nameInput) {
+    nameInput.value = currentUser.name || '';
   }
 }
 

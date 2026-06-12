@@ -119,9 +119,11 @@ export function exportWeeklyPDF(weekIndex) {
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
-  reportDiv.style.position = 'absolute';
-  reportDiv.style.left = '-9999px';
+  reportDiv.style.position = 'fixed';
+  reportDiv.style.left = '0';
   reportDiv.style.top = '0';
+  reportDiv.style.zIndex = '-9999';
+  reportDiv.style.opacity = '0.01';
   reportDiv.style.width = '790px';
   document.body.appendChild(reportDiv);
   
@@ -140,14 +142,41 @@ export function exportWeeklyPDF(weekIndex) {
 
 export function exportMonthlyPDF() {
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const mesName = MESES[periodState.currentMonth];
-  const anoVal = periodState.currentYear;
   
-  const activeTxs = S.transactions.filter(t => {
-    const d = new Date(t.data + 'T00:00:00');
-    return d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
-  });
-  
+  let activeTxs = [];
+  let periodLabel = '';
+  let subLabel = '';
+  let filename = '';
+
+  if (periodState.currentMode === 'monthly') {
+    const mesName = MESES[periodState.currentMonth];
+    const anoVal = periodState.currentYear;
+    periodLabel = `${mesName} de ${anoVal}`;
+    subLabel = 'Relatório Financeiro Mensal';
+    filename = `Relatorio_Financeiro_${mesName}_${anoVal}.pdf`;
+    activeTxs = S.transactions.filter(t => {
+      const d = new Date(t.data + 'T00:00:00');
+      return d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
+    });
+  } else if (periodState.currentMode === 'yearly') {
+    const anoVal = periodState.currentYear;
+    periodLabel = `Ano ${anoVal}`;
+    subLabel = 'Relatório Financeiro Anual';
+    filename = `Relatorio_Financeiro_Anual_${anoVal}.pdf`;
+    activeTxs = S.transactions.filter(t => {
+      const d = new Date(t.data + 'T00:00:00');
+      return d.getFullYear() === periodState.currentYear;
+    });
+  } else {
+    periodLabel = 'Todo o Período';
+    subLabel = 'Relatório Financeiro Consolidado';
+    filename = `Relatorio_Financeiro_Consolidado.pdf`;
+    activeTxs = [...S.transactions];
+  }
+
+  // Sort transactions by date descending
+  activeTxs.sort((a, b) => b.data.localeCompare(a.data));
+
   let totalRec = 0;
   let totalDesp = 0;
   activeTxs.forEach(t => {
@@ -197,16 +226,16 @@ export function exportMonthlyPDF() {
         <td style="${tdStyles}"><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:${t.status === 'Pago' || t.status === 'Recebido' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#92400e'}">${t.status}</span></td>
       </tr>
     `;
-  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b;font-size:12px">Nenhum lançamento neste mês.</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b;font-size:12px">Nenhum lançamento neste período.</td></tr>';
   
   reportDiv.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #6366f1;padding-bottom:16px">
       <div>
         <h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.5px">💸 FinanceOS</h1>
-        <p style="font-size:12px;color:#64748b;margin:4px 0 0">Relatório Financeiro Mensal</p>
+        <p style="font-size:12px;color:#64748b;margin:4px 0 0">${subLabel}</p>
       </div>
       <div style="text-align:right">
-        <h3 style="font-size:18px;font-weight:750;color:#6366f1;margin:0">${mesName} de ${anoVal}</h3>
+        <h3 style="font-size:18px;font-weight:750;color:#6366f1;margin:0">${periodLabel}</h3>
         <p style="font-size:11px;color:#64748b;margin:4px 0 0">Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
       </div>
     </div>
@@ -264,15 +293,17 @@ export function exportMonthlyPDF() {
   
   const opt = {
     margin:       [10, 10, 10, 10],
-    filename:     `Relatorio_Financeiro_${mesName}_${anoVal}.pdf`,
+    filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true },
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
-  reportDiv.style.position = 'absolute';
-  reportDiv.style.left = '-9999px';
+  reportDiv.style.position = 'fixed';
+  reportDiv.style.left = '0';
   reportDiv.style.top = '0';
+  reportDiv.style.zIndex = '-9999';
+  reportDiv.style.opacity = '0.01';
   reportDiv.style.width = '790px';
   document.body.appendChild(reportDiv);
   
@@ -280,7 +311,7 @@ export function exportMonthlyPDF() {
     window.html2pdf().set(opt).from(reportDiv).save().then(() => {
       document.body.removeChild(reportDiv);
     }).catch(err => {
-      console.error('Erro ao gerar PDF Mensal:', err);
+      console.error('Erro ao gerar PDF:', err);
       document.body.removeChild(reportDiv);
     });
   } else {

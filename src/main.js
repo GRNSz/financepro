@@ -23,7 +23,10 @@ import {
   signOutUser, 
   currentUser,
   registerSyncCallback,
-  registerAuthCallback
+  registerAuthCallback,
+  sendPasswordReset,
+  updateUserDisplayName,
+  updateUserPassword
 } from './firebase.js';
 
 import { 
@@ -169,6 +172,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const instInput = q('#tx-inst');
     if (instInput) instInput.value = '1';
+
+    const recIs = q('#tx-is-recurring');
+    if (recIs) {
+      recIs.checked = false;
+      const parentRow = recIs.closest('.fr');
+      if (parentRow) parentRow.style.display = 'flex';
+    }
+    const recWrap = q('#tx-rec-wrap');
+    if (recWrap) recWrap.style.display = 'none';
+    const recFreq = q('#tx-rec-freq');
+    if (recFreq) recFreq.value = 'monthly';
+    const recDia = q('#tx-rec-dia');
+    if (recDia) recDia.value = '';
+    const recDiaSemana = q('#tx-rec-dia-semana');
+    if (recDiaSemana) recDiaSemana.value = '0';
+    const recDayMonthWrap = q('#tx-rec-day-month-wrap');
+    if (recDayMonthWrap) recDayMonthWrap.style.display = 'block';
+    const recDayWeekWrap = q('#tx-rec-day-week-wrap');
+    if (recDayWeekWrap) recDayWeekWrap.style.display = 'none';
     
     q('#tx-modal-title').textContent = "Novo Lançamento";
 
@@ -193,12 +215,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
   q('#tx-is-installment')?.addEventListener('change', function() {
     const instWrap = q('#tx-inst-wrap');
-    if (instWrap) instWrap.style.display = this.checked ? 'block' : 'none';
-    if (!this.checked) {
+    if (this.checked) {
+      const recIs = q('#tx-is-recurring');
+      if (recIs) recIs.checked = false;
+      const recWrap = q('#tx-rec-wrap');
+      if (recWrap) recWrap.style.display = 'none';
+      if (instWrap) instWrap.style.display = 'block';
+    } else {
+      if (instWrap) instWrap.style.display = 'none';
       const instVal = q('#tx-inst');
       if (instVal) instVal.value = '1';
     }
     updateTxLivePreview();
+  });
+
+  q('#tx-is-recurring')?.addEventListener('change', function() {
+    const recWrap = q('#tx-rec-wrap');
+    if (this.checked) {
+      const instIs = q('#tx-is-installment');
+      if (instIs) instIs.checked = false;
+      const instWrap = q('#tx-inst-wrap');
+      if (instWrap) instWrap.style.display = 'none';
+      const instVal = q('#tx-inst');
+      if (instVal) instVal.value = '1';
+      if (recWrap) recWrap.style.display = 'flex';
+    } else {
+      if (recWrap) recWrap.style.display = 'none';
+    }
+    updateTxLivePreview();
+  });
+
+  q('#tx-rec-freq')?.addEventListener('change', function() {
+    const monthWrap = q('#tx-rec-day-month-wrap');
+    const weekWrap = q('#tx-rec-day-week-wrap');
+    if (this.value === 'weekly') {
+      if (monthWrap) monthWrap.style.display = 'none';
+      if (weekWrap) weekWrap.style.display = 'block';
+    } else {
+      if (monthWrap) monthWrap.style.display = 'block';
+      if (weekWrap) weekWrap.style.display = 'none';
+    }
   });
 
   ['#tx-val', '#tx-conta', '#tx-tipo', '#tx-cat', '#tx-status', '#tx-is-installment', '#tx-inst'].forEach(sel => {
@@ -299,6 +355,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (stat !== 'Pendente') {
           const acc = S.accounts.find(a => a.id === payId);
           if (acc) acc.balance += (tipo === 'Receita' ? val : -val);
+        }
+
+        const isRecurChecked = q('#tx-is-recurring')?.checked;
+        if (isRecurChecked) {
+          const freq = q('#tx-rec-freq').value;
+          let recurrenceDay = 1;
+          if (freq === 'weekly') {
+            recurrenceDay = parseInt(q('#tx-rec-dia-semana').value) || 0;
+          } else {
+            recurrenceDay = parseInt(q('#tx-rec-dia').value) || 1;
+          }
+          S.recurring.push({
+            id: uid(),
+            desc,
+            tipo,
+            val,
+            catId,
+            payId,
+            frequency: freq,
+            day: recurrenceDay,
+            last: null
+          });
+          renderRecurring();
         }
       }
     }
@@ -476,6 +555,19 @@ document.addEventListener('DOMContentLoaded', function() {
   q('#btnNewRec')?.addEventListener('click', () => {
     fillCatSelect(q('#rec-cat'), 'Despesa');
     fillPaySelect(q('#rec-conta'));
+    
+    // Reset recurrence form inputs
+    const recFreq = q('#rec-freq');
+    if (recFreq) recFreq.value = 'monthly';
+    const recDia = q('#rec-dia');
+    if (recDia) recDia.value = '';
+    const recDiaSemana = q('#rec-dia-semana');
+    if (recDiaSemana) recDiaSemana.value = '0';
+    const monthWrap = q('#rec-day-month-wrap');
+    if (monthWrap) monthWrap.style.display = 'block';
+    const weekWrap = q('#rec-day-week-wrap');
+    if (weekWrap) weekWrap.style.display = 'none';
+
     openM('m-rec');
   });
 
@@ -483,8 +575,33 @@ document.addEventListener('DOMContentLoaded', function() {
     fillCatSelect(q('#rec-cat'), q('#rec-tipo').value);
   });
 
+  q('#rec-freq')?.addEventListener('change', function() {
+    const monthWrap = q('#rec-day-month-wrap');
+    const weekWrap = q('#rec-day-week-wrap');
+    if (this.value === 'weekly') {
+      if (monthWrap) monthWrap.style.display = 'none';
+      if (weekWrap) weekWrap.style.display = 'block';
+    } else {
+      if (monthWrap) monthWrap.style.display = 'block';
+      if (weekWrap) weekWrap.style.display = 'none';
+    }
+  });
+
   q('#f-rec')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    const freq = q('#rec-freq').value;
+    let recurrenceDay = 1;
+    if (freq === 'weekly') {
+      recurrenceDay = parseInt(q('#rec-dia-semana').value) || 0;
+    } else {
+      const dayVal = q('#rec-dia').value;
+      if (!dayVal) {
+        alert('Por favor, informe o dia do mês.');
+        return;
+      }
+      recurrenceDay = parseInt(dayVal) || 1;
+    }
+
     S.recurring.push({
       id: uid(),
       desc: q('#rec-desc').value.trim(),
@@ -492,7 +609,8 @@ document.addEventListener('DOMContentLoaded', function() {
       val: parseFloat(q('#rec-val').value) || 0,
       catId: q('#rec-cat').value,
       payId: q('#rec-conta').value,
-      day: parseInt(q('#rec-dia').value) || 1,
+      frequency: freq,
+      day: recurrenceDay,
       last: null
     });
     
@@ -1042,6 +1160,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
   q('#btnSignOut')?.addEventListener('click', () => {
     signOutUser();
+  });
+
+  q('#btnForgotPassword')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const email = q('#login-email').value.trim();
+    if (!email) {
+      const promptEmail = prompt('Por favor, informe seu e-mail para recuperar a senha:', '');
+      if (promptEmail && promptEmail.trim()) {
+        sendPasswordReset(promptEmail.trim());
+      }
+    } else {
+      if (confirm(`Deseja enviar um e-mail de redefinição de senha para ${email}?`)) {
+        sendPasswordReset(email);
+      }
+    }
+  });
+
+  q('#f-profile-edit')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newName = q('#profile-name-input').value.trim();
+    const newPassword = q('#profile-password-input')?.value;
+
+    const promises = [];
+    if (newName && newName !== currentUser?.name) {
+      promises.push(updateUserDisplayName(newName));
+    }
+    if (newPassword && newPassword.trim().length > 0) {
+      if (newPassword.length < 6) {
+        alert('A senha deve ter pelo menos 6 caracteres.');
+        return;
+      }
+      promises.push(updateUserPassword(newPassword));
+    }
+
+    if (promises.length > 0) {
+      Promise.all(promises).then(() => {
+        const passInp = q('#profile-password-input');
+        if (passInp) passInp.value = '';
+      }).catch(err => {
+        console.error('Error updating profile:', err);
+      });
+    } else {
+      alert('Nenhuma alteração detectada.');
+    }
   });
 
   // 29. Firebase boot sequence
