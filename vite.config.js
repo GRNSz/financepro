@@ -98,6 +98,21 @@ export default defineConfig({
           }
         });
       }
+    },
+    {
+      name: 'html-replace-plugin',
+      transformIndexHtml(html) {
+        return html
+          .replace(/__VITE_GEMINI_API_KEY__/g, geminiApiKey)
+          .replace(/__VITE_FIREBASE_API_KEY__/g, fbApiKey)
+          .replace(/__VITE_FIREBASE_AUTH_DOMAIN__/g, fbAuthDomain)
+          .replace(/__VITE_FIREBASE_DATABASE_URL__/g, fbDatabaseUrl)
+          .replace(/__VITE_FIREBASE_PROJECT_ID__/g, fbProjectId)
+          .replace(/__VITE_FIREBASE_STORAGE_BUCKET__/g, fbStorageBucket)
+          .replace(/__VITE_FIREBASE_MESSAGING_SENDER_ID__/g, fbMessagingSenderId)
+          .replace(/__VITE_FIREBASE_APP_ID__/g, fbAppId)
+          .replace(/__VITE_FIREBASE_MEASUREMENT_ID__/g, fbMeasurementId);
+      }
     }
   ]
 });

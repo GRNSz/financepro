@@ -1969,9 +1969,9 @@ function loadFirebaseConfig() {
     const envBucket = typeof __VITE_FIREBASE_STORAGE_BUCKET__ !== 'undefined' ? __VITE_FIREBASE_STORAGE_BUCKET__ : null;
     const envSender = typeof __VITE_FIREBASE_MESSAGING_SENDER_ID__ !== 'undefined' ? __VITE_FIREBASE_MESSAGING_SENDER_ID__ : null;
     const envAppId = typeof __VITE_FIREBASE_APP_ID__ !== 'undefined' ? __VITE_FIREBASE_APP_ID__ : null;
-    const envMeasurement = typeof __VITE_FIREBASE_MEASUREMENT_ID__ !== 'undefined' ? __VITE_FIREBASE_MEASUREMENT_ID__ : null;
+        const envMeasurement = typeof __VITE_FIREBASE_MEASUREMENT_ID__ !== 'undefined' ? __VITE_FIREBASE_MEASUREMENT_ID__ : null;
     
-    if (envKey && envKey.trim() !== '' && envKey !== '__VITE_FIREBASE_API_KEY__') {
+    if (envKey && envKey.trim() !== '' && envKey !== '__' + 'VITE_FIREBASE_API_KEY__') {
       firebaseConfig = {
         apiKey: envKey,
         authDomain: envDomain,
@@ -4559,7 +4559,7 @@ function getAIApiKey() {
   
   // Substituído em tempo de compilação pelo Vite
   const envKey = '__VITE_GEMINI_API_KEY__';
-  if (envKey && envKey !== '__VITE_GEMINI_API_KEY__') return envKey;
+  if (envKey && envKey !== '__' + 'VITE_GEMINI_API_KEY__') return envKey;
   
   return 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
 }
