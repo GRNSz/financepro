@@ -10,7 +10,9 @@ import {
   isoToday, 
   openM, 
   closeM, 
-  periodState 
+  periodState,
+  initState,
+  setS
 } from './state.js';
 
 import { 
@@ -26,7 +28,8 @@ import {
   registerAuthCallback,
   sendPasswordReset,
   updateUserDisplayName,
-  updateUserPassword
+  updateUserPassword,
+  db
 } from './firebase.js';
 
 import { 
@@ -1019,8 +1022,24 @@ document.addEventListener('DOMContentLoaded', function() {
   // 22. App reset
   q('#btnReset')?.addEventListener('click', () => {
     if (confirm('Apagar TODOS os dados? Isso não pode ser desfeito!')) {
-      localStorage.clear();
-      window.location.reload();
+      const cleanState = initState();
+      setS(cleanState);
+      save();
+      
+      if (db && currentUser && !currentUser.isAnonymous) {
+        db.collection('users').doc(currentUser.uid).set(cleanState)
+          .then(() => {
+            localStorage.clear();
+            window.location.reload();
+          })
+          .catch(err => {
+            console.error('Error clearing remote database:', err);
+            alert('Erro ao apagar dados na nuvem: ' + err.message);
+          });
+      } else {
+        localStorage.clear();
+        window.location.reload();
+      }
     }
   });
 
