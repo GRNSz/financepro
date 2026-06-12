@@ -6,10 +6,12 @@ import path from 'path';
 let geminiApiKey = 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
 let fbApiKey = '';
 let fbAuthDomain = '';
+let fbDatabaseUrl = '';
 let fbProjectId = '';
 let fbStorageBucket = '';
 let fbMessagingSenderId = '';
 let fbAppId = '';
+let fbMeasurementId = '';
 
 if (fs.existsSync('.env')) {
   try {
@@ -22,10 +24,12 @@ if (fs.existsSync('.env')) {
     geminiApiKey = getVal('VITE_GEMINI_API_KEY') || geminiApiKey;
     fbApiKey = getVal('VITE_FIREBASE_API_KEY');
     fbAuthDomain = getVal('VITE_FIREBASE_AUTH_DOMAIN');
+    fbDatabaseUrl = getVal('VITE_FIREBASE_DATABASE_URL');
     fbProjectId = getVal('VITE_FIREBASE_PROJECT_ID');
     fbStorageBucket = getVal('VITE_FIREBASE_STORAGE_BUCKET');
     fbMessagingSenderId = getVal('VITE_FIREBASE_MESSAGING_SENDER_ID');
     fbAppId = getVal('VITE_FIREBASE_APP_ID');
+    fbMeasurementId = getVal('VITE_FIREBASE_MEASUREMENT_ID');
   } catch (err) {
     console.error('Error reading .env file:', err);
   }
@@ -36,10 +40,12 @@ export default defineConfig({
     '__VITE_GEMINI_API_KEY__': JSON.stringify(geminiApiKey),
     '__VITE_FIREBASE_API_KEY__': JSON.stringify(fbApiKey),
     '__VITE_FIREBASE_AUTH_DOMAIN__': JSON.stringify(fbAuthDomain),
+    '__VITE_FIREBASE_DATABASE_URL__': JSON.stringify(fbDatabaseUrl),
     '__VITE_FIREBASE_PROJECT_ID__': JSON.stringify(fbProjectId),
     '__VITE_FIREBASE_STORAGE_BUCKET__': JSON.stringify(fbStorageBucket),
     '__VITE_FIREBASE_MESSAGING_SENDER_ID__': JSON.stringify(fbMessagingSenderId),
-    '__VITE_FIREBASE_APP_ID__': JSON.stringify(fbAppId)
+    '__VITE_FIREBASE_APP_ID__': JSON.stringify(fbAppId),
+    '__VITE_FIREBASE_MEASUREMENT_ID__': JSON.stringify(fbMeasurementId)
   },
   plugins: [
     {
@@ -54,14 +60,31 @@ export default defineConfig({
             req.on('end', () => {
               try {
                 const { key } = JSON.parse(body);
+                let envContent = '';
+                if (fs.existsSync('.env')) {
+                  envContent = fs.readFileSync('.env', 'utf8');
+                }
+                
+                let lines = envContent.split(/\r?\n/);
+                
                 if (key && key.trim()) {
-                  fs.writeFileSync('.env', `VITE_GEMINI_API_KEY=${key.trim()}\n`, 'utf8');
+                  let found = false;
+                  lines = lines.map(line => {
+                    if (line.startsWith('VITE_GEMINI_API_KEY=')) {
+                      found = true;
+                      return `VITE_GEMINI_API_KEY=${key.trim()}`;
+                    }
+                    return line;
+                  });
+                  if (!found) {
+                    lines.push(`VITE_GEMINI_API_KEY=${key.trim()}`);
+                  }
+                  fs.writeFileSync('.env', lines.join('\n'), 'utf8');
                   res.writeHead(200, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({ success: true }));
                 } else {
-                  if (fs.existsSync('.env')) {
-                    fs.unlinkSync('.env');
-                  }
+                  lines = lines.filter(line => !line.startsWith('VITE_GEMINI_API_KEY='));
+                  fs.writeFileSync('.env', lines.join('\n'), 'utf8');
                   res.writeHead(200, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({ success: true, removed: true }));
                 }
