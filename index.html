@@ -683,6 +683,9 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 
     <!-- ════ DASHBOARD ════════════════════════════════════════════ -->
     <section id="page-dashboard" class="page on">
+      <!-- Alerta de Contas a Vencer/Atrasadas -->
+      <div id="dash-bill-alerts" style="display: none; margin-bottom: 20px;"></div>
+
       <div class="kpi-row">
         <div class="kpi kpi-bal">
           <p class="kpi-lbl">Saldo Atual</p>
@@ -1056,9 +1059,18 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 
     <!-- ════ CALCULADORA ══════════════════════════════════════════ -->
     <section id="page-calculadora" class="page">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; align-items: start;">
-        
-        <!-- Card 1: Calculadora Matemática -->
+      <!-- Tab Header -->
+      <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--bd); padding-bottom: 12px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+        <button class="calc-tab-btn bp" data-tab="math" onclick="switchCalcTab('math')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid var(--bd2); background: var(--s3); color: var(--tx); cursor: pointer; display: flex; align-items: center; gap: 6px;">🧮 Simples</button>
+        <button class="calc-tab-btn bs" data-tab="overtime" onclick="switchCalcTab('overtime')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">⚡ Horas Extras</button>
+        <button class="calc-tab-btn bs" data-tab="amortization" onclick="switchCalcTab('amortization')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">🏠 Amortização</button>
+        <button class="calc-tab-btn bs" data-tab="independence" onclick="switchCalcTab('independence')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">🏖️ Independência FIRE</button>
+      </div>
+
+      <!-- Tab Panes -->
+      
+      <!-- 1. Calculadora Simples -->
+      <div id="calc-pane-math" class="calc-pane" style="max-width: 450px; margin: 0 auto;">
         <div class="card">
           <div class="card-h">
             <h3>🧮 Calculadora Simples</h3>
@@ -1092,8 +1104,10 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
             </div>
           </div>
         </div>
-        
-        <!-- Card 2: Calculadora de Horas Extras -->
+      </div>
+
+      <!-- 2. Horas Extras & DSR -->
+      <div id="calc-pane-overtime" class="calc-pane" style="max-width: 550px; margin: 0 auto; display: none;">
         <div class="card">
           <div class="card-h">
             <h3>⚡ Horas Extras & DSR</h3>
@@ -1101,13 +1115,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
           <p class="card-desc">Simule o cálculo trabalhista do valor a receber.</p>
           
           <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
-            <div class="fg">
+            <div class="fgrp">
               <label>Salário Bruto Mensal (R$)</label>
               <input type="number" id="he-salario" class="inp" placeholder="Ex: 3000" min="0" step="0.01">
             </div>
             
-            <div class="fr" style="gap: 12px;">
-              <div class="fg" style="flex: 1;">
+            <div class="fr">
+              <div class="fgrp">
                 <label>Jornada Mensal (Horas)</label>
                 <select id="he-jornada" class="inp">
                   <option value="220">220h (Padrão)</option>
@@ -1116,13 +1130,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
                   <option value="150">150h</option>
                 </select>
               </div>
-              <div class="fg" style="flex: 1;">
+              <div class="fgrp">
                 <label>Adicional (%)</label>
                 <input type="number" id="he-porcentagem" class="inp" placeholder="Ex: 50" min="0" value="50">
               </div>
             </div>
             
-            <div class="fg">
+            <div class="fgrp">
               <label>Quantidade de Horas Extras Trabalhadas</label>
               <input type="number" id="he-quantidade" class="inp" placeholder="Ex: 15.5" min="0" step="0.1">
             </div>
@@ -1133,12 +1147,12 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
               </label>
             </div>
             
-            <div id="he-dsr-config" class="fr" style="gap: 12px;">
-              <div class="fg" style="flex: 1;">
+            <div id="he-dsr-config" class="fr">
+              <div class="fgrp">
                 <label>Dias Úteis no Mês</label>
                 <input type="number" id="he-dsr-uteis" class="inp" value="25" min="1">
               </div>
-              <div class="fg" style="flex: 1;">
+              <div class="fgrp">
                 <label>Dom/Feriados no Mês</label>
                 <input type="number" id="he-dsr-folgas" class="inp" value="5" min="0">
               </div>
@@ -1170,7 +1184,158 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
             </div>
           </div>
         </div>
-        
+      </div>
+
+      <!-- 3. Amortização (SAC / PRICE) -->
+      <div id="calc-pane-amortization" class="calc-pane" style="max-width: 650px; margin: 0 auto; display: none;">
+        <div class="card">
+          <div class="card-h">
+            <h3>🏠 Simulador de Amortização (SAC / PRICE)</h3>
+          </div>
+          <p class="card-desc">Compare o custo total e parcelas entre o Sistema SAC e a Tabela PRICE.</p>
+          
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+            <div class="fgrp">
+              <label>Valor do Financiamento (R$)</label>
+              <input type="number" id="am-valor" class="inp" placeholder="Ex: 200000" min="0" step="0.01">
+            </div>
+            
+            <div class="fr">
+              <div class="fgrp">
+                <label>Taxa de Juros Anual (%)</label>
+                <input type="number" id="am-juros" class="inp" placeholder="Ex: 10.5" min="0" step="0.01" value="10">
+              </div>
+              <div class="fgrp">
+                <label>Prazo (Meses)</label>
+                <input type="number" id="am-prazo" class="inp" placeholder="Ex: 360" min="1" value="120">
+              </div>
+            </div>
+            
+            <button class="bp" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="calculateAmortization()">Simular Financiamento</button>
+            
+            <div id="am-results" style="display: none; margin-top: 16px; display: flex; flex-direction: column; gap: 16px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+                <!-- SAC Card -->
+                <div style="background: var(--s2); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                  <h4 style="font-size: 14px; color: var(--ac); font-weight: 700; border-bottom: 1px solid var(--bd); padding-bottom: 6px; margin-bottom: 4px;">SAC</h4>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">Primeira Parcela:</span>
+                    <span id="am-sac-p1" style="font-weight: 700;">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">Última Parcela:</span>
+                    <span id="am-sac-pn" style="font-weight: 700;">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">Amortização Mensal:</span>
+                    <span id="am-sac-amort" style="font-weight: 700;">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid var(--bd); padding-top: 6px; margin-top: 4px;">
+                    <span style="color: var(--tx2);">Juros Totais:</span>
+                    <span id="am-sac-juros" style="font-weight: 700; color: var(--rd);">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 800;">
+                    <span>Total Pago:</span>
+                    <span id="am-sac-total" style="color: var(--tx);">R$ 0,00</span>
+                  </div>
+                </div>
+                
+                <!-- PRICE Card -->
+                <div style="background: var(--s2); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                  <h4 style="font-size: 14px; color: var(--pu); font-weight: 700; border-bottom: 1px solid var(--bd); padding-bottom: 6px; margin-bottom: 4px;">PRICE</h4>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">Parcela (Fixa):</span>
+                    <span id="am-price-p" style="font-weight: 700;">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">&nbsp;</span>
+                    <span>&nbsp;</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span style="color: var(--tx2);">Juros Iniciais:</span>
+                    <span id="am-price-j1" style="font-weight: 700;">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid var(--bd); padding-top: 6px; margin-top: 4px;">
+                    <span style="color: var(--tx2);">Juros Totais:</span>
+                    <span id="am-price-juros" style="font-weight: 700; color: var(--rd);">R$ 0,00</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 800;">
+                    <span>Total Pago:</span>
+                    <span id="am-price-total" style="color: var(--tx);">R$ 0,00</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Comparativo textual -->
+              <div id="am-comparison-box" style="background: var(--s3); border: 1px solid var(--bd2); border-radius: 10px; padding: 14px; font-size: 12.5px; line-height: 1.5; color: var(--tx);">
+                <!-- Preenchido via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Independência FIRE -->
+      <div id="calc-pane-independence" class="calc-pane" style="max-width: 550px; margin: 0 auto; display: none;">
+        <div class="card">
+          <div class="card-h">
+            <h3>🏖️ Independência Financeira (Regra dos 4%)</h3>
+          </div>
+          <p class="card-desc">Calcule a meta de patrimônio para viver de rendimentos e o tempo necessário de acúmulo.</p>
+          
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+            <div class="fgrp">
+              <label>Custo de Vida Mensal Desejado (R$)</label>
+              <input type="number" id="fire-custo" class="inp" placeholder="Ex: 5000" min="0" step="0.01">
+            </div>
+            
+            <div class="fr">
+              <div class="fgrp">
+                <label>Patrimônio Atual (R$)</label>
+                <input type="number" id="fire-atual" class="inp" placeholder="Ex: 10000" min="0" value="0">
+              </div>
+              <div class="fgrp">
+                <label>Aporte Mensal (R$)</label>
+                <input type="number" id="fire-aporte" class="inp" placeholder="Ex: 1000" min="0" value="1000">
+              </div>
+            </div>
+            
+            <div class="fgrp">
+              <label>Taxa de Retorno Real Anual (%)</label>
+              <input type="number" id="fire-taxa" class="inp" placeholder="Ex: 4" min="0" step="0.01" value="5">
+              <small style="font-size: 10.5px; color: var(--tx2); margin-top: 2px;">Rendimento acima da inflação. 4% a 6% é o padrão histórico conservador.</small>
+            </div>
+            
+            <button class="bp" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="calculateFire()">Simular Independência</button>
+            
+            <div id="fire-results" style="display: none; margin-top: 16px; background: var(--s2); border: 1px solid var(--bd); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="text-align: center; border-bottom: 1px solid var(--bd); padding-bottom: 12px; margin-bottom: 4px;">
+                <p style="font-size: 11px; text-transform: uppercase; color: var(--tx2); font-weight: 700; letter-spacing: 0.8px;">Meta de Patrimônio FIRE</p>
+                <h2 id="fire-meta-val" style="font-size: 28px; font-weight: 800; color: var(--gr); margin-top: 4px;">R$ 0,00</h2>
+                <p style="font-size: 11px; color: var(--tx2); margin-top: 2px;">(Gera um rendimento mensal perpétuo de R$ <span id="fire-res-renda">0,00</span>)</p>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--tx2);">Tempo Estimado:</span>
+                  <span id="fire-res-tempo" style="font-weight: 700; color: var(--tx);">0 meses</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--tx2);">Total de Aportes:</span>
+                  <span id="fire-res-aportes" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--tx2);">Rendimentos Acumulados:</span>
+                  <span id="fire-res-juros" style="font-weight: 700; color: var(--gr);">R$ 0,00</span>
+                </div>
+              </div>
+              
+              <div id="fire-summary-text" style="background: var(--s3); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; color: var(--tx); border-left: 3px solid var(--gr);">
+                <!-- Preenchido via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1897,6 +2062,7 @@ function renderDashboard(){
   renderDashSaude(mRec, mDesp);
   renderDashRecent();
   renderWeeklySummaries();
+  checkUpcomingBills();
 }
 
 function renderDashSaude(rec, desp) {
@@ -4212,7 +4378,238 @@ function renderInstallmentTracker() {
   }).join('');
 }
 
+// ── REMINDER: BILLS ALERT ───────────────────────────────────────────
+window.filterPendingExpenses = function() {
+  navigate('lancamentos');
+  const fStatusEl = q('#fStatus');
+  if (fStatusEl) fStatusEl.value = 'Pendente';
+  const fTipoEl = q('#fTipo');
+  if (fTipoEl) fTipoEl.value = 'Despesa';
+  const fSearchEl = q('#fSearch');
+  if (fSearchEl) fSearchEl.value = '';
+  const fCatEl = q('#fCat');
+  if (fCatEl) fCatEl.value = '';
+  applyFilters();
+};
 
+function checkUpcomingBills() {
+  const alertsEl = q('#dash-bill-alerts');
+  if (!alertsEl) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  const threeDaysFromNow = new Date();
+  threeDaysFromNow.setDate(today.getDate() + 3);
+  threeDaysFromNow.setHours(23,59,59,999);
+
+  const bills = S.transactions.filter(t => {
+    if (t.tipo !== 'Despesa' || t.status !== 'Pendente') return false;
+    const d = new Date(t.data + 'T00:00:00');
+    return d <= threeDaysFromNow;
+  });
+
+  if (bills.length === 0) {
+    alertsEl.style.display = 'none';
+    alertsEl.innerHTML = '';
+    return;
+  }
+
+  let overdueCount = 0;
+  let upcomingCount = 0;
+  let totalAmount = 0;
+
+  bills.forEach(t => {
+    const d = new Date(t.data + 'T00:00:00');
+    if (d < today) {
+      overdueCount++;
+    } else {
+      upcomingCount++;
+    }
+    totalAmount += t.val;
+  });
+
+  let message = '';
+  if (overdueCount > 0 && upcomingCount > 0) {
+    message = `Você tem <strong>${overdueCount}</strong> despesa(s) atrasada(s) e <strong>${upcomingCount}</strong> a vencer nos próximos 3 dias, totalizando <strong>${fmt(totalAmount)}</strong>.`;
+  } else if (overdueCount > 0) {
+    message = `Você tem <strong>${overdueCount}</strong> despesa(s) atrasada(s), totalizando <strong>${fmt(totalAmount)}</strong>!`;
+  } else {
+    message = `Você tem <strong>${upcomingCount}</strong> despesa(s) vencendo nos próximos 3 dias, totalizando <strong>${fmt(totalAmount)}</strong>.`;
+  }
+
+  alertsEl.innerHTML = `
+    <div style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.25); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); flex-wrap: wrap; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">⚠️</span>
+        <span style="font-size: 13.5px;">${message}</span>
+      </div>
+      <button class="bp sm" onclick="filterPendingExpenses()" style="font-size: 12px; padding: 6px 12px;">Visualizar Contas</button>
+    </div>
+  `;
+  alertsEl.style.display = 'block';
+}
+
+// ── CALCULADORA TABS AND SIMULATORS ──────────────────────────────────
+window.switchCalcTab = function(tabName) {
+  qa('.calc-pane').forEach(p => p.style.display = 'none');
+  qa('.calc-tab-btn').forEach(b => {
+    b.className = 'calc-tab-btn bs';
+    b.style.background = 'transparent';
+    b.style.borderColor = 'transparent';
+    b.style.color = 'var(--tx2)';
+  });
+  
+  const activePane = q('#calc-pane-' + tabName);
+  if (activePane) activePane.style.display = 'block';
+  
+  const activeBtn = q(`.calc-tab-btn[data-tab="${tabName}"]`);
+  if (activeBtn) {
+    activeBtn.className = 'calc-tab-btn bp';
+    activeBtn.style.background = 'var(--s3)';
+    activeBtn.style.borderColor = 'var(--bd2)';
+    activeBtn.style.color = 'var(--tx)';
+  }
+};
+
+window.calculateAmortization = function() {
+  const valor = parseFloat(q('#am-valor').value) || 0;
+  const jurosAnual = parseFloat(q('#am-juros').value) || 0;
+  const prazo = parseInt(q('#am-prazo').value) || 0;
+
+  if (valor <= 0 || jurosAnual <= 0 || prazo <= 0) {
+    alert('Por favor, preencha todos os campos do financiamento com valores maiores que zero!');
+    return;
+  }
+
+  const i = (jurosAnual / 12) / 100; // Taxa mensal linear
+  const n = prazo;
+
+  // 1. SAC
+  const sacAmort = valor / n;
+  let sacTotalInterest = 0;
+  let sdSac = valor;
+  for (let k = 0; k < n; k++) {
+    const interest = sdSac * i;
+    sacTotalInterest += interest;
+    sdSac -= sacAmort;
+  }
+  const sacP1 = sacAmort + (valor * i);
+  const sacPn = sacAmort + (sacAmort * i);
+  const sacTotal = valor + sacTotalInterest;
+
+  // 2. PRICE
+  let priceP = 0;
+  if (i === 0) {
+    priceP = valor / n;
+  } else {
+    priceP = valor * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
+  }
+  const priceTotal = priceP * n;
+  const priceTotalInterest = priceTotal - valor;
+  const priceJ1 = valor * i;
+
+  // Render results
+  q('#am-sac-p1').textContent = fmt(sacP1);
+  q('#am-sac-pn').textContent = fmt(sacPn);
+  q('#am-sac-amort').textContent = fmt(sacAmort);
+  q('#am-sac-juros').textContent = fmt(sacTotalInterest);
+  q('#am-sac-total').textContent = fmt(sacTotal);
+
+  q('#am-price-p').textContent = fmt(priceP);
+  q('#am-price-j1').textContent = fmt(priceJ1);
+  q('#am-price-juros').textContent = fmt(priceTotalInterest);
+  q('#am-price-total').textContent = fmt(priceTotal);
+
+  // Comparison Text
+  const diffJuros = Math.abs(priceTotalInterest - sacTotalInterest);
+  const compBox = q('#am-comparison-box');
+  if (compBox) {
+    if (sacTotalInterest < priceTotalInterest) {
+      compBox.innerHTML = `
+        <strong>💡 Recomendação:</strong> O sistema <strong>SAC</strong> economizará <strong>${fmt(diffJuros)}</strong> em juros no total se comparado à tabela <strong>PRICE</strong>.<br>
+        <span style="font-size: 11.5px; color: var(--tx2); margin-top: 4px; display: block;">No entanto, a primeira parcela do SAC é de <strong>${fmt(sacP1)}</strong>, enquanto a PRICE tem parcelas fixas de <strong>${fmt(priceP)}</strong> durante todo o contrato.</span>
+      `;
+    } else {
+      compBox.innerHTML = `
+        <strong>💡 Recomendação:</strong> Ambos os modelos possuem custos de juros equivalentes sob as taxas informadas. A tabela <strong>PRICE</strong> oferece parcelas fixas de <strong>${fmt(priceP)}</strong>.
+      `;
+    }
+  }
+
+  q('#am-results').style.display = 'flex';
+};
+
+window.calculateFire = function() {
+  const custo = parseFloat(q('#fire-custo').value) || 0;
+  const atual = parseFloat(q('#fire-atual').value) || 0;
+  const aporte = parseFloat(q('#fire-aporte').value) || 0;
+  const taxaAnual = parseFloat(q('#fire-taxa').value) || 0;
+
+  if (custo <= 0 || taxaAnual <= 0) {
+    alert('Por favor, preencha o Custo de Vida Mensal e a Taxa de Retorno Real!');
+    return;
+  }
+
+  const R = taxaAnual / 100;
+  const target = (custo * 12) / R;
+  const rendaSegura = (target * R) / 12;
+
+  const im = Math.pow(1 + R, 1/12) - 1;
+
+  let months = 0;
+  let val = atual;
+  let totalAportes = 0;
+
+  if (aporte <= 0 && val * im <= 0) {
+    q('#fire-res-tempo').textContent = 'Nunca (sem aportes / rendimento zero)';
+    q('#fire-res-aportes').textContent = fmt(0);
+    q('#fire-res-juros').textContent = fmt(0);
+    q('#fire-summary-text').innerHTML = `Sua taxa de juros real ou aportes mensais estão zerados. É necessário poupar ou obter rendimentos acima da inflação para atingir a meta.`;
+    q('#fire-meta-val').textContent = fmt(target);
+    q('#fire-res-renda').textContent = fmt(rendaSegura);
+    q('#fire-results').style.display = 'flex';
+    return;
+  }
+
+  while (val < target && months < 1200) {
+    val = (val + aporte) * (1 + im);
+    totalAportes += aporte;
+    months++;
+  }
+
+  q('#fire-meta-val').textContent = fmt(target);
+  q('#fire-res-renda').textContent = fmt(rendaSegura);
+  q('#fire-res-aportes').textContent = fmt(totalAportes);
+  
+  const jurosAcumulados = Math.max(0, val - atual - totalAportes);
+  q('#fire-res-juros').textContent = fmt(jurosAcumulados);
+
+  let tempoText = '';
+  if (months >= 1200) {
+    tempoText = 'Mais de 100 anos';
+  } else {
+    const anos = Math.floor(months / 12);
+    const restos = months % 12;
+    if (anos > 0) {
+      tempoText = `${anos} ano(s) ${restos > 0 ? `e ${restos} mês(es)` : ''}`;
+    } else {
+      tempoText = `${restos} mês(es)`;
+    }
+  }
+  q('#fire-res-tempo').textContent = tempoText;
+
+  const summary = q('#fire-summary-text');
+  if (summary) {
+    if (months >= 1200) {
+      summary.innerHTML = `Com as taxas informadas, o seu patrimônio não cresce o suficiente para atingir a meta de <strong>${fmt(target)}</strong> em menos de 100 anos. Considere aumentar o seu aporte mensal ou buscar investimentos com maior rentabilidade real.`;
+    } else {
+      summary.innerHTML = `Parabéns! Em <strong>${tempoText}</strong> de aportes constantes de <strong>${fmt(aporte)}</strong>, seu patrimônio atingirá <strong>${fmt(target)}</strong>. Desse valor, <strong>${fmt(jurosAcumulados)}</strong> virá puramente de rendimentos acumulados (efeito dos juros compostos).`;
+    }
+  }
+
+  q('#fire-results').style.display = 'flex';
+};
 
 </script>
 <!-- FLOATING AI CHAT WIDGET -->
