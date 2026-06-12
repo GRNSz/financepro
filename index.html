@@ -638,7 +638,8 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
   <button class="nb" data-page="guardado"><span class="ni">🐷</span>Dinheiro Guardado</button>
   <button class="nb" data-page="contas"><span class="ni">🏦</span>Contas &amp; Cartões</button>
   <button class="nb" data-page="metas"><span class="ni">🎯</span>Metas</button>
-  <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
+  <button class="nb" data-page="calculadora"><span class="ni">🧮</span>Calculadora</button>
+      <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
 
   <div class="sb-foot">
     <button class="sb-btn" id="btnBackup">↑ Backup</button>
@@ -749,6 +750,17 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
             <button class="bl" data-page="lancamentos">Ver todos →</button>
           </div>
           <div id="dash-recent"></div>
+        </div>
+      </div>
+      
+      <!-- Calendário & Relatórios Semanais -->
+      <div class="card fw" style="margin-top: 20px;">
+        <div class="card-h">
+          <h3>📅 Calendário & Relatórios Semanais</h3>
+          <span style="font-size: 12px; color: var(--tx2);">Despesas agrupadas por semana (Mês Vigente)</span>
+        </div>
+        <div id="dash-weekly-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 14px;">
+          <!-- Carregado via JS -->
         </div>
       </div>
     </section>
@@ -1042,6 +1054,126 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
       </div>
     </section>
 
+    <!-- ════ CALCULADORA ══════════════════════════════════════════ -->
+    <section id="page-calculadora" class="page">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; align-items: start;">
+        
+        <!-- Card 1: Calculadora Matemática -->
+        <div class="card">
+          <div class="card-h">
+            <h3>🧮 Calculadora Simples</h3>
+          </div>
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+            <div id="calc-display" style="background: var(--s3); border: 1px solid var(--bd2); border-radius: 10px; padding: 16px; font-size: 20px; font-weight: 700; text-align: right; min-height: 58px; word-break: break-all; color: var(--tx);">0</div>
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('C')">C</button>
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('back')">⌫</button>
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('/')">/</button>
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('*')">*</button>
+              
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('7')">7</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('8')">8</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('9')">9</button>
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('-')">-</button>
+              
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('4')">4</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('5')">5</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('6')">6</button>
+              <button class="bs" style="padding: 14px; font-weight: 700; font-size: 15px;" onclick="pressCalc('+')">+</button>
+              
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('1')">1</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('2')">2</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('3')">3</button>
+              <button class="bp" style="grid-row: span 2; padding: 14px; font-weight: 700; font-size: 20px;" onclick="pressCalc('=')">=</button>
+              
+              <button class="bg" style="grid-column: span 2; padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('0')">0</button>
+              <button class="bg" style="padding: 14px; font-weight: 700; font-size: 15px; color: var(--tx);" onclick="pressCalc('.')">.</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 2: Calculadora de Horas Extras -->
+        <div class="card">
+          <div class="card-h">
+            <h3>⚡ Horas Extras & DSR</h3>
+          </div>
+          <p class="card-desc">Simule o cálculo trabalhista do valor a receber.</p>
+          
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+            <div class="fg">
+              <label>Salário Bruto Mensal (R$)</label>
+              <input type="number" id="he-salario" class="inp" placeholder="Ex: 3000" min="0" step="0.01">
+            </div>
+            
+            <div class="fr" style="gap: 12px;">
+              <div class="fg" style="flex: 1;">
+                <label>Jornada Mensal (Horas)</label>
+                <select id="he-jornada" class="inp">
+                  <option value="220">220h (Padrão)</option>
+                  <option value="200">200h</option>
+                  <option value="180">180h</option>
+                  <option value="150">150h</option>
+                </select>
+              </div>
+              <div class="fg" style="flex: 1;">
+                <label>Adicional (%)</label>
+                <input type="number" id="he-porcentagem" class="inp" placeholder="Ex: 50" min="0" value="50">
+              </div>
+            </div>
+            
+            <div class="fg">
+              <label>Quantidade de Horas Extras Trabalhadas</label>
+              <input type="number" id="he-quantidade" class="inp" placeholder="Ex: 15.5" min="0" step="0.1">
+            </div>
+            
+            <div style="margin-top: 4px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="he-has-dsr" style="width: 16px; height: 16px;" checked> Incluir DSR (Descanso Semanal Remunerado)?
+              </label>
+            </div>
+            
+            <div id="he-dsr-config" class="fr" style="gap: 12px;">
+              <div class="fg" style="flex: 1;">
+                <label>Dias Úteis no Mês</label>
+                <input type="number" id="he-dsr-uteis" class="inp" value="25" min="1">
+              </div>
+              <div class="fg" style="flex: 1;">
+                <label>Dom/Feriados no Mês</label>
+                <input type="number" id="he-dsr-folgas" class="inp" value="5" min="0">
+              </div>
+            </div>
+            
+            <button class="bp" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="calculateOvertime()">Calcular Horas Extras</button>
+            
+            <div id="he-results" style="display: none; margin-top: 8px; background: var(--s3); border: 1px solid var(--bd2); border-radius: 10px; padding: 16px; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12.5px; border-bottom: 1px solid var(--bd); padding-bottom: 6px;">
+                <span style="color: var(--tx2);">Valor da Hora Normal:</span>
+                <span id="he-res-normal" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12.5px; border-bottom: 1px solid var(--bd); padding-bottom: 6px;">
+                <span style="color: var(--tx2);">Valor da Hora Extra:</span>
+                <span id="he-res-extra-hora" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12.5px; border-bottom: 1px solid var(--bd); padding-bottom: 6px;">
+                <span style="color: var(--tx2);">Subtotal Horas Extras:</span>
+                <span id="he-res-extra-total" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+              </div>
+              <div id="he-res-dsr-row" style="display: flex; justify-content: space-between; font-size: 12.5px; border-bottom: 1px solid var(--bd); padding-bottom: 6px;">
+                <span style="color: var(--tx2);">DSR sobre Hora Extra:</span>
+                <span id="he-res-dsr" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+                <span style="font-size: 13.5px; font-weight: 750;">Total Bruto a Receber:</span>
+                <span id="he-res-total" style="font-size: 18px; font-weight: 800; color: var(--gr);">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </section>
+
   </div><!-- /pages -->
 </main>
 </div><!-- /app -->
@@ -1052,6 +1184,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
   <button class="bnb" data-page="lancamentos"><span>📋</span><small>Lançar</small></button>
   <button class="bnb" data-page="dividas"><span>💳</span><small>Dívidas</small></button>
   <button class="bnb" data-page="guardado"><span>🐷</span><small>Guardado</small></button>
+  <button class="bnb" data-page="calculadora"><span>🧮</span><small>Calc</small></button>
   <button class="bnb" data-page="config"><span>⚙️</span><small>Config</small></button>
 </nav>
 
@@ -1518,7 +1651,7 @@ function closeM(id){
 
 // ── NAVIGATION ────────────────────────────────────────────────────
 const PAGE_TITLES = {
-  dashboard:'Dashboard', lancamentos:'Lançamentos', dividas:'Dívidas',
+  dashboard:'Dashboard', calculadora:'Calculadora', lancamentos:'Lançamentos', dividas:'Dívidas',
   guardado:'Dinheiro Guardado', contas:'Contas & Cartões',
   metas:'Metas', config:'Configurações'
 };
@@ -1554,6 +1687,7 @@ function navigate(page){
 
 function renderPage(p){
   if(p==='dashboard')   renderDashboard();
+  if(p==='calculadora') renderCalculadora();
   if(p==='lancamentos') renderLancamentos();
   if(p==='dividas')     renderDividas();
   if(p==='guardado')    renderGuardado();
@@ -1762,6 +1896,7 @@ function renderDashboard(){
   renderDashPrevisto(mRec, mDesp, totalBal);
   renderDashSaude(mRec, mDesp);
   renderDashRecent();
+  renderWeeklySummaries();
 }
 
 function renderDashSaude(rec, desp) {
@@ -2116,8 +2251,9 @@ function applyFilters(){
       <td class="${t.tipo==='Receita'?'amt-in':'amt-ex'}" style="white-space:nowrap">${t.tipo==='Receita'?'+':'−'} ${fmt(t.val)}</td>
       <td><span class="status-pill ${sCls}" onclick="toggleTxStatus('${t.id}')" title="Clique para alternar status">${t.status}</span></td>
       <td style="white-space:nowrap">
-        <button class="bedit" onclick="editTx('${t.id}')">✏️</button>
-        <button class="bdel" onclick="delTx('${t.id}')">✕</button>
+        <button class="bedit" onclick="editTx('${t.id}')" title="Editar">✏️</button>
+        <button class="bdel" onclick="delTx('${t.id}')" title="Excluir">✕</button>
+        <button class="bs sm" style="padding: 5px 7px; font-size: 11px; margin-left: 2px; border-radius: 6px; min-width: auto; height: 28px;" onclick="cloneTxToNextMonth('${t.id}')" title="Clonar para o próximo mês">🔄</button>
       </td>
     </tr>`;
   }).join('');
@@ -3402,6 +3538,14 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   });
 
+  // ── CALCULADORA DSR TOGGLE ───────────────────────────────────
+  q('#he-has-dsr')?.addEventListener('change', function() {
+    const configEl = q('#he-dsr-config');
+    if (configEl) {
+      configEl.style.display = this.checked ? 'flex' : 'none';
+    }
+  });
+
   // ── LOGO NAVIGATION ──────────────────────────────────────────
   q('.logo')?.addEventListener('click', function() {
     navigate('dashboard');
@@ -3410,6 +3554,281 @@ document.addEventListener('DOMContentLoaded', function(){
   // ── BOOT ─────────────────────────────────────────────────────
   navigate('dashboard');
 });
+
+// ── CLONE TRANSACTION TO NEXT MONTH ──────────────────────────────────
+window.cloneTxToNextMonth = function(id) {
+  const t = S.transactions.find(x => x.id === id);
+  if (!t) return;
+  
+  const d = new Date(t.data + 'T00:00:00');
+  d.setMonth(d.getMonth() + 1);
+  const nextMonthIso = d.toISOString().split('T')[0];
+  
+  const cloned = {
+    id: uid(),
+    tipo: t.tipo,
+    desc: t.desc,
+    val: t.val,
+    catId: t.catId,
+    payId: t.payId,
+    data: nextMonthIso,
+    status: 'Pendente',
+    inst: null,
+    total: null
+  };
+  
+  S.transactions.unshift(cloned);
+  save();
+  alert(`Lançamento "${t.desc}" clonado para o próximo mês (${fmtD(nextMonthIso)}) como Pendente!`);
+  if (activePage === 'lancamentos') applyFilters();
+  renderDashboard();
+};
+
+// ── WEEKLY REPORTS LOGIC ─────────────────────────────────────────────
+function renderWeeklySummaries() {
+  const el = q('#dash-weekly-list');
+  if (!el) return;
+
+  const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const weeks = [
+    { start: 1, end: 7, label: 'Semana 1 (01 a 07)' },
+    { start: 8, end: 14, label: 'Semana 2 (08 a 14)' },
+    { start: 15, end: 21, label: 'Semana 3 (15 a 21)' },
+    { start: 22, end: totalDays, label: `Semana 4 (22 a ${totalDays})` }
+  ];
+
+  const weekExpenses = weeks.map(w => {
+    let sum = 0;
+    let count = 0;
+    S.transactions.forEach(t => {
+      const d = new Date(t.data + 'T00:00:00');
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth && t.tipo === 'Despesa') {
+        const day = d.getDate();
+        if (day >= w.start && day <= w.end) {
+          sum += t.val;
+          count++;
+        }
+      }
+    });
+    return { ...w, sum, count };
+  });
+
+  el.innerHTML = weekExpenses.map((w, idx) => {
+    return `
+      <div style="background:var(--s2); border:1px solid var(--bd); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; transition:border-color 0.2s;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h4 style="font-size:13.5px; font-weight:700; letter-spacing:-0.2px;">${w.label}</h4>
+          <span style="font-size:10px; font-weight:750; background:rgba(239,68,68,0.15); color:var(--rd); padding:2px 6px; border-radius:4px; text-transform:uppercase;">Despesa</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:4px;">
+          <span style="font-size:18px; font-weight:800; color:var(--rd);">${fmt(w.sum)}</span>
+          <span style="font-size:11px; color:var(--tx2);">${w.count} lançamento(s)</span>
+        </div>
+        <button class="bs sm" style="width:100%; margin-top:4px; padding:8px;" onclick="exportWeeklyPDF(${idx})" title="Gerar PDF da ${w.label}">📄 PDF Semanal</button>
+      </div>
+    `;
+  }).join('');
+}
+
+window.exportWeeklyPDF = function(weekIndex) {
+  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const mesName = MESES[currentMonth];
+  const anoVal = currentYear;
+  const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+  
+  const weeks = [
+    { start: 1, end: 7, label: 'Semana 1 (01 a 07)' },
+    { start: 8, end: 14, label: 'Semana 2 (08 a 14)' },
+    { start: 15, end: 21, label: 'Semana 3 (15 a 21)' },
+    { start: 22, end: totalDays, label: `Semana 4 (22 a ${totalDays})` }
+  ];
+  
+  const week = weeks[weekIndex];
+  
+  const activeTxs = S.transactions.filter(t => {
+    const d = new Date(t.data + 'T00:00:00');
+    if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+      const day = d.getDate();
+      return day >= week.start && day <= week.end;
+    }
+    return false;
+  });
+  
+  let totalRec = 0;
+  let totalDesp = 0;
+  activeTxs.forEach(t => {
+    if (t.tipo === 'Receita') totalRec += t.val;
+    else totalDesp += t.val;
+  });
+  const bal = totalRec - totalDesp;
+  
+  const reportDiv = document.createElement('div');
+  reportDiv.style.padding = '40px';
+  reportDiv.style.fontFamily = "'Inter', sans-serif";
+  reportDiv.style.color = '#1e293b';
+  reportDiv.style.background = '#ffffff';
+  reportDiv.style.display = 'flex';
+  reportDiv.style.flexDirection = 'column';
+  reportDiv.style.gap = '24px';
+  
+  const tableStyles = `width: 100%; border-collapse: collapse; margin-top: 10px;`;
+  const thStyles = `background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 8px 12px; text-align: left; border-bottom: 2px solid #cbd5e1;`;
+  const tdStyles = `padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px;`;
+  
+  const txHtml = activeTxs.map(t => {
+    const c = getCat(t.catId);
+    const dateFormatted = fmtD(t.data);
+    return `
+      <tr>
+        <td style="${tdStyles}">${dateFormatted}</td>
+        <td style="${tdStyles}"><b>${t.desc}</b></td>
+        <td style="${tdStyles}">${c.icon} ${c.name}</td>
+        <td style="${tdStyles};color:${t.tipo === 'Receita' ? '#10b981' : '#ef4444'}">${t.tipo}</td>
+        <td style="${tdStyles};font-weight:600">${fmt(t.val)}</td>
+        <td style="${tdStyles}"><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:${t.status === 'Pago' || t.status === 'Recebido' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#92400e'}">${t.status}</span></td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b;font-size:12px">Nenhum lançamento nesta semana.</td></tr>';
+  
+  reportDiv.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #ef4444;padding-bottom:16px">
+      <div>
+        <h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.5px">💸 FinanceOS</h1>
+        <p style="font-size:12px;color:#64748b;margin:4px 0 0">Relatório Financeiro Semanal</p>
+      </div>
+      <div style="text-align:right">
+        <h3 style="font-size:18px;font-weight:750;color:#ef4444;margin:0">${week.label}</h3>
+        <p style="font-size:11px;color:#64748b;margin:4px 0 0">${mesName} de ${anoVal}</p>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin-top:10px">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
+        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Receitas Semanais</p>
+        <h2 style="font-size:20px;color:#10b981;margin:0">${fmt(totalRec)}</h2>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
+        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Despesas Semanais</p>
+        <h2 style="font-size:20px;color:#ef4444;margin:0">${fmt(totalDesp)}</h2>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
+        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Balanço Semanal</p>
+        <h2 style="font-size:20px;color:\${bal >= 0 ? '#10b981' : '#ef4444'};margin:0">\${bal >= 0 ? '+' : ''}${fmt(bal)}</h2>
+      </div>
+    </div>
+    
+    <div style="margin-top:10px">
+      <h3 style="font-size:14px;font-weight:750;color:#0f172a;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin:0 0 10px">📋 Histórico de Lançamentos da Semana</h3>
+      <table style="\${tableStyles}">
+        <thead>
+          <tr>
+            <th style="\${thStyles}">Data</th>
+            <th style="\${thStyles}">Descrição</th>
+            <th style="\${thStyles}">Categoria</th>
+            <th style="\${thStyles}">Tipo</th>
+            <th style="\${thStyles}">Valor</th>
+            <th style="\${thStyles}">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          \${txHtml}
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="margin-top:auto;border-top:1px solid #cbd5e1;padding-top:12px;text-align:center;font-size:10.5px;color:#94a3b8">
+      Este relatório foi gerado automaticamente pelo aplicativo FinanceOS. Guarde em local seguro.
+    </div>
+  `;
+  
+  const opt = {
+    margin:       [10, 10, 10, 10],
+    filename:     `Relatorio_Semanal_Semana${weekIndex + 1}_${mesName}_${anoVal}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+  
+  html2pdf().set(opt).from(reportDiv).save();
+}
+
+// ── CALCULADORA LOGIC ────────────────────────────────────────────────
+function renderCalculadora() {}
+
+let calcExpression = '';
+window.pressCalc = function(key) {
+  const display = q('#calc-display');
+  if (!display) return;
+  
+  if (key === 'C') {
+    calcExpression = '';
+    display.textContent = '0';
+  } else if (key === 'back') {
+    calcExpression = calcExpression.slice(0, -1);
+    display.textContent = calcExpression || '0';
+  } else if (key === '=') {
+    if (!calcExpression) return;
+    try {
+      const sanitized = calcExpression.replace(/[^0-9+\-*/.]/g, '');
+      const result = Function('"use strict"; return (' + sanitized + ')')();
+      calcExpression = String(result);
+      display.textContent = calcExpression;
+    } catch (err) {
+      display.textContent = 'Erro';
+      calcExpression = '';
+    }
+  } else {
+    const operators = ['+', '*', '/'];
+    if (operators.includes(key) && !calcExpression) return;
+    if (['+', '-', '*', '/'].includes(key) && ['+', '-', '*', '/'].includes(calcExpression.slice(-1))) {
+      calcExpression = calcExpression.slice(0, -1) + key;
+    } else {
+      calcExpression += key;
+    }
+    display.textContent = calcExpression;
+  }
+};
+
+window.calculateOvertime = function() {
+  const salario = parseFloat(q('#he-salario').value) || 0;
+  const jornada = parseFloat(q('#he-jornada').value) || 220;
+  const porcentagem = parseFloat(q('#he-porcentagem').value) || 50;
+  const quantidade = parseFloat(q('#he-quantidade').value) || 0;
+  const hasDsr = q('#he-has-dsr').checked;
+  
+  const diasUteis = parseInt(q('#he-dsr-uteis').value) || 25;
+  const diasFolga = parseInt(q('#he-dsr-folgas').value) || 5;
+
+  if (salario <= 0 || quantidade <= 0) {
+    alert('Por favor, preencha o Salário e a Quantidade de Horas Extras!');
+    return;
+  }
+
+  const valHoraNormal = salario / jornada;
+  const valHoraExtra = valHoraNormal * (1 + (porcentagem / 100));
+  const valExtraTotal = valHoraExtra * quantidade;
+  
+  let valDsr = 0;
+  if (hasDsr) {
+    valDsr = (valExtraTotal / diasUteis) * diasFolga;
+  }
+  
+  const valTotal = valExtraTotal + valDsr;
+
+  q('#he-res-normal').textContent = fmt(valHoraNormal);
+  q('#he-res-extra-hora').textContent = fmt(valHoraExtra);
+  q('#he-res-extra-total').textContent = fmt(valExtraTotal);
+  
+  const dsrRow = q('#he-res-dsr-row');
+  if (dsrRow) {
+    dsrRow.style.display = hasDsr ? 'flex' : 'none';
+  }
+  q('#he-res-dsr').textContent = fmt(valDsr);
+  q('#he-res-total').textContent = fmt(valTotal);
+  
+  q('#he-results').style.display = 'flex';
+};
+
 
 // ── AI ASSISTANT LOGIC ───────────────────────────────────────────────
 let aiChatHistory = [];
