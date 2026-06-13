@@ -235,8 +235,138 @@ export function calculateFire() {
   q('#fire-results').style.display = 'flex';
 }
 
+let chCompoundChart = null;
+
+export function calculateCompound() {
+  const principal = parseFloat(q('#compound-inicial').value) || 0;
+  const contribution = parseFloat(q('#compound-mensal').value) || 0;
+  const rateAnnual = parseFloat(q('#compound-taxa').value) || 0;
+  const years = parseInt(q('#compound-tempo').value) || 0;
+
+  if (principal < 0 || contribution < 0 || rateAnnual < 0 || years <= 0) {
+    alert('Por favor, preencha os campos com valores válidos. O período em anos deve ser maior que zero.');
+    return;
+  }
+
+  const months = years * 12;
+  const rateMonthly = (rateAnnual / 12) / 100;
+
+  let balance = principal;
+  let totalInvested = principal;
+  
+  const labels = ['Início'];
+  const investedData = [principal];
+  const accumulatedData = [principal];
+
+  const isMonthlyInterval = years <= 5;
+
+  for (let m = 1; m <= months; m++) {
+    balance = (balance + contribution) * (1 + rateMonthly);
+    totalInvested += contribution;
+
+    if (isMonthlyInterval) {
+      labels.push(`Mês ${m}`);
+      investedData.push(+totalInvested.toFixed(2));
+      accumulatedData.push(+balance.toFixed(2));
+    } else if (m % 12 === 0) {
+      labels.push(`Ano ${m / 12}`);
+      investedData.push(+totalInvested.toFixed(2));
+      accumulatedData.push(+balance.toFixed(2));
+    }
+  }
+
+  const interestEarned = Math.max(0, balance - totalInvested);
+
+  q('#compound-meta-val').textContent = fmt(balance);
+  q('#compound-res-tempo').textContent = `${years} anos (${months} meses)`;
+  q('#compound-res-aportes').textContent = fmt(totalInvested);
+  q('#compound-res-juros').textContent = fmt(interestEarned);
+
+  q('#compound-results').style.display = 'flex';
+
+  if (!window.Chart) return;
+
+  const canvas = q('#chCompound');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  
+  if (chCompoundChart) {
+    chCompoundChart.destroy();
+  }
+
+  chCompoundChart = new window.Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Total Investido',
+          data: investedData,
+          borderColor: '#94a3b8',
+          backgroundColor: 'rgba(148, 163, 184, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          pointRadius: years > 15 ? 0 : 3,
+          tension: 0.1
+        },
+        {
+          label: 'Total Acumulado (Juros Compostos)',
+          data: accumulatedData,
+          borderColor: 'var(--gr)',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 2.5,
+          fill: true,
+          pointRadius: years > 15 ? 0 : 3,
+          tension: 0.1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color: 'var(--tx2)',
+            font: { family: 'inherit', size: 11 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) label += ': ';
+              if (context.parsed.y !== null) {
+                label += fmt(context.parsed.y);
+              }
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'var(--bd)' },
+          ticks: { color: 'var(--tx2)', font: { size: 10 } }
+        },
+        y: {
+          grid: { color: 'var(--bd)' },
+          ticks: {
+            color: 'var(--tx2)',
+            font: { size: 10 },
+            callback: function(value) { return 'R$ ' + value.toLocaleString('pt-BR'); }
+          }
+        }
+      }
+    }
+  });
+}
+
 window.pressCalc = pressCalc;
 window.calculateOvertime = calculateOvertime;
 window.switchCalcTab = switchCalcTab;
 window.calculateAmortization = calculateAmortization;
 window.calculateFire = calculateFire;
+window.calculateCompound = calculateCompound;

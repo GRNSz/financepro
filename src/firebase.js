@@ -275,6 +275,11 @@ export function signOutUser() {
     setS(initState());
     save();
     
+    const syncCard = q('#profile-sync-card');
+    if (syncCard) syncCard.style.display = 'none';
+    const headerSyncBtn = q('#btnSyncCloudHeader');
+    if (headerSyncBtn) headerSyncBtn.style.display = 'none';
+    
     const loginScreen = q('#login-screen');
     if (loginScreen) loginScreen.style.display = 'flex';
     authCallbacks.forEach(cb => cb(null));
@@ -302,12 +307,12 @@ export function syncWithFirestore(uid) {
       setS(remoteData);
       syncCallbacks.forEach(cb => cb());
     } else {
-      console.log('No data found in Firestore. Creating document with empty/default state.');
-      const cleanState = initState();
-      setS(cleanState);
-      save();
-      docRef.set(cleanState)
-        .then(() => console.log('Firestore document created!'))
+      console.log('No data found in Firestore. Creating document with current local state.');
+      docRef.set(S)
+        .then(() => {
+          console.log('Firestore document created successfully with local state!');
+          syncCallbacks.forEach(cb => cb());
+        })
         .catch(err => console.error('Error creating firestore doc:', err));
     }
   }, err => {
@@ -359,6 +364,14 @@ export function updateUserProfileUI() {
   const nameInput = q('#profile-name-input');
   if (nameInput) {
     nameInput.value = currentUser.name || '';
+  }
+  const syncCard = q('#profile-sync-card');
+  if (syncCard) {
+    syncCard.style.display = currentUser.isAnonymous ? 'none' : 'block';
+  }
+  const headerSyncBtn = q('#btnSyncCloudHeader');
+  if (headerSyncBtn) {
+    headerSyncBtn.style.display = currentUser.isAnonymous ? 'none' : 'inline-block';
   }
 }
 

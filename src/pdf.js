@@ -1,5 +1,247 @@
 import { S, fmt, fmtD, getCat, periodState } from './state.js';
 
+function generateVectorPDF(activeTxs, periodLabel, subLabel, filename) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Calculate totals
+  let totalRec = 0;
+  let totalDesp = 0;
+  activeTxs.forEach(t => {
+    if (t.tipo === 'Receita') totalRec += t.val;
+    else totalDesp += t.val;
+  });
+  const bal = totalRec - totalDesp;
+
+  // 1. Draw Header Bar
+  doc.setFillColor(15, 17, 26); // dark slate background
+  doc.rect(0, 0, 210, 30, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('💸 FinanceOS', 15, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text(subLabel, 15, 25);
+
+  // Header Right Period info
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(periodLabel, 195, 20, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(200, 200, 200);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 195, 25, { align: 'right' });
+
+  // 2. KPI Metrics Section (Y = 40)
+  // Widths: 53mm each, gaps: 10.5mm
+  // Card 1: 15 to 68
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.rect(15, 40, 53, 22, 'FD');
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RECEITAS', 41.5, 47, { align: 'center' });
+  doc.setTextColor(16, 185, 129); // green
+  doc.setFontSize(13);
+  doc.text(fmt(totalRec), 41.5, 56, { align: 'center' });
+
+  // Card 2: 78.5 to 131.5
+  doc.setFillColor(248, 250, 252);
+  doc.rect(78.5, 40, 53, 22, 'FD');
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(7.5);
+  doc.text('DESPESAS', 105, 47, { align: 'center' });
+  doc.setTextColor(239, 68, 68); // red
+  doc.setFontSize(13);
+  doc.text(fmt(totalDesp), 105, 56, { align: 'center' });
+
+  // Card 3: 142 to 195
+  doc.setFillColor(248, 250, 252);
+  doc.rect(142, 40, 53, 22, 'FD');
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(7.5);
+  doc.text('BALANÇO LÍQUIDO', 168.5, 47, { align: 'center' });
+  doc.setTextColor(bal >= 0 ? 16 : 239, bal >= 0 ? 185 : 68, bal >= 0 ? 129 : 68);
+  doc.setFontSize(13);
+  doc.text((bal >= 0 ? '+' : '') + fmt(bal), 168.5, 56, { align: 'center' });
+
+  // 3. Category & Savings Rate Cards (Only if not weekly)
+  const isWeekly = subLabel.includes('Semanal');
+  let tableStartY = 72;
+
+  if (!isWeekly) {
+    // Calculate category spending
+    const catSpent = {};
+    activeTxs.filter(t => t.tipo === 'Despesa').forEach(t => {
+      catSpent[t.catId] = (catSpent[t.catId] || 0) + t.val;
+    });
+    
+    // Sort and slice top 4 categories
+    const sortedCats = Object.entries(catSpent).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    
+    // Draw Category Breakdown Card: 15 to 120
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(15, 72, 105, 42, 'FD');
+    
+    doc.setTextColor(15, 17, 26);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('DESPESAS POR CATEGORIA (TOP 4)', 20, 79);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    
+    let catY = 86;
+    if (sortedCats.length === 0) {
+      doc.text('Nenhuma despesa registrada no período.', 20, 92);
+    } else {
+      sortedCats.forEach(([catId, val]) => {
+        const c = getCat(catId);
+        doc.text(`${c.icon} ${c.name}`, 20, catY);
+        doc.text(fmt(val), 115, catY, { align: 'right' });
+        catY += 6.5;
+      });
+    }
+    
+    // Draw Savings Rate Card: 130 to 195
+    doc.setFillColor(248, 250, 252);
+    doc.rect(130, 72, 65, 42, 'FD');
+    
+    doc.setTextColor(15, 17, 26);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('TAXA DE POUPANÇA', 162.5, 79, { align: 'center' });
+    
+    const savingsPct = totalRec > 0 ? Math.round((bal / totalRec) * 100) : 0;
+    doc.setFontSize(20);
+    doc.setTextColor(99, 102, 241); // Indigo color
+    doc.text(`${savingsPct}%`, 162.5, 94, { align: 'center' });
+    
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('dos rendimentos economizados', 162.5, 103, { align: 'center' });
+    
+    tableStartY = 122;
+  }
+
+  // 4. Draw Table Header Row
+  doc.setFillColor(15, 17, 26); // dark row
+  doc.rect(15, tableStartY, 180, 8, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Data', 18, tableStartY + 5.5);
+  doc.text('Descrição', 42, tableStartY + 5.5);
+  doc.text('Categoria', 100, tableStartY + 5.5);
+  doc.text('Tipo', 142, tableStartY + 5.5);
+  doc.text('Valor', 165, tableStartY + 5.5);
+  doc.text('Status', 185, tableStartY + 5.5);
+
+  let currentY = tableStartY + 8;
+
+  // 5. Draw Transactions List
+  activeTxs.forEach(t => {
+    // Page break handling
+    if (currentY + 8 > 275) {
+      doc.addPage();
+      
+      // Draw new page table header
+      doc.setFillColor(15, 17, 26);
+      doc.rect(15, 15, 180, 8, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Data', 18, 20.5);
+      doc.text('Descrição', 42, 20.5);
+      doc.text('Categoria', 100, 20.5);
+      doc.text('Tipo', 142, 20.5);
+      doc.text('Valor', 165, 20.5);
+      doc.text('Status', 185, 20.5);
+      
+      currentY = 23;
+    }
+
+    const c = getCat(t.catId);
+    const dateFormatted = fmtD(t.data);
+
+    // Row separator line
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.1);
+    doc.line(15, currentY, 195, currentY);
+
+    // Row Text
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+
+    doc.text(dateFormatted, 18, currentY + 5.5);
+
+    // Truncate desc if needed
+    let desc = t.desc;
+    if (desc.length > 30) desc = desc.slice(0, 28) + '...';
+    doc.text(desc, 42, currentY + 5.5);
+
+    // Truncate category if needed
+    let catText = `${c.icon} ${c.name}`;
+    if (catText.length > 22) catText = catText.slice(0, 20) + '...';
+    doc.text(catText, 100, currentY + 5.5);
+
+    // Color code Type column
+    if (t.tipo === 'Receita') {
+      doc.setTextColor(16, 185, 129); // green
+    } else {
+      doc.setTextColor(239, 68, 68); // red
+    }
+    doc.text(t.tipo, 142, currentY + 5.5);
+
+    doc.setTextColor(51, 65, 85);
+    doc.text(fmt(t.val), 165, currentY + 5.5);
+
+    // Color code Status column
+    if (t.status === 'Pago' || t.status === 'Recebido') {
+      doc.setTextColor(21, 128, 61); // dark green text
+    } else {
+      doc.setTextColor(146, 64, 14); // dark amber text
+    }
+    doc.text(t.status, 185, currentY + 5.5);
+
+    currentY += 7;
+  });
+
+  // Draw bottom line of table
+  doc.setDrawColor(226, 232, 240);
+  doc.line(15, currentY, 195, currentY);
+
+  // 6. Draw page numbers and footnote on all pages
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`FinanceOS · Página ${i} de ${pageCount}`, 105, 288, { align: 'center' });
+  }
+
+  // Save the PDF
+  doc.save(filename);
+}
+
 export function exportWeeklyPDF(weekIndex) {
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const mesName = MESES[periodState.currentMonth];
@@ -23,121 +265,16 @@ export function exportWeeklyPDF(weekIndex) {
     }
     return false;
   });
-  
-  let totalRec = 0;
-  let totalDesp = 0;
-  activeTxs.forEach(t => {
-    if (t.tipo === 'Receita') totalRec += t.val;
-    else totalDesp += t.val;
-  });
-  const bal = totalRec - totalDesp;
-  
-  const reportDiv = document.createElement('div');
-  reportDiv.style.padding = '40px';
-  reportDiv.style.fontFamily = "'Inter', sans-serif";
-  reportDiv.style.color = '#1e293b';
-  reportDiv.style.background = '#ffffff';
-  reportDiv.style.display = 'flex';
-  reportDiv.style.flexDirection = 'column';
-  reportDiv.style.gap = '24px';
-  
-  const tableStyles = `width: 100%; border-collapse: collapse; margin-top: 10px;`;
-  const thStyles = `background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 8px 12px; text-align: left; border-bottom: 2px solid #cbd5e1;`;
-  const tdStyles = `padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px;`;
-  
-  const txHtml = activeTxs.map(t => {
-    const c = getCat(t.catId);
-    const dateFormatted = fmtD(t.data);
-    return `
-      <tr>
-        <td style="${tdStyles}">${dateFormatted}</td>
-        <td style="${tdStyles}"><b>${t.desc}</b></td>
-        <td style="${tdStyles}">${c.icon} ${c.name}</td>
-        <td style="${tdStyles};color:${t.tipo === 'Receita' ? '#10b981' : '#ef4444'}">${t.tipo}</td>
-        <td style="${tdStyles};font-weight:600">${fmt(t.val)}</td>
-        <td style="${tdStyles}"><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:${t.status === 'Pago' || t.status === 'Recebido' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#92400e'}">${t.status}</span></td>
-      </tr>
-    `;
-  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b;font-size:12px">Nenhum lançamento nesta semana.</td></tr>';
-  
-  reportDiv.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #ef4444;padding-bottom:16px">
-      <div>
-        <h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.5px">💸 FinanceOS</h1>
-        <p style="font-size:12px;color:#64748b;margin:4px 0 0">Relatório Financeiro Semanal</p>
-      </div>
-      <div style="text-align:right">
-        <h3 style="font-size:18px;font-weight:750;color:#ef4444;margin:0">${week.label}</h3>
-        <p style="font-size:11px;color:#64748b;margin:4px 0 0">${mesName} de ${anoVal}</p>
-      </div>
-    </div>
-    
-    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin-top:10px">
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Receitas Semanais</p>
-        <h2 style="font-size:20px;color:#10b981;margin:0">${fmt(totalRec)}</h2>
-      </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Despesas Semanais</p>
-        <h2 style="font-size:20px;color:#ef4444;margin:0">${fmt(totalDesp)}</h2>
-      </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Balanço Semanal</p>
-        <h2 style="font-size:20px;color:${bal >= 0 ? '#10b981' : '#ef4444'};margin:0">${bal >= 0 ? '+' : ''}${fmt(bal)}</h2>
-      </div>
-    </div>
-    
-    <div style="margin-top:10px">
-      <h3 style="font-size:14px;font-weight:750;color:#0f172a;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin:0 0 10px">📋 Histórico de Lançamentos da Semana</h3>
-      <table style="${tableStyles}">
-        <thead>
-          <tr>
-            <th style="${thStyles}">Data</th>
-            <th style="${thStyles}">Descrição</th>
-            <th style="${thStyles}">Categoria</th>
-            <th style="${thStyles}">Tipo</th>
-            <th style="${thStyles}">Valor</th>
-            <th style="${thStyles}">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${txHtml}
-        </tbody>
-      </table>
-    </div>
-    
-    <div style="margin-top:auto;border-top:1px solid #cbd5e1;padding-top:12px;text-align:center;font-size:10.5px;color:#94a3b8">
-      Este relatório foi gerado automaticamente pelo aplicativo FinanceOS. Guarde em local seguro.
-    </div>
-  `;
-  
-  const opt = {
-    margin:       [10, 10, 10, 10],
-    filename:     `Relatorio_Semanal_Semana${weekIndex + 1}_${mesName}_${anoVal}.pdf`,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
-  
-  reportDiv.style.position = 'fixed';
-  reportDiv.style.left = '0';
-  reportDiv.style.top = '0';
-  reportDiv.style.zIndex = '-9999';
-  reportDiv.style.opacity = '0.01';
-  reportDiv.style.width = '790px';
-  document.body.appendChild(reportDiv);
-  
-  if (window.html2pdf) {
-    window.html2pdf().set(opt).from(reportDiv).save().then(() => {
-      document.body.removeChild(reportDiv);
-    }).catch(err => {
-      console.error('Erro ao gerar PDF Semanal:', err);
-      document.body.removeChild(reportDiv);
-    });
-  } else {
-    alert('Erro: Biblioteca de geração de PDF não carregada. Verifique sua conexão.');
-    document.body.removeChild(reportDiv);
-  }
+
+  // Sort by date descending
+  activeTxs.sort((a, b) => b.data.localeCompare(a.data));
+
+  generateVectorPDF(
+    activeTxs,
+    week.label,
+    `Relatório Financeiro Semanal · ${mesName} de ${anoVal}`,
+    `Relatorio_Semanal_Semana${weekIndex + 1}_${mesName}_${anoVal}.pdf`
+  );
 }
 
 export function exportMonthlyPDF() {
@@ -177,148 +314,13 @@ export function exportMonthlyPDF() {
   // Sort transactions by date descending
   activeTxs.sort((a, b) => b.data.localeCompare(a.data));
 
-  let totalRec = 0;
-  let totalDesp = 0;
-  activeTxs.forEach(t => {
-    if (t.tipo === 'Receita') totalRec += t.val;
-    else totalDesp += t.val;
-  });
-  const bal = totalRec - totalDesp;
-  
-  const catSpent = {};
-  activeTxs.filter(t => t.tipo === 'Despesa').forEach(t => {
-    catSpent[t.catId] = (catSpent[t.catId] || 0) + t.val;
-  });
-  
-  const reportDiv = document.createElement('div');
-  reportDiv.style.padding = '40px';
-  reportDiv.style.fontFamily = "'Inter', sans-serif";
-  reportDiv.style.color = '#1e293b';
-  reportDiv.style.background = '#ffffff';
-  reportDiv.style.display = 'flex';
-  reportDiv.style.flexDirection = 'column';
-  reportDiv.style.gap = '24px';
-  
-  const tableStyles = `width: 100%; border-collapse: collapse; margin-top: 10px;`;
-  const thStyles = `background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 8px 12px; text-align: left; border-bottom: 2px solid #cbd5e1;`;
-  const tdStyles = `padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px;`;
-  
-  const catHtml = Object.entries(catSpent).map(([catId, val]) => {
-    const c = getCat(catId);
-    return `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #e2e8f0;font-size:12.5px">
-        <span>${c.icon} <b>${c.name}</b></span>
-        <span>${fmt(val)}</span>
-      </div>
-    `;
-  }).join('') || '<p style="font-size:12.5px;color:#64748b;margin:0">Nenhuma despesa registrada.</p>';
-  
-  const txHtml = activeTxs.map(t => {
-    const c = getCat(t.catId);
-    const dateFormatted = fmtD(t.data);
-    return `
-      <tr>
-        <td style="${tdStyles}">${dateFormatted}</td>
-        <td style="${tdStyles}"><b>${t.desc}</b></td>
-        <td style="${tdStyles}">${c.icon} ${c.name}</td>
-        <td style="${tdStyles};color:${t.tipo === 'Receita' ? '#10b981' : '#ef4444'}">${t.tipo}</td>
-        <td style="${tdStyles};font-weight:600">${fmt(t.val)}</td>
-        <td style="${tdStyles}"><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:${t.status === 'Pago' || t.status === 'Recebido' ? '#dcfce7;color:#15803d' : '#fef3c7;color:#92400e'}">${t.status}</span></td>
-      </tr>
-    `;
-  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b;font-size:12px">Nenhum lançamento neste período.</td></tr>';
-  
-  reportDiv.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #6366f1;padding-bottom:16px">
-      <div>
-        <h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.5px">💸 FinanceOS</h1>
-        <p style="font-size:12px;color:#64748b;margin:4px 0 0">${subLabel}</p>
-      </div>
-      <div style="text-align:right">
-        <h3 style="font-size:18px;font-weight:750;color:#6366f1;margin:0">${periodLabel}</h3>
-        <p style="font-size:11px;color:#64748b;margin:4px 0 0">Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
-      </div>
-    </div>
-    
-    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin-top:10px">
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Receitas</p>
-        <h2 style="font-size:20px;color:#10b981;margin:0">${fmt(totalRec)}</h2>
-      </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Despesas</p>
-        <h2 style="font-size:20px;color:#ef4444;margin:0">${fmt(totalDesp)}</h2>
-      </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center">
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;margin:0 0 6px">Balanço Líquido</p>
-        <h2 style="font-size:20px;color:${bal >= 0 ? '#10b981' : '#ef4444'};margin:0">${bal >= 0 ? '+' : ''}${fmt(bal)}</h2>
-      </div>
-    </div>
-    
-    <div style="margin-top:10px">
-      <h3 style="font-size:14px;font-weight:750;color:#0f172a;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin:0 0 10px">📊 Despesas por Categoria</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        <div>${catHtml}</div>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
-          <p style="font-size:12px;color:#64748b;margin:0 0 6px">Taxa de Poupança</p>
-          <h2 style="font-size:26px;font-weight:800;color:#6366f1;margin:0">${totalRec > 0 ? Math.round((bal / totalRec) * 100) : 0}%</h2>
-          <p style="font-size:11px;color:#64748b;margin:4px 0 0">dos rendimentos economizados</p>
-        </div>
-      </div>
-    </div>
-    
-    <div style="margin-top:10px">
-      <h3 style="font-size:14px;font-weight:750;color:#0f172a;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin:0 0 10px">📋 Histórico de Lançamentos</h3>
-      <table style="${tableStyles}">
-        <thead>
-          <tr>
-            <th style="${thStyles}">Data</th>
-            <th style="${thStyles}">Descrição</th>
-            <th style="${thStyles}">Categoria</th>
-            <th style="${thStyles}">Tipo</th>
-            <th style="${thStyles}">Valor</th>
-            <th style="${thStyles}">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${txHtml}
-        </tbody>
-      </table>
-    </div>
-    
-    <div style="margin-top:auto;border-top:1px solid #cbd5e1;padding-top:12px;text-align:center;font-size:10.5px;color:#94a3b8">
-      Este relatório foi gerado automaticamente pelo aplicativo FinanceOS. Guarde em local seguro.
-    </div>
-  `;
-  
-  const opt = {
-    margin:       [10, 10, 10, 10],
-    filename:     filename,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
-  
-  reportDiv.style.position = 'fixed';
-  reportDiv.style.left = '0';
-  reportDiv.style.top = '0';
-  reportDiv.style.zIndex = '-9999';
-  reportDiv.style.opacity = '0.01';
-  reportDiv.style.width = '790px';
-  document.body.appendChild(reportDiv);
-  
-  if (window.html2pdf) {
-    window.html2pdf().set(opt).from(reportDiv).save().then(() => {
-      document.body.removeChild(reportDiv);
-    }).catch(err => {
-      console.error('Erro ao gerar PDF:', err);
-      document.body.removeChild(reportDiv);
-    });
-  } else {
-    alert('Erro: Biblioteca de geração de PDF não carregada. Verifique sua conexão.');
-    document.body.removeChild(reportDiv);
-  }
+  generateVectorPDF(
+    activeTxs,
+    periodLabel,
+    subLabel,
+    filename
+  );
 }
 
-// Bind PDF helper to window so inline onclicks can call it
 window.exportWeeklyPDF = exportWeeklyPDF;
+window.exportMonthlyPDF = exportMonthlyPDF;

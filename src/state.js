@@ -16,7 +16,10 @@ export const DEF_CATS = [
 
 export function isoToday(off = 0) {
   const d = new Date(); d.setDate(d.getDate() + off);
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function initState() {
@@ -79,11 +82,13 @@ export function fixState() {
   if (!Array.isArray(S.recurring))    S.recurring  = [];
   if (!Array.isArray(S.savings))      S.savings    = [];
   if (!Array.isArray(S.debts))        S.debts      = [];
+  if (!S.challenge52) S.challenge52 = { multiplier: 1, checkedWeeks: [] };
 }
 
 export function setS(newState) {
   S = newState;
   fixState();
+  localStorage.setItem(SKEY, JSON.stringify(S));
 }
 
 export function uid() {
@@ -128,7 +133,30 @@ export function closeM(id) {
 
 // Period global state
 export let periodState = {
-  currentMode: 'monthly', // 'monthly', 'yearly', 'all'
+  currentMode: 'monthly', // 'weekly', 'monthly', 'yearly', 'all'
   currentYear: new Date().getFullYear(),
-  currentMonth: new Date().getMonth() // 0-indexed
+  currentMonth: new Date().getMonth(), // 0-indexed
+  currentWeek: 0
 };
+
+export function getActiveWeekRange() {
+  const totalDays = new Date(periodState.currentYear, periodState.currentMonth + 1, 0).getDate();
+  const weekIndex = periodState.currentWeek !== undefined ? periodState.currentWeek : 0;
+  const starts = [1, 8, 15, 22];
+  const ends = [7, 14, 21, totalDays];
+  
+  const startDay = starts[weekIndex];
+  const endDay = ends[weekIndex];
+  
+  const year = periodState.currentYear;
+  const month = String(periodState.currentMonth + 1).padStart(2, '0');
+  
+  const startIso = `${year}-${month}-${String(startDay).padStart(2, '0')}`;
+  const endIso = `${year}-${month}-${String(endDay).padStart(2, '0')}`;
+  
+  return { 
+    startIso, 
+    endIso, 
+    label: `Semana ${weekIndex + 1} (${String(startDay).padStart(2, '0')} a ${String(endDay).padStart(2, '0')})` 
+  };
+}

@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Controle Financeiro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -75,6 +75,7 @@
   <span class="nav-sep">Menu</span>
   <button class="nb on" data-page="dashboard"><span class="ni">📊</span>Dashboard</button>
   <button class="nb" data-page="lancamentos"><span class="ni">📋</span>Lançamentos</button>
+  <button class="nb" data-page="calendario"><span class="ni">📅</span>Calendário</button>
   <button class="nb" data-page="dividas"><span class="ni">💳</span>Dívidas</button>
   <button class="nb" data-page="guardado"><span class="ni">🐷</span>Dinheiro Guardado</button>
   <button class="nb" data-page="contas"><span class="ni">🏦</span>Contas &amp; Cartões</button>
@@ -82,6 +83,7 @@
   <button class="nb" data-page="calculadora"><span class="ni">🧮</span>Calculadora</button>
   <button class="nb" data-page="notificacoes"><span class="ni">🔔</span>Notificações</button>
   <button class="nb" data-page="perfil"><span class="ni">👤</span>Meu Perfil</button>
+  <button class="nb" data-page="tutoriais"><span class="ni">📖</span>Tutoriais</button>
   <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
 
   <div class="sb-foot">
@@ -121,7 +123,9 @@
         </div>
       </div>
       <button class="bs sm" id="btnPrint" style="font-size:14px;padding:6px 10px" title="Imprimir Relatório (PDF)">🖨️</button>
+      <button class="bs sm" id="btnStealthToggle" style="font-size:14px;padding:6px 10px" title="Ocultar Saldos (Privacidade)">👁️</button>
       <button class="bs sm" id="themeToggle" style="font-size:14px;padding:6px 10px" title="Alternar Modo Claro/Escuro">🌙</button>
+      <button class="bs sm" id="btnSyncCloudHeader" style="font-size:14px;padding:6px 10px;display:none" title="Sincronizar com a Nuvem">🔄</button>
       <button class="bp sm" id="btnNewTx">+ Lançamento</button>
     </div>
   </header>
@@ -132,9 +136,15 @@
       <button class="bs sm" id="pPrev" style="padding:6px 10px" title="Período Anterior">◀</button>
       <span id="pLabel" style="font-weight:700;font-size:13.5px;min-width:130px;text-align:center;color:var(--tx)">Carregando...</span>
       <button class="bs sm" id="pNext" style="padding:6px 10px" title="Próximo Período">▶</button>
+      <div id="weekChanger" style="display:none;align-items:center;gap:6px;margin-left:6px;border-left:1px solid var(--bd2);padding-left:10px">
+        <button class="bs sm" id="wPrev" style="padding:6px 10px" title="Semana Anterior">◀</button>
+        <span id="wLabel" style="font-weight:700;font-size:13.5px;min-width:110px;text-align:center;color:var(--tx)">Semana 1</span>
+        <button class="bs sm" id="wNext" style="padding:6px 10px" title="Próxima Semana">▶</button>
+      </div>
       <button class="bs sm" id="btnExportPDF" style="padding:6px 10px;margin-left:6px" title="Gerar Relatório PDF do Mês">📄 PDF Mensal</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
+      <button class="ctab" id="pModeWeek" style="padding:5px 12px;font-size:12px">Semanal</button>
       <button class="ctab on" id="pModeMonth" style="padding:5px 12px;font-size:12px">Mensal</button>
       <button class="ctab" id="pModeYear" style="padding:5px 12px;font-size:12px">Anual</button>
       <button class="ctab" id="pModeAll" style="padding:5px 12px;font-size:12px">Tudo Junto</button>
@@ -363,6 +373,47 @@
       </div>
     </section>
 
+
+    <!-- ════ CALENDÁRIO ════════════════════════════════════════════ -->
+    <section id="page-calendario" class="page">
+      <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <h3>Calendário de Pagamentos</h3>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <label style="font-size:12.5px;color:var(--tx2);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="cbGoogleCalendarSync" style="width:15px;height:15px;cursor:pointer"> Sincronizar Google Agenda
+          </label>
+          <button class="bs sm" id="btnExportICS" style="font-size:12px;padding:6px 12px;font-weight:700;display:flex;align-items:center;gap:6px;cursor:pointer;" title="Exportar para Google Agenda/Outlook/Apple">📥 Exportar Agenda (.ics)</button>
+        </div>
+      </div>
+      
+      <!-- Calendar Grid Card -->
+      <div class="card" style="margin-bottom:16px;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h4 id="calMonthLabel" style="font-size:16px;font-weight:700;color:var(--tx);margin:0">Carregando...</h4>
+          <div style="display:flex;gap:6px">
+            <button class="bs sm" id="calPrevBtn" style="padding:5px 10px;font-size:11px" title="Mês Anterior">◀</button>
+            <button class="bs sm" id="calNextBtn" style="padding:5px 10px;font-size:11px" title="Próximo Mês">▶</button>
+          </div>
+        </div>
+        
+        <!-- Days of week header -->
+        <div style="display:grid;grid-template-columns:repeat(7, 1fr);text-align:center;font-weight:700;font-size:11.5px;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">
+          <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+        </div>
+        
+        <!-- Grid container for days -->
+        <div id="calGrid" style="display:grid;grid-template-columns:repeat(7, 1fr);gap:6px"></div>
+      </div>
+      
+      <!-- Day detail card -->
+      <div class="card" id="calDayDetailCard" style="display:none;padding:16px">
+        <div class="card-h" style="border-bottom:1px solid var(--bd2);padding-bottom:10px;margin-bottom:12px">
+          <h4 id="calDetailTitle" style="font-size:14px;font-weight:700;color:var(--tx);margin:0">Lançamentos do Dia</h4>
+        </div>
+        <div id="calDayList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </section>
+
     <!-- ════ DÍVIDAS ══════════════════════════════════════════════ -->
     <section id="page-dividas" class="page">
       <div class="sec-h">
@@ -558,11 +609,280 @@
           </div>
         </div>
 
+        <div class="card fw">
+          <div class="card-h"><h3>Aparência e Preferências</h3></div>
+          <p class="card-desc">Personalize o tema visual e gerencie alertas do FinanceOS.</p>
+          <div style="margin-top:14px; display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label style="font-weight:700; font-size:12.5px; display:block; margin-bottom:8px; color:var(--tx2);">Tema Visual do Sistema</label>
+              <div id="theme-selectors" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:10px;">
+                <button class="bs theme-btn" data-theme="default" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">🌑 Escuro Clássico</button>
+                <button class="bs theme-btn" data-theme="light" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">☀️ Claro Clean</button>
+                <button class="bs theme-btn" data-theme="midnight" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">🌌 Midnight Ocean</button>
+                <button class="bs theme-btn" data-theme="forest" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">🌲 Forest Mist</button>
+                <button class="bs theme-btn" data-theme="sakura" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">🌸 Sakura Breeze</button>
+                <button class="bs theme-btn" data-theme="cyberpunk" style="padding:10px; font-size:11.5px; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;">⚡ Cyberpunk Neon</button>
+              </div>
+            </div>
+            
+            <div style="border-top: 1px solid var(--bd); padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+              <div>
+                <label style="font-weight:700; font-size:13px; display:block; color:var(--tx)">Notificações no Navegador</label>
+                <small style="font-size:11px; color:var(--tx2)">Receba alertas nativos sobre contas pendentes vencendo hoje.</small>
+              </div>
+              <input type="checkbox" id="chkNotifications" style="width:20px; height:20px; accent-color:var(--ac); cursor:pointer;">
+            </div>
+          </div>
+        </div>
+
         <div class="card fw danger-card">
           <div class="card-h"><h3>Zona de Risco</h3></div>
-          <p class="card-desc">Apagar todos os dados é irreversível.</p>
-          <button class="brd sm" id="btnReset">🗑 Limpar Todos os Dados</button>
         </div>
+      </div>
+    </section>
+
+    <!-- ════ TUTORIAIS ════════════════════════════════════════════ -->
+    <section id="page-tutoriais" class="page">
+      <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <h3>Central de Ajuda & Tutoriais</h3>
+        <span style="font-size:12px;color:var(--tx2)">Aprenda a dominar o FinanceOS</span>
+      </div>
+
+      <!-- Search Bar -->
+      <div style="position: relative; margin-bottom: 20px;">
+        <input type="text" id="tutSearchInput" class="inp" placeholder="🔍 O que você deseja aprender hoje? (Ex: recorrência, pdf, metas, nuvem...)" style="padding-left: 38px;">
+      </div>
+
+      <!-- Tutorials List -->
+      <div style="display:flex;flex-direction:column;gap:12px" id="tutContainer">
+        
+        <!-- PAINEL & NUVEM -->
+        <h4 style="font-size:13px;color:var(--ac);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📊 Painel & Sincronização em Nuvem</h4>
+        
+        <details class="card tut-card" data-keywords="dashboard painel kpi saldo receitas despesas grafico nuvem sync sincronizar firestore backup stealth privacidade seguranca esconder ocultar saude diagnostico 50/30/20">
+          <summary>Como funciona o Dashboard Principal e Modo Stealth?</summary>
+          <div class="tut-content">
+            <p>O <strong>Dashboard</strong> é o painel de controle das suas finanças. Ele reúne os dados mais importantes de forma clara e visual:</p>
+            <ul>
+              <li><strong>Saldo Atual:</strong> Mostra a soma dos saldos de todas as suas contas bancárias cadastradas.</li>
+              <li><strong>Total de Receitas:</strong> Soma todos os lançamentos de entrada (recebidos) no período selecionado.</li>
+              <li><strong>Total de Despesas:</strong> Soma todas as saídas (pagas) no período selecionado.</li>
+              <li><strong>Dinheiro Guardado:</strong> Exibe o montante total que você poupou em suas metas de economia.</li>
+            </ul>
+            <p><strong>Diagnóstico de Saúde Financeira (50/30/20):</strong> Exibe uma análise automática de seus gastos divididos em Necessidades, Desejos e Poupança/Investimento, classificando sua saúde financeira com notas e dicas personalizadas.</p>
+            <p><strong>🕶️ Modo Stealth (Privacidade):</strong> Clique no ícone de óculos escuros no canto superior esquerdo (ou no cabeçalho) para borrar todos os seus saldos, despesas e receitas. Ideal para usar o app em público sem expor seus números!</p>
+            <p><strong>Gráfico de Receitas vs Despesas:</strong> Exibe um comparativo visual do seu fluxo de caixa mensal ou semestral. Você pode filtrar o gráfico por ano ou alternar a exibição no seletor localizado no topo do card.</p>
+            <div class="tut-tip">💡 <strong>Dica de UX:</strong> Use a barra global de períodos no topo do app para alternar o dashboard entre as visões <strong>Semanal</strong>, <strong>Mensal</strong>, <strong>Anual</strong> ou <strong>Tudo Junto</strong>.</div>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="nuvem sync sincronizar firestore dados conta google login outro computador offline salvar">
+          <summary>Como funciona a sincronização e backup em nuvem?</summary>
+          <div class="tut-content">
+            <p>O FinanceOS foi projetado sob o conceito de <strong>Offline-First</strong>:</p>
+            <ol>
+              <li>Mesmo sem internet ou em modo visitante, você pode cadastrar e gerenciar seus lançamentos normalmente, pois todos os dados são salvos em cache local seguro.</li>
+              <li>Ao realizar o login com sua conta do <strong>Google</strong> ou e-mail/senha, o aplicativo sincroniza automaticamente o cache local com o banco de dados seguro na nuvem (Firestore).</li>
+              <li>Isso permite acessar seus lançamentos de qualquer computador, tablet ou celular, mantendo os dados atualizados em tempo real.</li>
+            </ol>
+            <p><strong>Controles de Sincronização Manual (Meu Perfil):</strong></p>
+            <ul>
+              <li><strong>Forçar Envio para Nuvem ⬆️:</strong> Envia os dados locais da máquina para o servidor (ideal se você usou offline e quer garantir que suba para a conta).</li>
+              <li><strong>Forçar Busca da Nuvem ⬇️:</strong> Apaga os dados locais e baixa a versão mais atual do servidor (útil ao logar em um novo aparelho).</li>
+              <li><strong>Botão de Sincronização Rápida (🔄):</strong> Localizado no canto superior direito do cabeçalho global, permite puxar atualizações silenciosas na hora.</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- LANÇAMENTOS & RECORRÊNCIAS -->
+        <h4 style="font-size:13px;color:var(--gr);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📋 Lançamentos & Recorrências</h4>
+
+        <details class="card tut-card" data-keywords="adicionar lancamento receita despesa conta parcelado cartao categoria novo tag tags projeto multimoeda cambio moeda dolar euro original">
+          <summary>Como cadastrar lançamentos normais, parcelados, tags e multimoedas?</summary>
+          <div class="tut-content">
+            <p>Para registrar uma movimentação financeira:</p>
+            <ol>
+              <li>Vá para a aba <strong>Lançamentos</strong> e clique em <strong>+ Novo Lançamento</strong> (ou use a aba rápida <strong>Lançar</strong> no celular).</li>
+              <li>Preencha a <strong>Descrição</strong>, o <strong>Valor</strong> e selecione a <strong>Data</strong> do lançamento.</li>
+              <li>Escolha a <strong>Categoria</strong> (ex: Alimentação, Transporte) e a <strong>Conta Bancária / Cartão</strong> de origem.</li>
+              <li>Defina o <strong>Status</strong>: <em>Pago/Recebido</em> (se já foi realizado) ou <em>Pendente</em> (se é um compromisso futuro).</li>
+              <li><strong>Lançamento Parcelado (ex: compras no cartão):</strong> Marque a caixinha "Lançamento Parcelado", informe o número de parcelas (ex: 12x) e o app distribuirá automaticamente o valor parcelado nos meses seguintes com a marcação correspondente (ex: 1/12, 2/12).</li>
+              <li><strong>Tags/Projetos:</strong> Insira tags separadas por vírgula (ex: <code>viagem-2026, compras</code>) para organizar transações associadas a um projeto ou viagem e filtrá-las no extrato.</li>
+              <li><strong>Multimoedas (USD/EUR):</strong> Caso faça compras internacionais, selecione a moeda correspondente (ex: USD) e informe a taxa de câmbio. O app fará a conversão automática para BRL, mas registrará os dados originais para o extrato.</li>
+            </ol>
+            <div class="tut-tip">💡 <strong>UX Dica:</strong> Ao marcar como Pago/Recebido, o saldo da conta selecionada é atualizado automaticamente. Lançamentos "Pendentes" não afetam o saldo atual das contas até que sejam marcados como pagos.</div>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="recorrente recorrencia fixo mensal semanal dia semana dropdown repetir automatico pendente">
+          <summary>Como programar pagamentos recorrentes (Semanais e Mensais)?</summary>
+          <div class="tut-content">
+            <p>Se você tem despesas ou receitas fixas (como aluguel, salário ou assinatura de streaming):</p>
+            <ol>
+              <li>No modal de <strong>Novo Lançamento</strong>, marque a opção <strong>"Lançamento Fixo / Recorrente"</strong>.</li>
+              <li>Escolha a frequência:
+                <ul>
+                  <li><strong>Mensal:</strong> Digite o dia do mês em que a cobrança deve ocorrer (ex: dia 5). O app cuidará automaticamente de meses com menos de 31 dias.</li>
+                  <li><strong>Semanal:</strong> Escolha o dia da semana no dropdown (ex: toda Sexta-feira, todo Domingo).</li>
+                </ul>
+              </li>
+              <li>Salve o lançamento. O motor do FinanceOS gerará automaticamente todas as ocorrências deste lançamento para os próximos <strong>180 dias (6 meses)</strong> com o status <em>Pendente</em>.</li>
+            </ol>
+            <p><strong>Gerenciamento:</strong> Você pode visualizar e excluir seus modelos de lançamentos recorrentes acessando a aba <strong>Configurações</strong> e rolando até a seção <strong>Lançamentos Recorrentes</strong>.</p>
+          </div>
+        </details>
+
+        <!-- CALENDÁRIO & GOOGLE AGENDA -->
+        <h4 style="font-size:13px;color:var(--pu);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📅 Calendário de Pagamentos & Google Agenda</h4>
+
+        <details class="card tut-card" data-keywords="calendario agenda google sincronizar agendar dia card bolinha status toggle">
+          <summary>Como utilizar o Calendário de Pagamentos?</summary>
+          <div class="tut-content">
+            <p>O <strong>Calendário de Pagamentos</strong> (aba "Agenda" no celular) oferece uma visualização em grade do mês para acompanhar suas obrigações:</p>
+            <ul>
+              <li>Cada quadrado representa um dia do mês. Os dias que possuem transações exibem mini-etiquetas com a descrição do lançamento (verde para receitas, vermelho para despesas).</li>
+              <li>Lançamentos com status <em>Pendente</em> aparecem levemente transparentes no calendário, facilitando a identificação do que ainda não foi pago.</li>
+              <li>Ao clicar em qualquer dia, um painel detalhado de lançamentos é aberto logo abaixo do calendário.</li>
+            </ul>
+            <div class="tut-tip">💡 <strong>UX Dica:</strong> No painel detalhado de transações do dia, você pode clicar diretamente na pílula de status (ex: <em>Pendente</em>) para alterá-la para <em>Pago</em> de forma rápida, sem precisar abrir formulários.</div>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="google agenda agenda gcal sync sincronizar agendar calendario link exportar">
+          <summary>Como sincronizar lançamentos com o Google Agenda?</summary>
+          <div class="tut-content">
+            <p>Para agendar seus pagamentos diretamente na sua agenda pessoal do Google sem burocracias de permissão:</p>
+            <ol>
+              <li>Na aba do <strong>Calendário</strong>, marque a caixa de seleção <strong>"Sincronizar Google Agenda"</strong>. O app lembrará dessa escolha.</li>
+              <li>Clique no dia da transação para exibir a listagem detalhada abaixo do calendário.</li>
+              <li>Um botão azul escrito <strong>📅 Agendar</strong> aparecerá ao lado de cada transação.</li>
+              <li>Ao clicar nele, uma nova aba abrirá no seu navegador diretamente no formulário de criação de eventos do Google Calendar.</li>
+              <li>O título (com tag `[FinanceOS]`), a descrição detalhada (valor, categoria, conta de pagamento, status) e a data correta já estarão totalmente preenchidos. Basta clicar em <strong>Salvar</strong> na tela do Google.</li>
+            </ol>
+          </div>
+        </details>
+
+        <!-- CONTAS, CARTÕES & DÍVIDAS -->
+        <h4 style="font-size:13px;color:var(--am);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🏦 Contas, Cartões & Dívidas</h4>
+
+        <details class="card tut-card" data-keywords="conta cartao saldo limite credito banco cadastrar fatura pagamento">
+          <summary>Como gerenciar Contas Bancárias e Cartões de Crédito?</summary>
+          <div class="tut-content">
+            <p>Acesse a aba <strong>Contas & Cartões</strong> para controlar suas carteiras financeiras:</p>
+            <ul>
+              <li><strong>Contas Bancárias:</strong> Você pode adicionar contas (Corrente, Poupança, Investimentos, etc.) definindo o saldo inicial. Transações associadas a essas contas somam ou subtraem o valor de seus saldos reais.</li>
+              <li><strong>Cartões de Crédito:</strong> Cadastre seus cartões definindo o limite de crédito total e o dia de vencimento da fatura. Ao fazer compras associadas ao cartão, o app debita do limite disponível e projeta o pagamento na fatura correta.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="dividas divida desconto negociacao pagar credor controle juros">
+          <summary>Como funciona o Controle de Dívidas?</summary>
+          <div class="tut-content">
+            <p>A aba <strong>Dívidas</strong> ajuda você a planejar a quitação de débitos pendentes:</p>
+            <ol>
+              <li>Clique em <strong>+ Nova Dívida</strong> para cadastrar o nome do credor, o valor total original da dívida, ofertas de negociação com desconto (se houver), e a forma de quitação.</li>
+              <li>O painel exibe de forma clara os descontos percentuais obtidos e consolida o saldo total devedor no topo.</li>
+              <li>Você pode alterar o status da dívida para <em>Quitada</em> ou <em>Negociando</em> diretamente na listagem para acompanhar a evolução dos pagamentos.</li>
+            </ol>
+          </div>
+        </details>
+
+        <!-- METAS & POUPANÇA -->
+        <h4 style="font-size:13px;color:var(--ac);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🎯 Metas & Poupança</h4>
+
+        <details class="card tut-card" data-keywords="metas meta poupanca guardar dinheiro porquinho objetivo barra progresso transferir">
+          <summary>Como criar Metas Financeiras e poupar dinheiro?</summary>
+          <div class="tut-content">
+            <p>O FinanceOS possui duas ferramentas integradas de economia na aba <strong>Dinheiro Guardado</strong> e <strong>Metas</strong>:</p>
+            <ul>
+              <li><strong>Dinheiro Guardado (Cofrinho):</strong> Permite guardar valores sem uma meta fixa. Clique em "Guardar" para mover saldos de suas contas bancárias para a reserva, ou "Resgatar" para devolver o dinheiro ao saldo ativo.</li>
+              <li><strong>Metas (Objetivos de Longo Prazo):</strong> Crie objetivos específicos (ex: Compra de Carro, Viagem de Férias, Reserva de Emergência) definindo um valor alvo.</li>
+              <li><strong>Barra de Progresso:</strong> Cada meta exibe uma barra de progresso visual de preenchimento e a porcentagem atual concluída, calculando automaticamente quanto falta economizar.</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- DOCUMENTOS, CALCULADORAS & PDF -->
+        <h4 style="font-size:13px;color:var(--tx2);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🧮 Calculadoras & Relatórios PDF</h4>
+
+        <details class="card tut-card" data-keywords="pdf exportar relatorio semanal mensal anual consolidado imprimir guardar">
+          <summary>Como exportar Relatórios PDF?</summary>
+          <div class="tut-content">
+            <p>Você pode gerar relatórios impressos ou digitais em formato PDF de qualquer período selecionado:</p>
+            <ol>
+              <li>Use a barra global de períodos no topo do app para escolher a visualização desejada:
+                <ul>
+                  <li><strong>Semanal:</strong> Gera o PDF correspondente apenas às datas da semana ativa.</li>
+                  <li><strong>Mensal:</strong> Gera o relatório do mês corrente.</li>
+                  <li><strong>Anual:</strong> Compila um consolidado de todos os meses do ano selecionado.</li>
+                  <li><strong>Tudo Junto:</strong> Exporta um dossiê com todo o histórico de lançamentos já cadastrados.</li>
+                </ul>
+              </li>
+              <li>Clique no botão <strong>📄 PDF (Semanal/Mensal/Anual/Consolidado)</strong> localizado na barra de períodos.</li>
+              <li>O aplicativo gerará um documento PDF formatado profissionalmente em segundo plano e iniciará o download automático no seu dispositivo.</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="calculadora calculadora simples amortizacao horas extras fire independente juros simulacao compostos aportes rendimento">
+          <summary>Como usar as calculadoras especiais e simuladores?</summary>
+          <div class="tut-content">
+            <p>O aplicativo vem equipado com cinco simuladores financeiros na aba <strong>Calculadora</strong>:</p>
+            <ul>
+              <li><strong>Simples:</strong> Uma calculadora matemática tradicional com histórico de operações.</li>
+              <li><strong>Horas Extras:</strong> Calcula o valor da sua hora extra com base no seu salário bruto mensal, jornada de trabalho e porcentagem de acréscimo (ex: 50% ou 100%).</li>
+              <li><strong>Amortização:</strong> Simula financiamentos bancários (tabela SAC ou PRICE) demonstrando o impacto de amortizações extraordinárias na redução do prazo das parcelas e juros economizados.</li>
+              <li><strong>Independência FIRE:</strong> Calcula quando você poderá se aposentar com base na sua renda, taxa de poupança, despesas mensais projetadas e taxa média de retorno de investimentos.</li>
+              <li><strong>Juros Compostos:</strong> Permite planejar a evolução do seu capital no longo prazo inserindo o valor inicial, aporte mensal e taxa de juros, gerando um gráfico interativo de projeção.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="ics agenda exportar calendario outlook google iCal compromissos contas baixar">
+          <summary>Como exportar o calendário de pagamentos (.ICS)?</summary>
+          <div class="tut-content">
+            <p>Se você deseja visualizar e receber alertas das suas contas a pagar diretamente em agendas externas (como Google Agenda, Outlook ou Apple Calendar):</p>
+            <ol>
+              <li>Acesse a aba <strong>Calendário</strong> (ou Agenda).</li>
+              <li>Clique no botão <strong>Exportar Agenda (.ics)</strong> localizado no topo.</li>
+              <li>O app gerará e baixará um arquivo padronizado contendo todas as transações pendentes daquele mês como compromissos com data e hora. Basta importar esse arquivo no seu gerenciador de agenda de preferência!</li>
+            </ol>
+          </div>
+        </details>
+
+        <!-- GAMIFICAÇÃO & DESAFIOS -->
+        <h4 style="font-size:13px;color:var(--pu);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🏆 Gamificação & Desafios</h4>
+
+        <details class="card tut-card" data-keywords="conquistas conquista selos selo badge perfil medalha gamificacao gamificar mestre poupador">
+          <summary>Como funcionam as Conquistas e Selos?</summary>
+          <div class="tut-content">
+            <p>O aplicativo recompensa seus hábitos saudáveis de controle financeiro com medalhas e selos na aba <strong>Meu Perfil</strong>:</p>
+            <ul>
+              <li><strong>Disciplinado:</strong> Desbloqueado ao atingir um histórico de pelo menos 5 lançamentos.</li>
+              <li><strong>Poupador Fiel:</strong> Concedido se sua taxa de poupança mensal (sobra líquida em relação às receitas) for de no mínimo 20%.</li>
+              <li><strong>Mestre do Controle:</strong> Desbloqueado se todas as suas categorias com limites de orçamento definidos ficarem abaixo de 100% dos limites no mês corrente.</li>
+              <li><strong>Cidadão Global:</strong> Ativado quando você cadastra pelo menos um lançamento em moeda estrangeira (como dólar USD ou euro EUR).</li>
+              <li><strong>Agente Secreto:</strong> Desbloqueado após ativar o Modo Stealth (desfoque de privacidade) pelo menos uma vez no cabeçalho.</li>
+              <li><strong>Visão de Futuro:</strong> Conquistado ao cadastrar pelo menos uma meta de economia a longo prazo.</li>
+            </ul>
+            <p>Os selos bloqueados aparecem opacos e em cinza. Quando desbloqueados, eles ganham cor e um efeito de brilho neon pulsante.</p>
+          </div>
+        </details>
+
+        <details class="card tut-card" data-keywords="desafio 52 semanas poupanca guardar dinheiro progressivo multiplicador lancar meta acumulado">
+          <summary>Como participar do Desafio das 52 Semanas?</summary>
+          <div class="tut-content">
+            <p>O <strong>Desafio das 52 Semanas</strong> é uma metodologia consagrada de poupança progressiva localizada em <strong>Meu Perfil</strong>:</p>
+            <ol>
+              <li>A cada semana do ano, você poupa uma quantia correspondente ao número da semana (Semana 1 = R$ 1, Semana 2 = R$ 2... Semana 52 = R$ 52).</li>
+              <li><strong>Multiplicadores:</strong> Ajuste a meta de acordo com seu orçamento selecionando multiplicadores de 1x (acumula R$ 1.378), 2x (acumula R$ 2.756), 5x (acumula R$ 6.890) ou 10x (acumula R$ 13.780).</li>
+              <li><strong>💰 Botão Lançar:</strong> Clique no botão de atalho ao lado da semana para abrir o modal de Lançamento pré-preenchido com o valor exato da semana na categoria Investimentos/Poupança e a tag <code>Desafio52</code>.</li>
+              <li><strong>Marcar Semana:</strong> Clique em qualquer semana para marcá-la como paga. O total acumulado e a barra de progresso no topo se atualizam automaticamente.</li>
+            </ol>
+          </div>
+        </details>
+
       </div>
     </section>
 
@@ -574,6 +894,7 @@
         <button class="calc-tab-btn bs" data-tab="overtime" onclick="switchCalcTab('overtime')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">⚡ Horas Extras</button>
         <button class="calc-tab-btn bs" data-tab="amortization" onclick="switchCalcTab('amortization')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">🏠 Amortização</button>
         <button class="calc-tab-btn bs" data-tab="independence" onclick="switchCalcTab('independence')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">🏖️ Independência FIRE</button>
+        <button class="calc-tab-btn bs" data-tab="compound" onclick="switchCalcTab('compound')" style="padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: var(--r-sm); border: 1px solid transparent; background: transparent; color: var(--tx2); cursor: pointer; display: flex; align-items: center; gap: 6px;">📈 Juros Compostos</button>
       </div>
 
       <!-- Tab Panes -->
@@ -846,6 +1167,69 @@
           </div>
         </div>
       </div>
+      
+      <!-- 5. Juros Compostos -->
+      <div id="calc-pane-compound" class="calc-pane" style="max-width: 600px; margin: 0 auto; display: none;">
+        <div class="card">
+          <div class="card-h">
+            <h3>📈 Simulador de Juros Compostos</h3>
+          </div>
+          <p class="card-desc">Projete a evolução do seu patrimônio com base em aportes mensais e juros compostos.</p>
+          
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+            <div class="fr">
+              <div class="fg">
+                <label>Capital Inicial (R$)</label>
+                <input type="number" id="compound-inicial" class="inp" placeholder="Ex: 5000" min="0" value="1000">
+              </div>
+              <div class="fg">
+                <label>Aporte Mensal (R$)</label>
+                <input type="number" id="compound-mensal" class="inp" placeholder="Ex: 500" min="0" value="200">
+              </div>
+            </div>
+            
+            <div class="fr">
+              <div class="fg">
+                <label>Taxa de Juros Anual (%)</label>
+                <input type="number" id="compound-taxa" class="inp" placeholder="Ex: 12" min="0" step="0.01" value="10">
+              </div>
+              <div class="fg">
+                <label>Período (Anos)</label>
+                <input type="number" id="compound-tempo" class="inp" placeholder="Ex: 10" min="1" value="10">
+              </div>
+            </div>
+            
+            <button class="bp" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="calculateCompound()">Simular Crescimento</button>
+            
+            <div id="compound-results" style="display: none; margin-top: 16px; background: var(--s2); border: 1px solid var(--bd); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px;">
+              <div style="text-align: center; border-bottom: 1px solid var(--bd); padding-bottom: 12px; margin-bottom: 4px;">
+                <p style="font-size: 11px; text-transform: uppercase; color: var(--tx2); font-weight: 700; letter-spacing: 0.8px;">Total Acumulado</p>
+                <h2 id="compound-meta-val" style="font-size: 28px; font-weight: 800; color: var(--gr); margin-top: 4px;">R$ 0,00</h2>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                <div>
+                  <span style="color: var(--tx2); display:block; font-size:11px;">Tempo de Acúmulo:</span>
+                  <span id="compound-res-tempo" style="font-weight: 700; color: var(--tx);">10 anos</span>
+                </div>
+                <div>
+                  <span style="color: var(--tx2); display:block; font-size:11px;">Total de Aportes:</span>
+                  <span id="compound-res-aportes" style="font-weight: 700; color: var(--tx);">R$ 0,00</span>
+                </div>
+                <div style="grid-column: span 2; border-top: 1px dashed var(--bd); padding-top: 8px;">
+                  <span style="color: var(--tx2); display:block; font-size:11px;">Rendimentos em Juros:</span>
+                  <span id="compound-res-juros" style="font-weight: 700; color: var(--gr);">R$ 0,00</span>
+                </div>
+              </div>
+
+              <!-- Growth Chart Container -->
+              <div class="ch-box" style="height: 250px; position: relative; width: 100%; border-top: 1px solid var(--bd); padding-top: 14px;">
+                <canvas id="chCompound"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ════ NOTIFICAÇÕES ═════════════════════════════════════════ -->
@@ -895,6 +1279,67 @@
           </div>
         </form>
       </div>
+
+      <div class="card" id="profile-sync-card" style="margin-top:20px;display:none">
+        <div class="card-h">
+          <h3>☁️ Sincronização na Nuvem</h3>
+        </div>
+        <p style="font-size:12px;color:var(--tx2);margin-top:6px;line-height:1.4">
+          Gerencie a sincronização de dados entre este dispositivo e sua conta na nuvem. 
+          Se você tem dados nesta máquina que ainda não subiram para o servidor, use a opção de envio. 
+          Para puxar os dados atualizados do servidor para esta máquina, use a opção de busca.
+        </p>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button id="btnForceUploadCloud" class="bp sm" style="background:#10b981;border-color:#10b981">⬆️ Enviar dados para Nuvem</button>
+          <button id="btnForceDownloadCloud" class="bs sm">⬇️ Puxar dados da Nuvem</button>
+        </div>
+      </div>
+
+      <!-- 🏆 CONQUISTAS & SELOS -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-h">
+          <h3>🏆 Conquistas & Selos</h3>
+          <span style="font-size:12px; color:var(--tx2)" id="achievements-count">0/6 Desbloqueados</span>
+        </div>
+        <div class="achievements-grid" id="achievements-list" style="margin-top:16px;">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
+
+      <!-- 📅 DESAFIO DAS 52 SEMANAS -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-h">
+          <h3>📅 Desafio das 52 Semanas de Poupança</h3>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <label style="font-size:12px; color:var(--tx2); font-weight:600;">Multiplicador:</label>
+            <select id="challenge-multiplier" class="inp sm" style="width:100px; padding:4px 8px; font-size:12px; background-color:var(--s3);">
+              <option value="1">1x (R$ 1)</option>
+              <option value="2">2x (R$ 2)</option>
+              <option value="5">5x (R$ 5)</option>
+              <option value="10">10x (R$ 10)</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:12px; color:var(--tx2); margin-top:6px; line-height:1.4">
+          Guarde um valor progressivo toda semana. Semana 1 = R$ 1 × Multiplicador, Semana 2 = R$ 2 × Multiplicador, etc. Ao final de 52 semanas com 1x você terá poupado R$ 1.378!
+        </p>
+        
+        <!-- Progresso -->
+        <div class="challenge-progress-container" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:6px;">
+            <span id="challenge-progress-text">Progresso: 0/52 Semanas (0%)</span>
+            <span id="challenge-saved-text">Total Acumulado: R$ 0,00</span>
+          </div>
+          <div class="progress-bar-bg" style="height:10px; background:var(--s2); border-radius:5px; overflow:hidden; border:1px solid var(--bd);">
+            <div id="challenge-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--ac), var(--acg)); transition:width 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Grade de Semanas -->
+        <div class="challenge-grid" id="challenge-weeks-grid" style="margin-top:16px;">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
     </section>
 
   </div><!-- /pages -->
@@ -907,7 +1352,7 @@
   <button class="bnb" data-page="lancamentos"><span>📋</span><small>Lançar</small></button>
   <button class="bnb" data-page="dividas"><span>💳</span><small>Dívidas</small></button>
   <button class="bnb" data-page="guardado"><span>🐷</span><small>Guardado</small></button>
-  <button class="bnb" data-page="calculadora"><span>🧮</span><small>Calc</small></button>
+  <button class="bnb" data-page="calendario"><span>📅</span><small>Agenda</small></button>
   <button class="bnb" data-page="config"><span>⚙️</span><small>Config</small></button>
 </nav>
 
@@ -947,6 +1392,29 @@
           </select>
         </div>
       </div>
+      
+      <!-- Multi-currency Support -->
+      <div class="fr" style="margin-top:10px">
+        <div class="fg">
+          <label>Moeda</label>
+          <select id="tx-moeda" class="inp">
+            <option value="BRL">BRL (R$)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </div>
+        <div class="fg" id="tx-taxa-wrap" style="display:none">
+          <label>Câmbio (BRL por 1)</label>
+          <input type="number" id="tx-taxa" class="inp" min="0.0001" step="0.0001" placeholder="Ex: 5.25" value="1">
+        </div>
+      </div>
+      
+      <!-- Tags Field -->
+      <div class="fg" style="margin-top:10px">
+        <label>Tags (ex: #Ferias #Presente)</label>
+        <input type="text" id="tx-tags" class="inp" placeholder="Ex: #Viagem #Lazer">
+      </div>
+
       <!-- Installment Option -->
       <div class="fr" style="margin-top:10px">
         <div class="fg" style="justify-content:center;padding-top:18px">

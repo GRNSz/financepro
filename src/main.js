@@ -69,16 +69,22 @@ import {
   updateNotifications,
   updateTxLivePreview,
   activeCT,
-  setActiveCT
+  setActiveCT,
+  renderCalendar,
+  renderAchievements,
+  render52WeekChallenge,
+  renderPerfil
 } from './ui/renderers.js';
 
 // Setup Callbacks
 registerSyncCallback(() => {
+  processRecurringTransactions();
   updateUI();
 });
 
 registerAuthCallback((user) => {
   if (user) {
+    processRecurringTransactions();
     updateUI();
   }
 });
@@ -86,6 +92,7 @@ registerAuthCallback((user) => {
 document.addEventListener('DOMContentLoaded', function() {
   // 1. Synchronously load state from LocalStorage to prevent crashes
   load();
+  processRecurringTransactions();
 
   // 2. Configure Chart.js Defaults if present
   if (window.Chart) {
@@ -158,6 +165,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // 7b. Tutorials Search filter
+  q('#tutSearchInput')?.addEventListener('input', function() {
+    const qry = this.value.toLowerCase().trim();
+    qa('.tut-card').forEach(card => {
+      const text = card.textContent.toLowerCase();
+      const keywords = card.dataset.keywords ? card.dataset.keywords.toLowerCase() : '';
+      if (text.includes(qry) || keywords.includes(qry)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+
   // 8. Open/Create Transaction Modals
   function openTxCreateModal() {
     q('#tx-id').value = '';
@@ -195,6 +216,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const recDayWeekWrap = q('#tx-rec-day-week-wrap');
     if (recDayWeekWrap) recDayWeekWrap.style.display = 'none';
     
+    // Reset Premium Fields
+    if (q('#tx-tags')) q('#tx-tags').value = '';
+    if (q('#tx-moeda')) q('#tx-moeda').value = 'BRL';
+    if (q('#tx-taxa')) q('#tx-taxa').value = '1';
+    if (q('#tx-taxa-wrap')) q('#tx-taxa-wrap').style.display = 'none';
+
     q('#tx-modal-title').textContent = "Novo Lançamento";
 
     const keepOpenWrap = q('#tx-keep-open-wrap');
@@ -273,7 +300,18 @@ document.addEventListener('DOMContentLoaded', function() {
     e.preventDefault();
     const id = q('#tx-id').value;
     const tipo = q('#tx-tipo').value;
-    const val = parseFloat(q('#tx-val').value) || 0;
+    
+    // Multi-currency Support & Conversion
+    const currency = q('#tx-moeda')?.value || 'BRL';
+    const rate = currency !== 'BRL' ? (parseFloat(q('#tx-taxa')?.value) || 1) : 1;
+    const rawVal = parseFloat(q('#tx-val').value) || 0;
+    const val = +(rawVal * rate).toFixed(2); // stored in BRL
+    const origVal = currency !== 'BRL' ? rawVal : null;
+    
+    // Tags Extraction
+    const tagsVal = q('#tx-tags')?.value.trim() || '';
+    const tags = tagsVal ? tagsVal.split(/\s+/).map(t => t.startsWith('#') ? t : '#' + t) : [];
+
     const desc = q('#tx-desc').value.trim();
     const catId = q('#tx-cat').value;
     const payId = q('#tx-conta').value;
@@ -286,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Edit Mode
       const t = S.transactions.find(x => x.id === id);
       if (t) {
-        // Revert balance impact
+        // Revert balance impact using the stored BRL value
         if (t.status !== 'Pendente') {
           const oldAcc = S.accounts.find(a => a.id === t.payId);
           if (oldAcc) {
@@ -299,12 +337,16 @@ document.addEventListener('DOMContentLoaded', function() {
         t.tipo = tipo;
         t.desc = desc;
         t.val = val;
+        t.origVal = origVal;
+        t.currency = currency;
+        t.rate = rate;
+        t.tags = tags;
         t.catId = catId;
         t.payId = payId;
         t.data = data;
         t.status = stat;
         
-        // Apply new balance impact
+        // Apply new balance impact (BRL value)
         if (stat !== 'Pendente') {
           const newAcc = S.accounts.find(a => a.id === payId);
           if (newAcc) {
@@ -321,6 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
           d.setMonth(d.getMonth() + i - 1);
           const parts = d.toISOString().split('T')[0];
           const splitVal = +(val / inst).toFixed(2);
+          const splitOrigVal = origVal ? +(origVal / inst).toFixed(2) : null;
           const currentStat = i === 1 ? stat : 'Pendente';
           
           S.transactions.unshift({
@@ -328,6 +371,10 @@ document.addEventListener('DOMContentLoaded', function() {
             tipo,
             desc,
             val: splitVal,
+            origVal: splitOrigVal,
+            currency,
+            rate,
+            tags,
             catId,
             payId,
             data: parts,
@@ -347,6 +394,10 @@ document.addEventListener('DOMContentLoaded', function() {
           tipo,
           desc,
           val,
+          origVal,
+          currency,
+          rate,
+          tags,
           catId,
           payId,
           data,
@@ -380,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
             day: recurrenceDay,
             last: null
           });
+          processRecurringTransactions();
           renderRecurring();
         }
       }
@@ -838,33 +890,72 @@ document.addEventListener('DOMContentLoaded', function() {
     if (previewArea) previewArea.style.display = 'none';
   });
 
-  // 18. Theme Manager (Light/Dark)
+  // 18. Theme Manager (Light/Dark and Premium Themes)
   function applyTheme(theme) {
+    document.body.classList.remove('light', 'midnight', 'forest', 'sakura', 'cyberpunk');
+    const toggleBtn = q('#themeToggle');
+    
     if (theme === 'light') {
       document.body.classList.add('light');
-      const toggleBtn = q('#themeToggle');
       if (toggleBtn) toggleBtn.textContent = '☀️';
-      if (window.Chart) {
-        window.Chart.defaults.color = '#475569';
-      }
-    } else {
-      document.body.classList.remove('light');
-      const toggleBtn = q('#themeToggle');
+      if (window.Chart) window.Chart.defaults.color = '#475569';
+    } else if (theme === 'midnight') {
+      document.body.classList.add('midnight');
+      if (toggleBtn) toggleBtn.textContent = '🌌';
+      if (window.Chart) window.Chart.defaults.color = '#94a3b8';
+    } else if (theme === 'forest') {
+      document.body.classList.add('forest');
+      if (toggleBtn) toggleBtn.textContent = '🌲';
+      if (window.Chart) window.Chart.defaults.color = '#a7f3d0';
+    } else if (theme === 'sakura') {
+      document.body.classList.add('sakura');
+      if (toggleBtn) toggleBtn.textContent = '🌸';
+      if (window.Chart) window.Chart.defaults.color = '#be123c';
+    } else if (theme === 'cyberpunk') {
+      document.body.classList.add('cyberpunk');
+      if (toggleBtn) toggleBtn.textContent = '⚡';
+      if (window.Chart) window.Chart.defaults.color = '#9b9bbd';
+    } else { // default dark
       if (toggleBtn) toggleBtn.textContent = '🌙';
-      if (window.Chart) {
-        window.Chart.defaults.color = '#7c849c';
-      }
+      if (window.Chart) window.Chart.defaults.color = '#7c849c';
     }
+    
+    updateThemeButtonsUI(theme);
+    
     if (activePage === 'dashboard') {
       renderDashboard();
     }
   }
 
+  function updateThemeButtonsUI(activeTheme) {
+    qa('.theme-btn').forEach(btn => {
+      if (btn.dataset.theme === activeTheme) {
+        btn.style.borderColor = 'var(--ac)';
+        btn.style.boxShadow = '0 0 8px var(--ac)';
+      } else {
+        btn.style.borderColor = 'var(--bd2)';
+        btn.style.boxShadow = 'none';
+      }
+    });
+  }
+
   q('#themeToggle')?.addEventListener('click', () => {
-    const isLight = document.body.classList.contains('light');
-    const newTheme = isLight ? 'dark' : 'light';
+    const themes = ['dark', 'light', 'midnight', 'forest', 'sakura', 'cyberpunk'];
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    let nextIdx = themes.indexOf(currentTheme) + 1;
+    if (nextIdx >= themes.length) nextIdx = 0;
+    const newTheme = themes[nextIdx];
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);
+  });
+
+  // Attach configuration theme buttons listeners
+  qa('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const selectedTheme = this.dataset.theme;
+      localStorage.setItem('theme', selectedTheme);
+      applyTheme(selectedTheme);
+    });
   });
 
   // Apply initial saved theme
@@ -875,7 +966,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 20. Period bar actions
   q('#pPrev')?.addEventListener('click', () => {
-    if (periodState.currentMode === 'monthly') {
+    if (periodState.currentMode === 'monthly' || periodState.currentMode === 'weekly') {
       periodState.currentMonth--;
       if (periodState.currentMonth < 0) {
         periodState.currentMonth = 11;
@@ -889,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   q('#pNext')?.addEventListener('click', () => {
-    if (periodState.currentMode === 'monthly') {
+    if (periodState.currentMode === 'monthly' || periodState.currentMode === 'weekly') {
       periodState.currentMonth++;
       if (periodState.currentMonth > 11) {
         periodState.currentMonth = 0;
@@ -902,6 +993,56 @@ document.addEventListener('DOMContentLoaded', function() {
     updateUI();
   });
 
+  q('#calPrevBtn')?.addEventListener('click', () => {
+    periodState.currentMonth--;
+    if (periodState.currentMonth < 0) {
+      periodState.currentMonth = 11;
+      periodState.currentYear--;
+    }
+    renderCalendar();
+  });
+
+  q('#calNextBtn')?.addEventListener('click', () => {
+    periodState.currentMonth++;
+    if (periodState.currentMonth > 11) {
+      periodState.currentMonth = 0;
+      periodState.currentYear++;
+    }
+    renderCalendar();
+  });
+
+  q('#wPrev')?.addEventListener('click', () => {
+    if (periodState.currentMode === 'weekly') {
+      periodState.currentWeek--;
+      if (periodState.currentWeek < 0) {
+        periodState.currentWeek = 3;
+        periodState.currentMonth--;
+        if (periodState.currentMonth < 0) {
+          periodState.currentMonth = 11;
+          periodState.currentYear--;
+        }
+      }
+      updatePeriodLabel();
+      updateUI();
+    }
+  });
+
+  q('#wNext')?.addEventListener('click', () => {
+    if (periodState.currentMode === 'weekly') {
+      periodState.currentWeek++;
+      if (periodState.currentWeek > 3) {
+        periodState.currentWeek = 0;
+        periodState.currentMonth++;
+        if (periodState.currentMonth > 11) {
+          periodState.currentMonth = 0;
+          periodState.currentYear++;
+        }
+      }
+      updatePeriodLabel();
+      updateUI();
+    }
+  });
+
   function setPeriodMode(mode, btnId) {
     periodState.currentMode = mode;
     qa('#periodBar .ctab').forEach(b => b.classList.remove('on'));
@@ -910,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateUI();
   }
 
+  q('#pModeWeek')?.addEventListener('click', () => setPeriodMode('weekly', '#pModeWeek'));
   q('#pModeMonth')?.addEventListener('click', () => setPeriodMode('monthly', '#pModeMonth'));
   q('#pModeYear')?.addEventListener('click', () => setPeriodMode('yearly', '#pModeYear'));
   q('#pModeAll')?.addEventListener('click', () => setPeriodMode('all', '#pModeAll'));
@@ -1064,7 +1206,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 24. Export PDF trigger
-  q('#btnExportPDF')?.addEventListener('click', exportMonthlyPDF);
+  q('#btnExportPDF')?.addEventListener('click', () => {
+    if (periodState.currentMode === 'weekly') {
+      exportWeeklyPDF(periodState.currentWeek);
+    } else {
+      exportMonthlyPDF();
+    }
+  });
 
   // 25. AI Assistant Panels and bubble triggers
   q('#ai-chat-bubble')?.addEventListener('click', () => {
@@ -1225,6 +1373,96 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Cloud Sync Actions
+  q('#btnForceUploadCloud')?.addEventListener('click', () => {
+    if (!db || !currentUser || currentUser.isAnonymous) {
+      alert('Você não está conectado a uma conta na nuvem.');
+      return;
+    }
+    if (confirm('Tem certeza que deseja SOBRESCREVER os dados da nuvem com os dados locais desta máquina? Esta ação substituirá o banco de dados na nuvem.')) {
+      const btn = q('#btnForceUploadCloud');
+      if (btn) btn.disabled = true;
+      
+      db.collection('users').doc(currentUser.uid).set(S)
+        .then(() => {
+          alert('Dados locais enviados para a nuvem com sucesso!');
+        })
+        .catch(err => {
+          console.error('Erro ao enviar dados para a nuvem:', err);
+          alert('Erro ao enviar dados: ' + err.message);
+        })
+        .finally(() => {
+          if (btn) btn.disabled = false;
+        });
+    }
+  });
+
+  q('#btnForceDownloadCloud')?.addEventListener('click', () => {
+    if (!db || !currentUser || currentUser.isAnonymous) {
+      alert('Você não está conectado a uma conta na nuvem.');
+      return;
+    }
+    if (confirm('Deseja puxar os dados atualizados da nuvem? Isso substituirá as informações locais desta máquina.')) {
+      const btn = q('#btnForceDownloadCloud');
+      if (btn) btn.disabled = true;
+      
+      db.collection('users').doc(currentUser.uid).get()
+        .then(doc => {
+          if (doc.exists) {
+            const remoteData = doc.data();
+            setS(remoteData);
+            processRecurringTransactions();
+            updateUI();
+            alert('Dados sincronizados da nuvem com sucesso!');
+          } else {
+            alert('Nenhum dado encontrado na nuvem para esta conta.');
+          }
+        })
+        .catch(err => {
+          console.error('Erro ao baixar dados da nuvem:', err);
+          alert('Erro ao sincronizar dados da nuvem: ' + err.message);
+        })
+        .finally(() => {
+          if (btn) btn.disabled = false;
+        });
+    }
+  });
+
+  q('#btnSyncCloudHeader')?.addEventListener('click', () => {
+    if (!db || !currentUser || currentUser.isAnonymous) {
+      alert('Sincronização disponível apenas para usuários autenticados na nuvem.');
+      return;
+    }
+    const btn = q('#btnSyncCloudHeader');
+    if (btn) {
+      btn.style.animation = 'spin 1s linear infinite';
+      btn.disabled = true;
+    }
+    
+    db.collection('users').doc(currentUser.uid).get()
+      .then(doc => {
+        if (doc.exists) {
+          const remoteData = doc.data();
+          setS(remoteData);
+          processRecurringTransactions();
+          updateUI();
+          console.log('Real-time sync triggered manually via header button.');
+        } else {
+          console.log('No remote data found during manual sync.');
+        }
+      })
+      .catch(err => {
+        console.error('Manual sync failed:', err);
+        alert('Erro ao sincronizar: ' + err.message);
+      })
+      .finally(() => {
+        if (btn) {
+          btn.style.animation = '';
+          btn.disabled = false;
+        }
+      });
+  });
+
   // 29. Firebase boot sequence
   loadFirebaseConfig();
   const fbInitialized = initFirebase();
@@ -1232,7 +1470,365 @@ document.addEventListener('DOMContentLoaded', function() {
     checkGuestLogin(updateUI);
   }
 
+  // 29b. Premium Features Init
+  // Stealth Mode Toggle
+  const btnStealth = q('#btnStealthToggle');
+  let isStealth = localStorage.getItem('financeos_stealth') === 'true';
+  function applyStealth(stealth) {
+    if (stealth) {
+      document.body.classList.add('stealth-active');
+      if (btnStealth) btnStealth.textContent = '🕶️';
+    } else {
+      document.body.classList.remove('stealth-active');
+      if (btnStealth) btnStealth.textContent = '👁️';
+    }
+  }
+  btnStealth?.addEventListener('click', () => {
+    isStealth = !isStealth;
+    localStorage.setItem('financeos_stealth', isStealth);
+    if (isStealth) {
+      localStorage.setItem('financeos_stealth_activated', 'true');
+    }
+    applyStealth(isStealth);
+    if (activePage === 'perfil') renderAchievements();
+  });
+  applyStealth(isStealth);
+
+  // Multi-currency field toggle on selection
+  q('#tx-moeda')?.addEventListener('change', function() {
+    const isBrl = this.value === 'BRL';
+    const wrap = q('#tx-taxa-wrap');
+    if (wrap) wrap.style.display = isBrl ? 'none' : 'block';
+    if (isBrl) {
+      q('#tx-taxa').value = '1';
+    } else {
+      q('#tx-taxa').value = '';
+    }
+    if (window.updateTxLivePreview) window.updateTxLivePreview();
+  });
+
+  // Calendar Export ICS click
+  q('#btnExportICS')?.addEventListener('click', function() {
+    exportCalendarICS(periodState.currentYear, periodState.currentMonth);
+  });
+
+  // Browser Notifications checkbox & request permission
+  const chkNotif = q('#chkNotifications');
+  if (chkNotif) {
+    chkNotif.checked = localStorage.getItem('financeos_notifications') === 'true';
+    chkNotif.addEventListener('change', function() {
+      localStorage.setItem('financeos_notifications', this.checked);
+      if (this.checked) {
+        if ('Notification' in window) {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('FinanceOS', {
+                body: 'Notificações ativadas com sucesso! 🔔'
+              });
+            } else {
+              alert('Permissão de notificação negada pelo navegador.');
+              this.checked = false;
+              localStorage.setItem('financeos_notifications', 'false');
+            }
+          });
+         } else {
+          alert('Este navegador não suporta notificações de área de trabalho.');
+          this.checked = false;
+          localStorage.setItem('financeos_notifications', 'false');
+        }
+      }
+    });
+  }
+
+  // Trigger browser notifications check on a short delay
+  setTimeout(checkUpcomingBillsNotifications, 2000);
+
   // 30. Render initial view
   navigate(activePage);
   updateNotifications();
 });
+
+export function processRecurringTransactions() {
+  if (!S || !Array.isArray(S.recurring)) return;
+  
+  let changed = false;
+  const todayStr = getLocalToday();
+  const yesterdayStr = getLocalYesterday();
+  
+  S.recurring.forEach(r => {
+    // 1. Initialize last run date if null/empty
+    if (!r.last) {
+      r.last = yesterdayStr;
+      changed = true;
+    }
+    
+    let current = new Date(r.last + 'T12:00:00');
+    const targetDate = new Date(todayStr + 'T12:00:00');
+    targetDate.setDate(targetDate.getDate() + 180);
+    let loopCount = 0;
+    
+    while (true) {
+      current.setDate(current.getDate() + 1);
+      if (current > targetDate) break;
+      
+      loopCount++;
+      if (loopCount > 185) { // Safety limit slightly above 180 days
+        console.warn('Recurring engine reached safety limit for rule:', r);
+        break;
+      }
+      
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const d = String(current.getDate()).padStart(2, '0');
+      const currentStr = `${y}-${m}-${d}`;
+      
+      let matches = false;
+      if (r.frequency === 'weekly') {
+        const wDay = current.getDay();
+        const targetWDay = r.day !== undefined ? r.day : 0;
+        matches = (wDay === targetWDay);
+      } else if (r.frequency === 'monthly') {
+        const mDay = current.getDate();
+        const targetMDay = r.day || 1;
+        const lastDayOfMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+        if (targetMDay >= lastDayOfMonth) {
+          matches = (mDay === lastDayOfMonth);
+        } else {
+          matches = (mDay === targetMDay);
+        }
+      }
+      
+      if (matches) {
+        // Double check to prevent duplicate transactions
+        const alreadyExists = S.transactions.some(t => 
+          t.desc === r.desc && 
+          t.tipo === r.tipo && 
+          t.val === r.val && 
+          t.data === currentStr &&
+          t.catId === r.catId
+        );
+        
+        if (!alreadyExists) {
+          S.transactions.push({
+            id: uid(),
+            desc: r.desc,
+            tipo: r.tipo,
+            val: r.val,
+            catId: r.catId,
+            payId: r.payId,
+            data: currentStr,
+            status: 'Pendente',
+            inst: null,
+            total: null
+          });
+          changed = true;
+        }
+      }
+      
+      r.last = currentStr;
+      changed = true;
+    }
+  });
+  
+  if (changed) {
+    save();
+  }
+}
+
+function getLocalToday() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getLocalYesterday() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function exportCalendarICS(year, month) {
+  const list = (S.transactions || []).filter(t => {
+    const d = new Date(t.data + 'T00:00:00');
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+  
+  if (!list.length) {
+    alert('Nenhum lançamento encontrado neste mês para exportar!');
+    return;
+  }
+  
+  let ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//FinanceOS//Calendar Export//PT',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ];
+  
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  
+  list.forEach(t => {
+    const cat = S.categories.find(c => c.id === t.catId) || { name: 'Outros', icon: '⚙️' };
+    const acc = S.accounts.find(a => a.id === t.payId);
+    const card = S.cards.find(c => c.id === t.payId);
+    const payName = acc ? acc.name : card ? card.name : '—';
+    
+    const startIso = t.data.replace(/-/g, '');
+    const d = new Date(t.data + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    const endIso = d.toISOString().split('T')[0].replace(/-/g, '');
+    
+    const valueStr = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.val);
+    const summary = `${t.tipo === 'Receita' ? '📈' : '📉'} ${t.desc} (${valueStr})`;
+    const description = `Tipo: ${t.tipo}\\nValor: ${valueStr}\\nCategoria: ${cat.name}\\nConta/Cartão: ${payName}\\nStatus: ${t.status}`;
+    
+    ics.push('BEGIN:VEVENT');
+    ics.push(`UID:${t.id}@financeos.app`);
+    ics.push(`DTSTAMP:${timestamp}`);
+    ics.push(`DTSTART;VALUE=DATE:${startIso}`);
+    ics.push(`DTEND;VALUE=DATE:${endIso}`);
+    ics.push(`SUMMARY:${summary}`);
+    ics.push(`DESCRIPTION:${description}`);
+    ics.push('END:VEVENT');
+  });
+  
+  ics.push('END:VCALENDAR');
+  
+  const icsString = ics.join('\r\n');
+  const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `financeos_agenda_${year}_${String(month + 1).padStart(2, '0')}.ics`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function checkUpcomingBillsNotifications() {
+  if (localStorage.getItem('financeos_notifications') !== 'true') return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().split('T')[0];
+  
+  const notifiedTxs = JSON.parse(sessionStorage.getItem('financeos_notified_txs') || '{}');
+  let hasNewNotification = false;
+  
+  (S.transactions || []).forEach(t => {
+    if (t.tipo === 'Despesa' && t.status === 'Pendente' && t.data === todayStr) {
+      if (!notifiedTxs[t.id]) {
+        const valueStr = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.val);
+        new Notification('Fatura Vencendo Hoje ⏰', {
+          body: `A despesa "${t.desc}" no valor de ${valueStr} vence hoje!`,
+          tag: t.id
+        });
+        notifiedTxs[t.id] = true;
+        hasNewNotification = true;
+      }
+    }
+  });
+  
+  if (hasNewNotification) {
+    sessionStorage.setItem('financeos_notified_txs', JSON.stringify(notifiedTxs));
+  }
+}
+
+window.exportCalendarICS = exportCalendarICS;
+window.checkUpcomingBillsNotifications = checkUpcomingBillsNotifications;
+
+// Event delegation for Challenge Multiplier change
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'challenge-multiplier') {
+    changeMultiplier52(parseInt(e.target.value));
+  }
+});
+
+export function toggleWeek52Challenge(weekIndex) {
+  if (!S.challenge52) {
+    S.challenge52 = { multiplier: 1, checkedWeeks: [] };
+  }
+  const idx = S.challenge52.checkedWeeks.indexOf(weekIndex);
+  if (idx > -1) {
+    S.challenge52.checkedWeeks.splice(idx, 1);
+  } else {
+    S.challenge52.checkedWeeks.push(weekIndex);
+  }
+  save();
+  render52WeekChallenge();
+  renderAchievements();
+}
+
+export function changeMultiplier52(multiplier) {
+  if (!S.challenge52) {
+    S.challenge52 = { multiplier: 1, checkedWeeks: [] };
+  }
+  S.challenge52.multiplier = multiplier;
+  save();
+  render52WeekChallenge();
+  renderAchievements();
+}
+
+export function depositChallengeWeek(weekIndex, valueBRL) {
+  q('#tx-id').value = '';
+  q('#tx-tipo').value = 'Despesa';
+  fillCatSelect(q('#tx-cat'), 'Despesa');
+  fillPaySelect(q('#tx-conta'));
+  
+  const catSelect = q('#tx-cat');
+  const options = Array.from(catSelect.options);
+  const matchPoup = options.find(o => o.text.toLowerCase().includes('poup'));
+  const matchInv = options.find(o => o.text.toLowerCase().includes('invest'));
+  const matchOut = options.find(o => o.text.toLowerCase().includes('out'));
+  let targetCatId = '';
+  if (matchPoup) targetCatId = matchPoup.value;
+  else if (matchInv) targetCatId = matchInv.value;
+  else if (matchOut) targetCatId = matchOut.value;
+  else if (options.length > 0) targetCatId = options[0].value;
+  if (targetCatId) catSelect.value = targetCatId;
+
+  q('#tx-val').value = valueBRL.toFixed(2);
+  q('#tx-desc').value = `Desafio 52 Semanas - Semana ${weekIndex + 1}`;
+  q('#tx-data').value = isoToday();
+  q('#tx-status').value = 'Pago';
+
+  const isInst = q('#tx-is-installment');
+  if (isInst) isInst.checked = false;
+  const instWrap = q('#tx-inst-wrap');
+  if (instWrap) instWrap.style.display = 'none';
+  const instInput = q('#tx-inst');
+  if (instInput) instInput.value = '1';
+
+  const recIs = q('#tx-is-recurring');
+  if (recIs) {
+    recIs.checked = false;
+    const parentRow = recIs.closest('.fr');
+    if (parentRow) parentRow.style.display = 'flex';
+  }
+  const recWrap = q('#tx-rec-wrap');
+  if (recWrap) recWrap.style.display = 'none';
+
+  if (q('#tx-tags')) q('#tx-tags').value = 'Desafio52';
+  if (q('#tx-moeda')) q('#tx-moeda').value = 'BRL';
+  if (q('#tx-taxa')) q('#tx-taxa').value = '1';
+  if (q('#tx-taxa-wrap')) q('#tx-taxa-wrap').style.display = 'none';
+
+  q('#tx-modal-title').textContent = `Desafio 52 Semanas - Semana ${weekIndex + 1}`;
+
+  const keepOpenWrap = q('#tx-keep-open-wrap');
+  if (keepOpenWrap) keepOpenWrap.style.display = 'flex';
+
+  openM('m-tx');
+  updateTxLivePreview();
+}
+
+window.toggleWeek52Challenge = toggleWeek52Challenge;
+window.changeMultiplier52 = changeMultiplier52;
+window.depositChallengeWeek = depositChallengeWeek;

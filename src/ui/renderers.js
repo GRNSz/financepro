@@ -1,4 +1,4 @@
-import { S, setS, load, save, uid, fmt, fmtD, getCat, getPay, q, qa, openM, closeM, periodState } from '../state.js';
+import { S, setS, load, save, uid, fmt, fmtD, getCat, getPay, q, qa, openM, closeM, periodState, getActiveWeekRange } from '../state.js';
 import { currentUser } from '../firebase.js';
 
 let chMain = null;
@@ -12,7 +12,8 @@ export function setActivePage(page) {
 const PAGE_TITLES = {
   dashboard:'Dashboard', calculadora:'Calculadora', lancamentos:'Lançamentos', dividas:'Dívidas',
   guardado:'Dinheiro Guardado', contas:'Contas & Cartões',
-  metas:'Metas', config:'Configurações', notificacoes:'Central de Notificações', perfil:'Meu Perfil'
+  metas:'Metas', config:'Configurações', notificacoes:'Central de Notificações', perfil:'Meu Perfil',
+  calendario:'Calendário', tutoriais:'Tutoriais'
 };
 
 export function navigate(page) {
@@ -57,6 +58,8 @@ export function renderPage(p) {
   if(p==='contas')      renderContas();
   if(p==='metas')       renderMetas();
   if(p==='config')      renderConfig();
+  if(p==='calendario')  renderCalendar();
+  if(p==='perfil')      renderPerfil();
 }
 
 export function updateUI() {
@@ -73,30 +76,50 @@ export function updatePeriodLabel() {
   if (!lbl) return;
   
   const pdfBtn = q('#btnExportPDF');
+  const weekChanger = q('#weekChanger');
   
-  if (periodState.currentMode === 'monthly') {
+  if (periodState.currentMode === 'weekly') {
+    const range = getActiveWeekRange();
     lbl.textContent = `${MESES[periodState.currentMonth]} de ${periodState.currentYear}`;
-    q('#pPrev').disabled = false;
-    q('#pNext').disabled = false;
-    if (pdfBtn) {
-      pdfBtn.textContent = '📄 PDF Mensal';
-      pdfBtn.title = 'Gerar Relatório PDF do Mês';
+    if (weekChanger) {
+      weekChanger.style.display = 'flex';
+      const wLabel = q('#wLabel');
+      if (wLabel) wLabel.textContent = range.label;
     }
-  } else if (periodState.currentMode === 'yearly') {
-    lbl.textContent = `${periodState.currentYear}`;
     q('#pPrev').disabled = false;
     q('#pNext').disabled = false;
     if (pdfBtn) {
-      pdfBtn.textContent = '📄 PDF Anual';
-      pdfBtn.title = 'Gerar Relatório PDF do Ano';
+      pdfBtn.textContent = '📄 PDF Semanal';
+      pdfBtn.title = 'Gerar Relatório PDF da Semana';
     }
   } else {
-    lbl.textContent = 'Todo o Período';
-    q('#pPrev').disabled = true;
-    q('#pNext').disabled = true;
-    if (pdfBtn) {
-      pdfBtn.textContent = '📄 PDF Consolidado';
-      pdfBtn.title = 'Gerar Relatório PDF de Todo o Período';
+    if (weekChanger) {
+      weekChanger.style.display = 'none';
+    }
+    if (periodState.currentMode === 'monthly') {
+      lbl.textContent = `${MESES[periodState.currentMonth]} de ${periodState.currentYear}`;
+      q('#pPrev').disabled = false;
+      q('#pNext').disabled = false;
+      if (pdfBtn) {
+        pdfBtn.textContent = '📄 PDF Mensal';
+        pdfBtn.title = 'Gerar Relatório PDF do Mês';
+      }
+    } else if (periodState.currentMode === 'yearly') {
+      lbl.textContent = `${periodState.currentYear}`;
+      q('#pPrev').disabled = false;
+      q('#pNext').disabled = false;
+      if (pdfBtn) {
+        pdfBtn.textContent = '📄 PDF Anual';
+        pdfBtn.title = 'Gerar Relatório PDF do Ano';
+      }
+    } else {
+      lbl.textContent = 'Todo o Período';
+      q('#pPrev').disabled = true;
+      q('#pNext').disabled = true;
+      if (pdfBtn) {
+        pdfBtn.textContent = '📄 PDF Consolidado';
+        pdfBtn.title = 'Gerar Relatório PDF de Todo o Período';
+      }
     }
   }
 }
@@ -105,7 +128,9 @@ export function renderDashboard() {
   let mRec=0, mDesp=0, mRecCnt=0, mDespCnt=0;
   
   let endIso = null;
-  if (periodState.currentMode === 'monthly') {
+  if (periodState.currentMode === 'weekly') {
+    endIso = getActiveWeekRange().endIso;
+  } else if (periodState.currentMode === 'monthly') {
     endIso = new Date(periodState.currentYear, periodState.currentMonth + 1, 0).toISOString().split('T')[0];
   } else if (periodState.currentMode === 'yearly') {
     endIso = `${periodState.currentYear}-12-31`;
@@ -115,7 +140,10 @@ export function renderDashboard() {
     S.transactions.forEach(t=>{
       const d=new Date(t.data+'T00:00:00');
       let matches = false;
-      if (periodState.currentMode === 'monthly') {
+      if (periodState.currentMode === 'weekly') {
+        const range = getActiveWeekRange();
+        matches = t.data >= range.startIso && t.data <= range.endIso;
+      } else if (periodState.currentMode === 'monthly') {
         matches = d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
       } else if (periodState.currentMode === 'yearly') {
         matches = d.getFullYear() === periodState.currentYear;
@@ -156,7 +184,8 @@ export function renderDashboard() {
   }
 
   let periodSub = 'este mês';
-  if (periodState.currentMode === 'yearly') periodSub = 'este ano';
+  if (periodState.currentMode === 'weekly') periodSub = 'esta semana';
+  else if (periodState.currentMode === 'yearly') periodSub = 'este ano';
   else if (periodState.currentMode === 'all') periodSub = 'todo período';
 
   q('#k-saldo').textContent = fmt(totalBal);
@@ -194,47 +223,154 @@ export function renderDashSaude(rec, desp) {
     return;
   }
   
-  const saldo = rec - desp;
-  const pctPoupado = ((saldo) / rec) * 100;
-  
+  // Helper to classify category
+  const getCategoryType = (cat) => {
+    const id = cat.id;
+    const name = (cat.name || '').toLowerCase();
+    const needsKeywords = ['moradia', 'aluguel', 'água', 'luz', 'internet', 'alimentação', 'mercado', 'transporte', 'combustível', 'saúde', 'farmácia', 'médico', 'educação', 'escola', 'faculdade', 'fixa', 'imposto', 'seguro'];
+    const wantsKeywords = ['lazer', 'cinema', 'compras', 'shopping', 'restaurante', 'bar', 'viagem', 'férias', 'hobby', 'presente', 'vestuário', 'roupa', 'assinatura', 'streaming', 'jogo'];
+    
+    if (['c_alim', 'c_mor', 'c_trsp', 'c_sau', 'c_edu', 'c_fixa'].includes(id)) return 'need';
+    if (['c_laz', 'c_comp', 'c_out'].includes(id)) return 'want';
+    
+    if (needsKeywords.some(kw => name.includes(kw))) return 'need';
+    if (wantsKeywords.some(kw => name.includes(kw))) return 'want';
+    
+    return 'need';
+  };
+
+  // Compute essential vs style despesas
+  let nSum = 0, wSum = 0;
+  if (Array.isArray(S.transactions)) {
+    S.transactions.forEach(t => {
+      if (t.tipo !== 'Despesa') return;
+      
+      const d = new Date(t.data + 'T00:00:00');
+      let matches = false;
+      if (periodState.currentMode === 'weekly') {
+        const range = getActiveWeekRange();
+        matches = t.data >= range.startIso && t.data <= range.endIso;
+      } else if (periodState.currentMode === 'monthly') {
+        matches = d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
+      } else if (periodState.currentMode === 'yearly') {
+        matches = d.getFullYear() === periodState.currentYear;
+      } else {
+        matches = true;
+      }
+      
+      if (matches) {
+        const cat = getCat(t.catId);
+        if (getCategoryType(cat) === 'need') {
+          nSum += t.val;
+        } else {
+          wSum += t.val;
+        }
+      }
+    });
+  }
+
+  // Calculate percentages
+  const pctN = (nSum / rec) * 100;
+  const pctW = (wSum / rec) * 100;
+  const pctS = Math.max(0, 100 - pctN - pctW);
+  const totalExpenses = nSum + wSum;
+
+  let score = 'D';
+  let scoreMsg = 'Desequilíbrio Financeiro';
+  let scoreAdvice = 'Suas despesas essenciais ou estilo de vida estão consumindo quase toda a sua renda. Faça uma revisão detalhada do orçamento.';
   let scoreColor = 'var(--rd)';
-  let scoreMsg = 'Alerta! Saldo mensal negativo.';
-  let scoreAdvice = 'Revise despesas fixas e renegocie suas dívidas o quanto antes.';
-  let scoreEmoji = '⚠️';
-  
-  if (pctPoupado >= 30) {
+  let scoreEmoji = '📉';
+
+  if (totalExpenses > rec) {
+    score = 'F';
+    scoreMsg = 'Déficit Financeiro';
+    scoreAdvice = 'Você está gastando mais do que ganha! Tente cortar imediatamente os Desejos e revisar despesas Fixas.';
+    scoreColor = 'var(--rd)';
+    scoreEmoji = '🚨';
+  } else if (pctN <= 50 && pctW <= 30 && pctS >= 20) {
+    score = 'A+';
+    scoreMsg = 'Equilíbrio Ideal';
+    scoreAdvice = 'Excelente! Suas finanças estão perfeitamente equilibradas dentro da regra 50/30/20. Continue investindo.';
     scoreColor = 'var(--gr)';
-    scoreMsg = 'Excelente! Poupança acima de 30%.';
-    scoreAdvice = 'Ótimo momento para direcionar o excedente para suas Metas!';
     scoreEmoji = '🚀';
-  } else if (pctPoupado >= 10) {
+  } else if (pctN <= 60 && pctW <= 35 && pctS >= 10) {
+    score = 'B';
+    scoreMsg = 'Bom Equilíbrio';
+    scoreAdvice = 'Você consegue poupar, mas tente reduzir despesas supérfluas para alcançar a taxa de poupança ideal de 20%.';
     scoreColor = 'var(--ac)';
-    scoreMsg = 'Muito bem! Poupança acima de 10%.';
-    scoreAdvice = 'Tente cortar pequenas despesas supérfluas para poupar mais.';
     scoreEmoji = '👍';
-  } else if (pctPoupado > 0) {
+  } else if (pctN <= 70 && pctW <= 40 && pctS >= 5) {
+    score = 'C';
+    scoreMsg = 'Orçamento Apertado';
+    scoreAdvice = 'Sua taxa de poupança está muito baixa. Monitore despesas variáveis de lazer para evitar entrar no vermelho.';
     scoreColor = 'var(--am)';
-    scoreMsg = 'Cuidado. Margem de poupança baixa.';
-    scoreAdvice = 'Monitore seus orçamentos mensais para evitar ficar no vermelho.';
     scoreEmoji = '⚠️';
   }
-  
+
+  // Determine progress colors
+  const colorN = pctN <= 50 ? 'var(--gr)' : pctN <= 60 ? 'var(--am)' : 'var(--rd)';
+  const colorW = pctW <= 30 ? 'var(--gr)' : pctW <= 40 ? 'var(--am)' : 'var(--rd)';
+  const colorS = pctS >= 20 ? 'var(--gr)' : pctS >= 10 ? 'var(--ac)' : 'var(--rd)';
+
   el.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12.5px;color:var(--tx2)">Taxa de Poupança</span>
-        <span style="font-weight:800;font-size:18px;color:${scoreColor}">${pctPoupado.toFixed(1)}%</span>
-      </div>
-      <div class="prog" style="height:10px;margin-bottom:2px">
-        <div class="prog-bar" style="width:${Math.max(0, Math.min(100, pctPoupado))}%;background:${scoreColor}"></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:flex-start;background:var(--s2);padding:10px 12px;border-radius:10px;border:1px solid var(--bd)">
-        <span style="font-size:18px;line-height:1.2">${scoreEmoji}</span>
-        <div style="min-width:0">
-          <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:2px">${scoreMsg}</div>
-          <div style="font-size:11px;color:var(--tx2);line-height:1.4">${scoreAdvice}</div>
+    <div style="display:flex; flex-direction:column; gap:14px; padding:6px 0">
+      
+      <!-- Score Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--s3); padding:10px 14px; border-radius:10px; border:1px solid var(--bd2)">
+        <div>
+          <span style="font-size:11px; text-transform:uppercase; color:var(--tx2); font-weight:700; letter-spacing:0.5px">Nota Geral</span>
+          <div style="font-size:14px; font-weight:750; color:var(--tx); margin-top:2px">${scoreMsg}</div>
+        </div>
+        <div style="font-size:24px; font-weight:900; color:${scoreColor}; background:rgba(255,255,255,0.04); padding:6px 12px; border-radius:8px; border:1px solid var(--bd2); line-height:1; min-width:55px; text-align:center;">
+          ${score}
         </div>
       </div>
+
+      <!-- Categories breakdown -->
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:12px;">
+        <!-- Needs -->
+        <div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="font-weight:600; color:var(--tx)">Necessidades (Essencial)</span>
+            <span style="color:var(--tx2)">${pctN.toFixed(0)}% <span style="font-size:10px; opacity:0.6">/ 50%</span></span>
+          </div>
+          <div class="prog" style="height:6px; background:var(--s3); border-radius:3px; margin-bottom:0">
+            <div class="prog-bar" style="width:${Math.min(100, pctN)}%; background:${colorN}"></div>
+          </div>
+        </div>
+
+        <!-- Wants -->
+        <div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="font-weight:600; color:var(--tx)">Desejos (Estilo de Vida)</span>
+            <span style="color:var(--tx2)">${pctW.toFixed(0)}% <span style="font-size:10px; opacity:0.6">/ 30%</span></span>
+          </div>
+          <div class="prog" style="height:6px; background:var(--s3); border-radius:3px; margin-bottom:0">
+            <div class="prog-bar" style="width:${Math.min(100, pctW)}%; background:${colorW}"></div>
+          </div>
+        </div>
+
+        <!-- Savings -->
+        <div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="font-weight:600; color:var(--tx)">Poupança (Investimentos)</span>
+            <span style="color:var(--tx2)">${pctS.toFixed(0)}% <span style="font-size:10px; opacity:0.6">/ 20%</span></span>
+          </div>
+          <div class="prog" style="height:6px; background:var(--s3); border-radius:3px; margin-bottom:0">
+            <div class="prog-bar" style="width:${Math.min(100, pctS)}%; background:${colorS}"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advice Box -->
+      <div style="display:flex; gap:10px; align-items:flex-start; background:var(--s2); padding:10px 12px; border-radius:10px; border:1px solid var(--bd)">
+        <span style="font-size:18px; line-height:1.2">${scoreEmoji}</span>
+        <div style="min-width:0">
+          <div style="font-size:12px; font-weight:700; color:var(--tx); margin-bottom:2px">Dica Recomendada</div>
+          <div style="font-size:11.5px; color:var(--tx2); line-height:1.4">${scoreAdvice}</div>
+        </div>
+      </div>
+
     </div>`;
 }
 
@@ -257,7 +393,31 @@ export function renderMainChart() {
   const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const labels=[],rec=[],desp=[];
 
-  if (periodState.currentMode === 'monthly') {
+  if (periodState.currentMode === 'weekly') {
+    const totalDays = new Date(periodState.currentYear, periodState.currentMonth + 1, 0).getDate();
+    const weeksList = [
+      { start: 1, end: 7, label: 'Sem 1' },
+      { start: 8, end: 14, label: 'Sem 2' },
+      { start: 15, end: 21, label: 'Sem 3' },
+      { start: 22, end: totalDays, label: 'Sem 4' }
+    ];
+    weeksList.forEach(w => {
+      labels.push(w.label);
+      let r = 0, e = 0;
+      if (Array.isArray(S.transactions)) {
+        S.transactions.forEach(t => {
+          const td = new Date(t.data + 'T00:00:00');
+          if (td.getFullYear() === periodState.currentYear && td.getMonth() === periodState.currentMonth) {
+            const day = td.getDate();
+            if (day >= w.start && day <= w.end) {
+              if (t.tipo === 'Receita') r += t.val; else e += t.val;
+            }
+          }
+        });
+      }
+      rec.push(r); desp.push(e);
+    });
+  } else if (periodState.currentMode === 'monthly') {
     for(let i=5;i>=0;i--){
       const d=new Date(periodState.currentYear, periodState.currentMonth-i, 1);
       labels.push(MESES[d.getMonth()]);
@@ -383,7 +543,11 @@ export function renderCatChart(){
 export function renderDashPrevisto(mRec, mDesp, totalBal){
   let startIso = null;
   let endIso = null;
-  if (periodState.currentMode === 'monthly') {
+  if (periodState.currentMode === 'weekly') {
+    const range = getActiveWeekRange();
+    startIso = range.startIso;
+    endIso = range.endIso;
+  } else if (periodState.currentMode === 'monthly') {
     startIso = `${periodState.currentYear}-${String(periodState.currentMonth + 1).padStart(2, '0')}-01`;
     endIso = `${periodState.currentYear}-${String(periodState.currentMonth + 1).padStart(2, '0')}-${new Date(periodState.currentYear, periodState.currentMonth + 1, 0).getDate()}`;
   } else if (periodState.currentMode === 'yearly') {
@@ -424,7 +588,10 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
     S.transactions.forEach(t => {
       const d = new Date(t.data + 'T00:00:00');
       let matches = false;
-      if (periodState.currentMode === 'monthly') {
+      if (periodState.currentMode === 'weekly') {
+        const range = getActiveWeekRange();
+        matches = t.data >= range.startIso && t.data <= range.endIso;
+      } else if (periodState.currentMode === 'monthly') {
         matches = d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
       } else if (periodState.currentMode === 'yearly') {
         matches = d.getFullYear() === periodState.currentYear;
@@ -664,14 +831,26 @@ export function applyFilters(){
   const stat  = (q('#fStatus')||{value:''}).value;
 
   const list = (S.transactions || []).filter(t=>{
-    if(srch && !t.desc.toLowerCase().includes(srch)) return false;
+    if (srch) {
+      if (srch.startsWith('#')) {
+        const tagQuery = srch.trim();
+        if (!t.tags || !t.tags.some(tag => tag.toLowerCase().includes(tagQuery))) {
+          return false;
+        }
+      } else {
+        if (!t.desc.toLowerCase().includes(srch)) return false;
+      }
+    }
     if(tipo && t.tipo!==tipo) return false;
     if(catId && t.catId!==catId) return false;
     if(stat && t.status!==stat) return false;
     
     // Apply global period filter
     const d=new Date(t.data+'T00:00:00');
-    if (periodState.currentMode === 'monthly') {
+    if (periodState.currentMode === 'weekly') {
+      const range = getActiveWeekRange();
+      if (t.data < range.startIso || t.data > range.endIso) return false;
+    } else if (periodState.currentMode === 'monthly') {
       if (d.getFullYear() !== periodState.currentYear || d.getMonth() !== periodState.currentMonth) return false;
     } else if (periodState.currentMode === 'yearly') {
       if (d.getFullYear() !== periodState.currentYear) return false;
@@ -688,12 +867,21 @@ export function applyFilters(){
     const pn=getPay(t.payId);
     const inlbl=t.inst?` <span style="opacity:.6;font-size:10.5px">(${t.inst}/${t.total})</span>`:'';
     const sCls=t.status==='Pago'?'s-pago':t.status==='Recebido'?'s-recebido':'s-pendente';
+    
+    const taglbl = (t.tags && t.tags.length) ? `<div style="margin-top: 4px; display:flex; gap: 4px; flex-wrap: wrap;">${t.tags.map(tag => `<span class="tag-pill" style="font-size:10px; background:var(--s3); color:var(--tx2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--bd2); cursor:pointer;" onclick="event.stopPropagation(); window.filterByTag('${tag}')">${tag}</span>`).join('')}</div>` : '';
+    
+    let origText = '';
+    if (t.currency && t.currency !== 'BRL' && t.origVal) {
+      const curSymbol = t.currency === 'USD' ? '$' : t.currency === 'EUR' ? '€' : '';
+      origText = `<br><span style="font-size:9.5px;color:var(--tx2)" title="Taxa de câmbio: 1 ${t.currency} = ${fmt(t.rate)}">${curSymbol} ${t.origVal.toFixed(2)} (${t.currency})</span>`;
+    }
+
     return`<tr>
       <td style="white-space:nowrap;font-size:12px">${fmtD(t.data)}</td>
-      <td><span style="font-weight:600">${t.desc}</span>${inlbl}<br><span style="font-size:11px;color:var(--tx2)">${pn}</span></td>
+      <td><span style="font-weight:600">${t.desc}</span>${inlbl}${taglbl}<br><span style="font-size:11px;color:var(--tx2)">${pn}</span></td>
       <td><span class="cat-pill" style="background:${c.color}1a;color:${c.color}">${c.icon} ${c.name}</span></td>
       <td><span style="font-size:11.5px;font-weight:600;color:${t.tipo==='Receita'?'var(--gr)':'var(--tx2)'}">${t.tipo}</span></td>
-      <td class="${t.tipo==='Receita'?'amt-in':'amt-ex'}" style="white-space:nowrap">${t.tipo==='Receita'?'+':'−'} ${fmt(t.val)}</td>
+      <td class="${t.tipo==='Receita'?'amt-in':'amt-ex'}" style="white-space:nowrap">${t.tipo==='Receita'?'+':'−'} ${fmt(t.val)}${origText}</td>
       <td><span class="status-pill ${sCls}" onclick="toggleTxStatus('${t.id}')" title="Clique para alternar status">${t.status}</span></td>
       <td style="white-space:nowrap">
         <button class="bedit" onclick="editTx('${t.id}')" title="Editar">✏️</button>
@@ -704,6 +892,14 @@ export function applyFilters(){
   }).join('');
   renderInstallmentTracker();
 }
+
+window.filterByTag = function(tag) {
+  const fSearch = q('#fSearch');
+  if (fSearch) {
+    fSearch.value = tag;
+    applyFilters();
+  }
+};
 
 window.applyFilters = applyFilters;
 
@@ -720,6 +916,10 @@ window.cloneTxToNextMonth = function(id) {
     tipo: t.tipo,
     desc: t.desc,
     val: t.val,
+    origVal: t.origVal || null,
+    currency: t.currency || 'BRL',
+    rate: t.rate || 1,
+    tags: t.tags ? [...t.tags] : [],
     catId: t.catId,
     payId: t.payId,
     data: nextMonthIso,
@@ -762,7 +962,12 @@ window.editTx = function(id){
   if (!t) return;
   q('#tx-id').value = id;
   q('#tx-tipo').value = t.tipo;
-  q('#tx-val').value = t.val;
+  const currency = t.currency || 'BRL';
+  q('#tx-moeda').value = currency;
+  q('#tx-taxa').value = t.rate || 1;
+  q('#tx-taxa-wrap').style.display = currency !== 'BRL' ? 'block' : 'none';
+  q('#tx-val').value = currency !== 'BRL' ? (t.origVal || t.val) : t.val;
+  q('#tx-tags').value = (t.tags || []).join(' ');
   q('#tx-desc').value = t.desc;
   
   fillCatSelect(q('#tx-cat'), t.tipo);
@@ -884,7 +1089,9 @@ window.delDebt=function(id){
 // ── DINHEIRO GUARDADO ─────────────────────────────────────────────
 export function renderGuardado(){
   let endIso = null;
-  if (periodState.currentMode === 'monthly') {
+  if (periodState.currentMode === 'weekly') {
+    endIso = getActiveWeekRange().endIso;
+  } else if (periodState.currentMode === 'monthly') {
     endIso = new Date(periodState.currentYear, periodState.currentMonth + 1, 0).toISOString().split('T')[0];
   } else if (periodState.currentMode === 'yearly') {
     endIso = `${periodState.currentYear}-12-31`;
@@ -897,7 +1104,10 @@ export function renderGuardado(){
   if(!tb) return;
   const list = Array.isArray(S.savings) ? S.savings.filter(sv => {
     const d = new Date(sv.data + 'T00:00:00');
-    if (periodState.currentMode === 'monthly') {
+    if (periodState.currentMode === 'weekly') {
+      const range = getActiveWeekRange();
+      return sv.data >= range.startIso && sv.data <= range.endIso;
+    } else if (periodState.currentMode === 'monthly') {
       return d.getFullYear() === periodState.currentYear && d.getMonth() === periodState.currentMonth;
     } else if (periodState.currentMode === 'yearly') {
       return d.getFullYear() === periodState.currentYear;
@@ -1314,9 +1524,10 @@ export function renderInstallmentTracker() {
 }
 
 export function updateNotifications() {
-  const container = q('#notifications-container');
-  const badge = q('#notifications-badge');
-  if (!container) return;
+  const dropdownContainer = q('#notif-list');
+  const dropdownBadge = q('#notif-badge');
+  const pageContainer = q('#notif-page-list');
+  const pageCountLbl = q('#notif-page-count');
   
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -1348,7 +1559,7 @@ export function updateNotifications() {
     }
   });
   
-  // Exceder orçamentos (70% ou mais)
+  // Exceder orçamentos (80% ou mais)
   const spent = {};
   if (Array.isArray(S.transactions)) {
     S.transactions.forEach(t => {
@@ -1383,23 +1594,30 @@ export function updateNotifications() {
     });
   }
   
-  if (badge) {
-    badge.textContent = items.length;
-    badge.style.display = items.length > 0 ? 'inline-block' : 'none';
+  if (dropdownBadge) {
+    dropdownBadge.textContent = items.length;
+    dropdownBadge.style.display = items.length > 0 ? 'inline-block' : 'none';
   }
   
+  if (pageCountLbl) {
+    pageCountLbl.textContent = `${items.length} alerta${items.length === 1 ? '' : 's'}`;
+  }
+  
+  const emptyHtml = `
+    <div style="padding: 24px 16px; text-align: center; color: var(--tx2);">
+      <span style="font-size: 24px; display: block; margin-bottom: 8px;">🎉</span>
+      <div style="font-size: 13px; font-weight: 700;">Tudo sob controle!</div>
+      <p style="font-size: 11px; margin: 4px 0 0;">Nenhuma despesa pendente vencendo ou orçamento em alerta no momento.</p>
+    </div>
+  `;
+  
   if (items.length === 0) {
-    container.innerHTML = `
-      <div style="padding: 24px 16px; text-align: center; color: var(--tx2);">
-        <span style="font-size: 24px; display: block; margin-bottom: 8px;">🎉</span>
-        <div style="font-size: 13px; font-weight: 700;">Tudo sob controle!</div>
-        <p style="font-size: 11px; margin: 4px 0 0;">Nenhuma despesa pendente vencendo ou orçamento em alerta no momento.</p>
-      </div>
-    `;
+    if (dropdownContainer) dropdownContainer.innerHTML = emptyHtml;
+    if (pageContainer) pageContainer.innerHTML = emptyHtml;
     return;
   }
   
-  container.innerHTML = items.map(item => {
+  const listHtml = items.map(item => {
     let borderClr = 'var(--am)';
     if (item.type === 'overdue' || item.type === 'budget-over') borderClr = 'var(--rd)';
     
@@ -1410,6 +1628,13 @@ export function updateNotifications() {
       </div>
     `;
   }).join('');
+
+  if (dropdownContainer) dropdownContainer.innerHTML = listHtml;
+  if (pageContainer) pageContainer.innerHTML = listHtml;
+
+  if (window.checkUpcomingBillsNotifications) {
+    window.checkUpcomingBillsNotifications();
+  }
 }
 
 window.updateNotifications = updateNotifications;
@@ -1418,18 +1643,27 @@ export function updateTxLivePreview() {
   const previewEl = q('#tx-live-preview');
   if (!previewEl) return;
   
-  const val = parseFloat(q('#tx-val').value) || 0;
+  const currency = q('#tx-moeda')?.value || 'BRL';
+  const rate = currency !== 'BRL' ? (parseFloat(q('#tx-taxa')?.value) || 1) : 1;
+  const rawVal = parseFloat(q('#tx-val').value) || 0;
+  const val = +(rawVal * rate).toFixed(2); // value in BRL
+  
   const payId = q('#tx-conta').value;
   const tipo = q('#tx-tipo').value;
   const catId = q('#tx-cat').value;
   const status = q('#tx-status').value;
   
-  if (val <= 0 || !payId) {
+  if (rawVal <= 0 || !payId) {
     previewEl.style.display = 'none';
     return;
   }
   
   let messages = [];
+  
+  if (currency !== 'BRL') {
+    const curSymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '';
+    messages.push(`💱 <b>Conversão Cambial:</b> ${curSymbol} ${rawVal.toFixed(2)} (${currency}) convertidos à taxa de ${rate.toFixed(4)} = <b>${fmt(val)}</b>.`);
+  }
   
   // 1. Account / Card Balance impact
   const acc = S.accounts.find(a => a.id === payId);
@@ -1520,3 +1754,305 @@ export function updateTxLivePreview() {
 }
 
 window.updateTxLivePreview = updateTxLivePreview;
+export function renderCalendar() {
+  const calGrid = q('#calGrid');
+  const monthLbl = q('#calMonthLabel');
+  if (!calGrid || !monthLbl) return;
+
+  // Initialize checkbox value from localStorage
+  const cbSync = q('#cbGoogleCalendarSync');
+  if (cbSync) {
+    if (localStorage.getItem('financeos_gcal_sync') === null) {
+      localStorage.setItem('financeos_gcal_sync', 'false');
+    }
+    cbSync.checked = localStorage.getItem('financeos_gcal_sync') === 'true';
+    
+    // Add event listener once
+    if (!cbSync.dataset.listenerBound) {
+      cbSync.addEventListener('change', function() {
+        localStorage.setItem('financeos_gcal_sync', this.checked);
+        renderCalendar();
+      });
+      cbSync.dataset.listenerBound = 'true';
+    }
+  }
+
+  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const year = periodState.currentYear;
+  const month = periodState.currentMonth;
+
+  monthLbl.textContent = `${MESES[month]} de ${year}`;
+
+  calGrid.innerHTML = '';
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+  // Previous month trailing days
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const dayNum = prevMonthTotalDays - i;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell prev-next-month';
+    cell.innerHTML = `<span style="font-size:11px;font-weight:600">${dayNum}</span>`;
+    calGrid.appendChild(cell);
+  }
+
+  const todayD = new Date();
+  const todayStr = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, '0')}-${String(todayD.getDate()).padStart(2, '0')}`;
+
+  // Current month days
+  for (let d = 1; d <= totalDays; d++) {
+    const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayTxs = (S.transactions || []).filter(t => t.data === dayStr);
+    
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell current-month-day';
+    
+    if (dayStr === todayStr) {
+      cell.classList.add('today-cell');
+    }
+    
+    let indHtml = '';
+    if (dayTxs.length > 0) {
+      const showTxs = dayTxs.slice(0, 2);
+      const remainingCount = dayTxs.length - showTxs.length;
+      
+      const pills = showTxs.map(t => {
+        const color = t.tipo === 'Receita' ? 'var(--gr)' : 'var(--rd)';
+        const statusOpacity = t.status === 'Pendente' ? 'opacity:0.6' : 'font-weight:700';
+        return `<div style="font-size:8px;padding:1px 3px;border-radius:3px;background:${color}22;color:${color};text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:100%;${statusOpacity}">${t.desc}</div>`;
+      }).join('');
+      
+      const badge = remainingCount > 0 ? `<div style="font-size:8px;color:var(--tx2);text-align:right">+${remainingCount}</div>` : '';
+      indHtml = `<div style="display:flex;flex-direction:column;gap:2px;margin-top:4px;width:100%">${pills}${badge}</div>`;
+    }
+    
+    cell.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+        <span style="font-size:12px;font-weight:700">${d}</span>
+      </div>
+      ${indHtml}
+    `;
+    
+    cell.addEventListener('click', () => {
+      qa('#calGrid .cal-cell').forEach(el => el.classList.remove('selected-cell'));
+      cell.classList.add('selected-cell');
+      showDayDetails(dayStr, d, MESES[month], year, dayTxs);
+    });
+    
+    calGrid.appendChild(cell);
+  }
+
+  // Next month trailing days
+  const totalCells = firstDay + totalDays;
+  const nextMonthDays = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= nextMonthDays; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell prev-next-month';
+    cell.innerHTML = `<span style="font-size:11px;font-weight:600">${d}</span>`;
+    calGrid.appendChild(cell);
+  }
+
+  const detailCard = q('#calDayDetailCard');
+  if (detailCard) detailCard.style.display = 'none';
+}
+
+export function showDayDetails(dayIso, dayNum, monthName, year, txs) {
+  const detailCard = q('#calDayDetailCard');
+  const detailTitle = q('#calDetailTitle');
+  const dayList = q('#calDayList');
+  if (!detailCard || !detailTitle || !dayList) return;
+
+  detailTitle.textContent = `Lançamentos de ${dayNum} de ${monthName} de ${year}`;
+  dayList.innerHTML = '';
+  detailCard.style.display = 'block';
+
+  if (txs.length === 0) {
+    dayList.innerHTML = '<p class="empty" style="padding:10px 0;margin:0">Nenhum lançamento registrado para este dia.</p>';
+    return;
+  }
+
+  dayList.innerHTML = txs.map(t => {
+    const c = getCat(t.catId);
+    const pn = getPay(t.payId);
+    const sCls = t.status === 'Pago' || t.status === 'Recebido' ? 's-pago' : 's-pendente';
+    
+    const syncEnabled = q('#cbGoogleCalendarSync')?.checked;
+    let googleCalBtn = '';
+    if (syncEnabled) {
+      const dateClean = t.data.replace(/-/g, '');
+      const dObj = new Date(t.data + 'T12:00:00');
+      dObj.setDate(dObj.getDate() + 1);
+      const nextY = dObj.getFullYear();
+      const nextM = String(dObj.getMonth() + 1).padStart(2, '0');
+      const nextD = String(dObj.getDate()).padStart(2, '0');
+      const dateEndClean = `${nextY}${nextM}${nextD}`;
+      
+      const eventTitle = encodeURIComponent(`[FinanceOS] ${t.desc}`);
+      const eventDetails = encodeURIComponent(`Lançamento: ${t.tipo}\nValor: ${fmt(t.val)}\nCategoria: ${c.name}\nConta: ${pn}\nStatus: ${t.status}`);
+      const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${dateClean}/${dateEndClean}&details=${eventDetails}`;
+      
+      googleCalBtn = `<a href="${googleCalUrl}" target="_blank" class="bs sm" style="padding:5px 8px;font-size:11px;background:#4285f4;color:#ffffff;border-color:#4285f4;text-decoration:none;border-radius:6px;display:inline-flex;align-items:center;gap:4px" title="Adicionar à Google Agenda">📅 Agendar</a>`;
+    }
+
+    return `<div class="li" style="padding:10px 12px;border-radius:10px;background:var(--s2);display:flex;justify-content:space-between;align-items:center">
+      <div class="li-l" style="display:flex;align-items:center;gap:10px">
+        <span class="li-ico" style="font-size:18px">${c.icon}</span>
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--tx)">${t.desc}</div>
+          <div style="font-size:11px;color:var(--tx2)">${c.name} · ${pn}</div>
+        </div>
+      </div>
+      <div class="li-r" style="display:flex;align-items:center;gap:10px">
+        <span class="${t.tipo === 'Receita' ? 'amt-in' : 'amt-ex'}" style="font-weight:700;font-size:13px">${t.tipo === 'Receita' ? '+' : '−'} ${fmt(t.val)}</span>
+        <span class="status-pill ${sCls}" style="font-size:10px;padding:3px 8px;cursor:pointer" onclick="toggleTxStatus('${t.id}'); renderCalendar(); reloadCurrentDayDetails('${t.data}', ${dayNum}, '${monthName}', ${year});" title="Alternar status">${t.status}</span>
+        ${googleCalBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+window.reloadCurrentDayDetails = function(dayIso, dayNum, monthName, year) {
+  setTimeout(() => {
+    const dayTxs = (S.transactions || []).filter(t => t.data === dayIso);
+    showDayDetails(dayIso, dayNum, monthName, year, dayTxs);
+  }, 100);
+};
+
+window.renderCalendar = renderCalendar;
+
+export function renderPerfil() {
+  renderAchievements();
+  render52WeekChallenge();
+}
+
+export function renderAchievements() {
+  const container = q('#achievements-list');
+  const countEl = q('#achievements-count');
+  if (!container) return;
+
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth();
+  
+  let monthInc = 0;
+  let monthExp = 0;
+  if (Array.isArray(S.transactions)) {
+    S.transactions.forEach(t => {
+      const td = new Date(t.data + 'T00:00:00');
+      if (td.getFullYear() === curYear && td.getMonth() === curMonth) {
+        if (t.tipo === 'Receita') monthInc += t.val;
+        else monthExp += t.val;
+      }
+    });
+  }
+  
+  const savingRate = monthInc > 0 ? (monthInc - monthExp) / monthInc : 0;
+  const isPoupadorFiel = monthInc > 0 && savingRate >= 0.20;
+
+  let hasBudgets = Array.isArray(S.budgets) && S.budgets.length > 0;
+  let allBudgetsUnderControl = hasBudgets;
+  if (hasBudgets) {
+    const budgetSpent = {};
+    if (Array.isArray(S.transactions)) {
+      S.transactions.forEach(t => {
+        if (t.tipo === 'Despesa') {
+          const td = new Date(t.data + 'T00:00:00');
+          if (td.getFullYear() === curYear && td.getMonth() === curMonth) {
+            budgetSpent[t.cat] = (budgetSpent[t.cat] || 0) + t.val;
+          }
+        }
+      });
+    }
+    S.budgets.forEach(b => {
+      const spent = budgetSpent[b.catId] || 0;
+      if (spent > b.limit) {
+        allBudgetsUnderControl = false;
+      }
+    });
+  }
+
+  const isCidadaoGlobal = Array.isArray(S.transactions) && S.transactions.some(t => t.moeda && t.moeda !== 'BRL');
+  const isAgenteSecreto = localStorage.getItem('financeos_stealth_activated') === 'true' || localStorage.getItem('financeos_stealth') === 'true';
+  const hasVision = Array.isArray(S.goals) && S.goals.length >= 1;
+  const txCount = (S.transactions || []).length;
+
+  const badges = [
+    { id: 'disciplinado', icon: '🛡️', title: 'Disciplinado', desc: 'Registrou 5+ transações', unlocked: txCount >= 5 },
+    { id: 'poupador_fiel', icon: '💰', title: 'Poupador Fiel', desc: 'Taxa poupança >= 20% no mês', unlocked: isPoupadorFiel },
+    { id: 'mestre_controle', icon: '🎯', title: 'Mestre do Controle', desc: 'Orçamentos sob controle no mês', unlocked: allBudgetsUnderControl },
+    { id: 'cidadao_global', icon: '🌍', title: 'Cidadão Global', desc: 'Registrou transação multimoeda', unlocked: isCidadaoGlobal },
+    { id: 'agente_secreto', icon: '🕶️', title: 'Agente Secreto', desc: 'Usou o Modo Stealth', unlocked: isAgenteSecreto },
+    { id: 'visao_futuro', icon: '🚀', title: 'Visão de Futuro', desc: 'Criou 1+ metas de economia', unlocked: hasVision }
+  ];
+
+  const unlockedCount = badges.filter(b => b.unlocked).length;
+  if (countEl) {
+    countEl.textContent = `${unlockedCount}/${badges.length} Desbloqueados`;
+  }
+
+  container.innerHTML = badges.map(b => {
+    return `<div class="achievement-card ${b.unlocked ? 'unlocked' : 'locked'}" title="${b.unlocked ? 'Conquista desbloqueada!' : 'Bloqueada'}">
+      <div class="achievement-badge">${b.icon}</div>
+      <div class="achievement-title">${b.title}</div>
+      <div class="achievement-desc">${b.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+export function render52WeekChallenge() {
+  const selectMult = q('#challenge-multiplier');
+  const progressText = q('#challenge-progress-text');
+  const savedText = q('#challenge-saved-text');
+  const progressBar = q('#challenge-progress-bar');
+  const gridContainer = q('#challenge-weeks-grid');
+  
+  if (!gridContainer) return;
+  if (!S.challenge52) {
+    S.challenge52 = { multiplier: 1, checkedWeeks: [] };
+  }
+
+  const mult = S.challenge52.multiplier || 1;
+  if (selectMult) {
+    selectMult.value = mult;
+  }
+
+  const checkedCount = S.challenge52.checkedWeeks.length;
+  const progressPct = Math.round((checkedCount / 52) * 100);
+
+  if (progressText) {
+    progressText.textContent = `Progresso: ${checkedCount}/52 Semanas (${progressPct}%)`;
+  }
+
+  if (progressBar) {
+    progressBar.style.width = `${progressPct}%`;
+  }
+
+  let totalSaved = 0;
+  S.challenge52.checkedWeeks.forEach(wIdx => {
+    totalSaved += (wIdx + 1) * mult;
+  });
+
+  if (savedText) {
+    savedText.textContent = `Total Acumulado: ${fmt(totalSaved)}`;
+  }
+
+  let gridHtml = '';
+  for (let i = 0; i < 52; i++) {
+    const isChecked = S.challenge52.checkedWeeks.includes(i);
+    const val = (i + 1) * mult;
+    gridHtml += `<div class="challenge-week ${isChecked ? 'checked' : ''}" onclick="toggleWeek52Challenge(${i})">
+      <span class="challenge-week-num">Semana ${i + 1}</span>
+      <span class="challenge-week-val">${fmt(val)}</span>
+      ${isChecked 
+        ? '<span style="font-size:10px; color:var(--gr); font-weight:bold;">✓ Pago</span>' 
+        : `<button class="challenge-week-btn" onclick="event.stopPropagation(); depositChallengeWeek(${i}, ${val})">💰 Lançar</button>`
+      }
+    </div>`;
+  }
+  gridContainer.innerHTML = gridHtml;
+}
+
+window.renderPerfil = renderPerfil;
+window.renderAchievements = renderAchievements;
+window.render52WeekChallenge = render52WeekChallenge;

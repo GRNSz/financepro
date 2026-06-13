@@ -741,3 +741,438 @@ body.light #login-screen {
 .profile-name { font-size: 18px; font-weight: 750; color: var(--tx); }
 .profile-email { font-size: 13px; color: var(--tx2); }
 .profile-badge { display: inline-block; align-self: flex-start; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 8px; border-radius: 50px; background: var(--acg); color: var(--acl); margin-top: 4px; border: 1px solid rgba(99,102,241,0.15); }
+
+/* ── CALENDAR STYLES ────────────────────────── */
+.cal-cell {
+  min-height: 85px;
+  padding: 8px;
+  border: 1px solid var(--bd2);
+  border-radius: 12px;
+  color: var(--tx);
+  background: var(--s1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+.cal-cell:hover {
+  border-color: var(--ac);
+  transform: translateY(-1px);
+}
+.cal-cell.prev-next-month {
+  opacity: 0.25;
+  background: var(--s2);
+  cursor: default;
+  pointer-events: none;
+}
+.cal-cell.today-cell {
+  border: 2px solid var(--ac) !important;
+  background: var(--s2);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+.cal-cell.selected-cell {
+  border-color: var(--pu) !important;
+}
+
+@media(max-width:768px) {
+  .cal-cell {
+    min-height: 58px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+}
+@media(max-width:480px) {
+  .cal-cell {
+    min-height: 52px;
+    padding: 3px;
+  }
+}
+
+/* ── NATIVE APP MOBILE EXPERIENCES ────────── */
+@media(max-width:768px) {
+  /* Hide the date in header to free up title space */
+  #tbDate {
+    display: none !important;
+  }
+  
+  /* Dock the bottom navbar flush to the bottom */
+  #bnav {
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: calc(64px + env(safe-area-inset-bottom)) !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    box-shadow: 0 -4px 25px rgba(0,0,0,0.2) !important;
+  }
+  
+  /* Larger tap targets for mobile touch */
+  .bp, .bs, .bg, .brd {
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+    font-size: 13.5px !important;
+  }
+  .bp.sm, .bs.sm, .bg.sm, .brd.sm {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Metric cards padding optimization */
+  .kpi {
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+  }
+  
+  /* Period bar styling like a native sticky control */
+  #periodBar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+  }
+  #periodBar > div {
+    justify-content: space-between !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  /* Make period bar mode selector scrollable horizontally */
+  #periodBar > div:last-child {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  #periodBar > div:last-child::-webkit-scrollbar {
+    display: none !important;
+  }
+  #periodBar > div:last-child button {
+    flex-shrink: 0 !important;
+    padding: 6px 14px !important;
+  }
+  
+  #weekChanger {
+    border-left: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+}
+
+@media(max-width:480px) {
+  /* Stretch content to screen edges (less margin padding) */
+  .page {
+    padding: 12px 8px 88px 8px !important;
+  }
+  .card {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+  .li {
+    padding: 10px 10px !important;
+    border-radius: 10px !important;
+  }
+  
+  /* Smooth bottom sheet animation for modals on small phones */
+  .mbd {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal {
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    max-height: 88vh !important;
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom)) 16px !important;
+    animation: slideup-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+}
+
+@keyframes slideup-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ── TUTORIAL PAGE STYLES ──────────────────── */
+.tut-card {
+  margin-bottom: 12px;
+  padding: 16px 20px !important;
+  border-radius: 12px;
+}
+.tut-card summary {
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--tx);
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tut-card summary::-webkit-details-marker {
+  display: none;
+}
+.tut-card summary::after {
+  content: '▼';
+  font-size: 11px;
+  color: var(--tx2);
+  transition: transform 0.2s ease;
+}
+.tut-card[open] summary::after {
+  transform: rotate(180deg);
+  color: var(--ac);
+}
+.tut-content {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--bd2);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--tx2);
+}
+.tut-content strong {
+  color: var(--tx);
+}
+.tut-content p {
+  margin-bottom: 10px;
+}
+.tut-content ol, .tut-content ul {
+  margin-left: 20px;
+  margin-bottom: 10px;
+}
+.tut-content li {
+  margin-bottom: 6px;
+}
+.tut-tip {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--acg);
+  border-left: 3px solid var(--ac);
+  border-radius: 6px;
+  color: var(--acl);
+  font-size: 12px;
+}
+
+/* ── PREMIUM MULTIPLE THEMES ───────────────────────── */
+body.midnight {
+  --bg:#020617; --s1:#0b1329; --s2:#1c2541; --s3:#3a506b;
+  --bd:rgba(255,255,255,0.06); --bd2:rgba(255,255,255,0.12);
+  --tx:#f1f5f9; --tx2:#94a3b8; --tx3:#475569;
+  --ac:#06b6d4; --acl:#22d3ee; --acg:rgba(6,182,212,0.15);
+  --gr:#10b981; --rd:#ef4444; --am:#f59e0b; --pu:#3b82f6;
+  --tb-bg:rgba(2,6,23,0.85); --bnav-bg:rgba(11,19,41,0.92);
+}
+
+body.forest {
+  --bg:#060d0b; --s1:#0f1d19; --s2:#182d27; --s3:#26463c;
+  --bd:rgba(255,255,255,0.06); --bd2:rgba(255,255,255,0.11);
+  --tx:#f0fdf4; --tx2:#a7f3d0; --tx3:#34d399;
+  --ac:#10b981; --acl:#34d399; --acg:rgba(16,185,129,0.15);
+  --gr:#10b981; --rd:#f43f5e; --am:#f59e0b; --pu:#8b5cf6;
+  --tb-bg:rgba(6,13,11,0.85); --bnav-bg:rgba(15,29,25,0.92);
+}
+
+body.sakura {
+  --bg:#fff5f5; --s1:#ffffff; --s2:#ffe3e3; --s3:#ffd0d0;
+  --bd:rgba(244,63,94,0.08); --bd2:rgba(244,63,94,0.15);
+  --tx:#4c0519; --tx2:#be123c; --tx3:#fda4af;
+  --ac:#e11d48; --acl:#f43f5e; --acg:rgba(225,29,72,0.1);
+  --gr:#0d9488; --rd:#e11d48; --am:#d97706; --pu:#9333ea;
+  --tb-bg:rgba(255,245,245,0.85); --bnav-bg:rgba(255,255,255,0.92);
+}
+
+body.cyberpunk {
+  --bg:#05050a; --s1:#0a0b14; --s2:#121324; --s3:#1e1f3b;
+  --bd:rgba(255,0,128,0.15); --bd2:rgba(0,255,255,0.2);
+  --tx:#ffffff; --tx2:#9b9bbd; --tx3:#00ffff;
+  --ac:#ff007f; --acl:#ff55b8; --acg:rgba(255,0,127,0.18);
+  --gr:#39ff14; --rd:#ff003c; --am:#ffaa00; --pu:#bc13fe;
+  --tb-bg:rgba(5,5,10,0.85); --bnav-bg:rgba(10,11,20,0.92);
+}
+
+/* ── STEALTH MODE (PRIVACY BLUR) ────────────────── */
+body.stealth-active .kpi-val,
+body.stealth-active .amt-in,
+body.stealth-active .amt-ex,
+body.stealth-active .tx-val,
+body.stealth-active .acc-bal,
+body.stealth-active .debt-total,
+body.stealth-active .goal-val,
+body.stealth-active .sv-val,
+body.stealth-active .ch-box canvas,
+body.stealth-active .cal-cell div,
+body.stealth-active #calDayList .li-r span,
+body.stealth-active .inst-progress-bar-bg + span,
+body.stealth-active #dash-previsto b,
+body.stealth-active #dash-saude span,
+body.stealth-active #budgetList b,
+body.stealth-active #recList b,
+body.stealth-active #fire-meta-val,
+body.stealth-active #fire-res-renda,
+body.stealth-active #fire-res-tempo,
+body.stealth-active #fire-res-aportes,
+body.stealth-active #fire-res-juros,
+body.stealth-active #compound-meta-val,
+body.stealth-active #compound-res-tempo,
+body.stealth-active #compound-res-aportes,
+body.stealth-active #compound-res-juros,
+body.stealth-active #challenge-saved-text {
+  filter: blur(6px) !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* ── GAMIFICATION (ACHIEVEMENTS & 52-WEEK CHALLENGE) ── */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 16px;
+}
+.achievement-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 12px;
+  background: var(--s2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+.achievement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+  border-color: var(--bd2);
+}
+.achievement-badge {
+  font-size: 36px;
+  margin-bottom: 10px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--s3);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+.achievement-card.locked {
+  opacity: 0.5;
+}
+.achievement-card.locked .achievement-badge {
+  filter: grayscale(100%);
+  background: var(--s2);
+  border-color: var(--bd);
+}
+.achievement-card.unlocked .achievement-badge {
+  background: var(--acg);
+  border-color: var(--ac);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+  animation: badge-glow 2s infinite alternate;
+}
+.achievement-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tx);
+  margin-bottom: 4px;
+}
+.achievement-desc {
+  font-size: 10px;
+  color: var(--tx2);
+  line-height: 1.3;
+}
+
+@keyframes badge-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(99, 102, 241, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+  }
+}
+
+/* 52 Week Challenge Grid & Weeks */
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+.challenge-week {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  background: var(--s2);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+.challenge-week:hover {
+  background: var(--s3);
+  border-color: var(--bd2);
+  transform: scale(1.03);
+}
+.challenge-week.checked {
+  background: var(--acg);
+  border-color: var(--ac);
+}
+.challenge-week-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tx2);
+}
+.challenge-week.checked .challenge-week-num {
+  color: var(--acl);
+}
+.challenge-week-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tx);
+  margin: 4px 0;
+}
+.challenge-week.checked .challenge-week-val {
+  color: var(--tx);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+.challenge-week-btn {
+  font-size: 10px;
+  background: none;
+  border: none;
+  color: var(--acl);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.challenge-week-btn:hover {
+  background: var(--s3);
+  color: var(--tx);
+}
+.challenge-week.checked .challenge-week-btn {
+  display: none;
+}
