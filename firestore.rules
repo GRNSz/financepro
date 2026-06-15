@@ -12,5 +12,10 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // Ponte temporária de autenticação para o aplicativo desktop (Tauri)
+    match /login_sessions/{sessionId} {
+      allow read, create, delete: if true;
+    }
   }
 }

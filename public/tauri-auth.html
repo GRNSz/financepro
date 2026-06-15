@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinanceOS - Autenticação Desktop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f0c1b 0%, #15102a 50%, #06020f 100%);
+      --card-bg: rgba(22, 17, 43, 0.65);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f1f6;
+      --text-muted: #9c97b3;
+      --accent: #6c5ce7;
+      --accent-hover: #5b4cd4;
+      --success: #00b894;
+      --error: #ff7675;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      padding: 20px;
+      z-index: 10;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent) 0%, #a29bfe 100%);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 8px 16px rgba(108, 92, 231, 0.3);
+    }
+
+    .logo-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+
+    .logo-text {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #d8d3ec 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: var(--text-main);
+    }
+
+    p.description {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .btn-google {
+      width: 100%;
+      padding: 14px 24px;
+      background: #ffffff;
+      color: #1f1f1f;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    .btn-google:hover {
+      background: #f1f1f1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-google:active {
+      transform: translateY(0);
+    }
+
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* States */
+    .state {
+      display: none;
+    }
+
+    .state.active {
+      display: block;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    /* Success State */
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(0, 184, 148, 0.15);
+      border: 1px solid rgba(0, 184, 148, 0.3);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 24px auto;
+    }
+
+    .success-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: var(--success);
+    }
+
+    /* Error State */
+    .error-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 118, 117, 0.15);
+      border: 1px solid rgba(255, 118, 117, 0.3);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 24px auto;
+    }
+
+    .error-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: var(--error);
+    }
+
+    /* Loading State */
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(108, 92, 231, 0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+      margin: 0 auto 24px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .bg-circle {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(108, 92, 231, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+      filter: blur(30px);
+      z-index: 1;
+    }
+
+    .bg-circle-1 {
+      top: -100px;
+      left: -100px;
+    }
+
+    .bg-circle-2 {
+      bottom: -100px;
+      right: -100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-circle bg-circle-1"></div>
+  <div class="bg-circle bg-circle-2"></div>
+
+  <div class="container">
+    <div class="card">
+      <div class="logo-container">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+          </svg>
+        </div>
+        <div class="logo-text">FinanceOS</div>
+      </div>
+
+      <!-- STATE 1: Ready to Login -->
+      <div id="state-ready" class="state active">
+        <h2>Autenticação Desktop</h2>
+        <p class="description">Estamos conectando seu aplicativo FinanceOS ao Google. Clique no botão abaixo para prosseguir com o login seguro.</p>
+        <button id="btn-login" class="btn-google">
+          <svg class="google-icon" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+          </svg>
+          Entrar com o Google
+        </button>
+      </div>
+
+      <!-- STATE 2: Loading/Auth Processing -->
+      <div id="state-loading" class="state">
+        <div class="spinner"></div>
+        <h2>Autenticando...</h2>
+        <p id="loading-msg" class="description">Por favor, complete a autenticação na janela do Google que foi aberta.</p>
+      </div>
+
+      <!-- STATE 3: Success -->
+      <div id="state-success" class="state">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+        </div>
+        <h2>Login Concluído!</h2>
+        <p class="description" style="margin-bottom: 0;">Sua conta foi vinculada com sucesso. Você já pode fechar esta janela e voltar para o aplicativo FinanceOS.</p>
+      </div>
+
+      <!-- STATE 4: Error -->
+      <div id="state-error" class="state">
+        <div class="error-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </div>
+        <h2>Falha no Login</h2>
+        <p id="error-desc" class="description">Não foi possível concluir o login com o Google.</p>
+        <button id="btn-retry" class="btn-google" style="background: var(--accent); color: white; margin-top: 10px;">
+          Tentar Novamente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuração Firebase do app (igual ao .env)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBKuWDzIhffynEnrj443tgJCov0VN7xGwY",
+      authDomain: "financeos-d033a.firebaseapp.com",
+      projectId: "financeos-d033a",
+      storageBucket: "financeos-d033a.firebasestorage.app",
+      messagingSenderId: "201649930597",
+      appId: "1:201649930597:web:44a753aff082d9f773a18c",
+      measurementId: "G-37JZRYZ210"
+    };
+
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Obter parâmetros da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('sessionId');
+
+    const stateReady = document.getElementById('state-ready');
+    const stateLoading = document.getElementById('state-loading');
+    const stateSuccess = document.getElementById('state-success');
+    const stateError = document.getElementById('state-error');
+    const errorDesc = document.getElementById('error-desc');
+    const loadingMsg = document.getElementById('loading-msg');
+
+    function showState(state) {
+      stateReady.classList.remove('active');
+      stateLoading.classList.remove('active');
+      stateSuccess.classList.remove('active');
+      stateError.classList.remove('active');
+
+      if (state === 'ready') stateReady.classList.add('active');
+      if (state === 'loading') stateLoading.classList.add('active');
+      if (state === 'success') stateSuccess.classList.add('active');
+      if (state === 'error') stateError.classList.add('active');
+    }
+
+    if (!sessionId) {
+      errorDesc.innerText = 'Sessão inválida ou ausente. Por favor, feche esta janela e clique no botão de login do Google dentro do aplicativo.';
+      showState('error');
+      document.getElementById('btn-retry').style.display = 'none';
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    document.getElementById('btn-login').addEventListener('click', () => {
+      startGoogleLogin();
+    });
+
+    document.getElementById('btn-retry').addEventListener('click', () => {
+      showState('ready');
+    });
+
+    function startGoogleLogin() {
+      showState('loading');
+      loadingMsg.innerText = 'Por favor, complete a autenticação na janela do Google.';
+      
+      auth.signInWithPopup(provider)
+        .then(result => {
+          if (result && result.credential) {
+            loadingMsg.innerText = 'Conectando ao aplicativo FinanceOS...';
+            
+            // Grava os tokens de credencial do Google para o Firestore
+            db.collection('login_sessions').doc(sessionId).set({
+              idToken: result.credential.idToken || '',
+              accessToken: result.credential.accessToken || '',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+              showState('success');
+            })
+            .catch(err => {
+              console.error(err);
+              errorDesc.innerText = 'Erro ao enviar credenciais para o app: ' + err.message;
+              showState('error');
+            });
+          } else {
+            errorDesc.innerText = 'Não foi possível obter credenciais do Google.';
+            showState('error');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          errorDesc.innerText = err.message || 'Erro durante o processo de login.';
+          showState('error');
+        });
+    }
+
+    // Auto-inicia login para maior fluidez
+    if (sessionId) {
+      setTimeout(startGoogleLogin, 500);
+    }
+  </script>
+</body>
+</html>

@@ -204,16 +204,107 @@ export function loginWithGoogle() {
     const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
     const provider = new window.firebase.auth.GoogleAuthProvider();
 
-     if (isTauri) {
-      console.log('Running in Tauri. Using signInWithRedirect.');
-      localStorage.setItem('firebase_pending_redirect', 'true');
-      auth.signInWithRedirect(provider)
-        .catch(err => {
-          console.error('Google Redirect Sign-in failed:', err);
-          localStorage.removeItem('firebase_pending_redirect');
+    if (isTauri) {
+      console.log('Running in Tauri. Starting external browser Google Sign-in flow...');
+      window.addDevLog?.('Running in Tauri. Starting external browser Google Sign-in...', 'info');
+      window.showGlobalLoader?.("Aguardando login no seu navegador de internet...");
+
+      // Gerar um ID de sessão único e randômico
+      const sessionId = 'tauri_login_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      // Definir a URL ponte. Em desenvolvimento usa localhost:5173, em produção usa o domínio principal.
+      const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const baseUrl = isDev ? 'http://localhost:5173' : 'https://financeos-d033a.firebaseapp.com';
+      const redirectUrl = `${baseUrl}/tauri-auth.html?sessionId=${sessionId}`;
+
+      window.addDevLog?.(`Session ID: ${sessionId}. Opening URL: ${redirectUrl}`, 'info');
+
+      // Escutar credenciais na sessão do Firestore
+      const sessionRef = db.collection('login_sessions').doc(sessionId);
+      const unsubscribeSession = sessionRef.onSnapshot(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data && data.idToken) {
+            window.addDevLog?.('Google credential token received from Firestore bridge!', 'success');
+            window.showGlobalLoader?.("Autenticando sessão no aplicativo...");
+
+            // Cancela inscrição
+            unsubscribeSession();
+            
+            const cBtn = document.getElementById('loader-cancel-btn');
+            if (cBtn) cBtn.remove();
+
+            // Reconstrói a credencial Google
+            const credential = window.firebase.auth.GoogleAuthProvider.credential(data.idToken, data.accessToken || null);
+            
+            // Loga no Firebase do aplicativo
+            auth.signInWithCredential(credential)
+              .then(result => {
+                window.addDevLog?.(`Successfully authenticated via bridge: ${result.user.email}`, 'success');
+                sessionRef.delete().catch(err => console.error('Error deleting session document:', err));
+              })
+              .catch(err => {
+                window.addDevLog?.(`Failed to sign in with bridge credential: ${err.message}`, 'error');
+                console.error(err);
+                alert('Erro ao concluir o login: ' + err.message);
+              })
+              .finally(() => {
+                window.hideGlobalLoader?.();
+              });
+          }
+        }
+      }, err => {
+        window.addDevLog?.(`Firestore session listener error: ${err.message}`, 'error');
+        console.error(err);
+      });
+
+      // Adicionar botão Cancelar ao loader
+      const loaderContainer = document.querySelector('#global-loader .loader-container');
+      let cancelBtn = document.getElementById('loader-cancel-btn');
+      if (loaderContainer && !cancelBtn) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.id = 'loader-cancel-btn';
+        cancelBtn.innerText = 'Cancelar';
+        cancelBtn.style.background = 'transparent';
+        cancelBtn.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+        cancelBtn.style.color = '#ff7675';
+        cancelBtn.style.padding = '6px 16px';
+        cancelBtn.style.borderRadius = '8px';
+        cancelBtn.style.marginTop = '16px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.style.fontSize = '13px';
+        cancelBtn.style.transition = 'all 0.2s';
+        cancelBtn.addEventListener('click', () => {
+          unsubscribeSession();
           window.hideGlobalLoader?.();
-          alert('Falha na autenticação do Google por redirecionamento: ' + err.message);
+          cancelBtn.remove();
+          window.addDevLog?.('Bridge login cancelled by user.', 'info');
         });
+        loaderContainer.appendChild(cancelBtn);
+      }
+
+      // Timeout de segurança de 3 minutos
+      const timeoutId = setTimeout(() => {
+        unsubscribeSession();
+        window.hideGlobalLoader?.();
+        const cBtn = document.getElementById('loader-cancel-btn');
+        if (cBtn) cBtn.remove();
+        window.addDevLog?.('Bridge login timed out after 3 minutes.', 'warn');
+      }, 180000);
+
+      // Invocar o comando do Rust para abrir o browser padrão
+      if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+        window.__TAURI__.core.invoke('open_external_url', { url: redirectUrl })
+          .catch(err => {
+            window.addDevLog?.(`Rust open_external_url failed: ${err}`, 'error');
+            console.error('Failed to open external url via Rust command:', err);
+            window.open(redirectUrl, '_blank');
+          });
+      } else {
+        window.addDevLog?.('window.__TAURI__ or invoke function not found. Using window.open fallback.', 'warn');
+        window.open(redirectUrl, '_blank');
+      }
+
       return;
     }
 
