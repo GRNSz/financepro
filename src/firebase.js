@@ -80,24 +80,33 @@ export function initFirebase() {
   }
 
   try {
+    window.addDevLog?.('Initializing Firebase...', 'info');
     window.firebase.initializeApp(firebaseConfig);
     db = window.firebase.firestore();
     auth = window.firebase.auth();
     console.log('Firebase initialized successfully!');
+    window.addDevLog?.('Firebase initialized successfully!', 'success');
     
     const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
     const hasPendingRedirect = localStorage.getItem('firebase_pending_redirect') === 'true';
 
+    window.addDevLog?.(`Environment check: isTauri=${isTauri}, hasPendingRedirect=${hasPendingRedirect}`, 'info');
+
     if (isTauri && hasPendingRedirect) {
+      window.addDevLog?.('Tauri environment & pending redirect detected. Calling getRedirectResult...', 'info');
       window.showGlobalLoader?.("Concluindo login...");
       auth.getRedirectResult()
         .then(result => {
           if (result && result.user) {
+            window.addDevLog?.(`Google redirect authenticated successfully: ${result.user.email} (${result.user.uid})`, 'success');
             console.log('Successfully authenticated via Google redirect inside Tauri:', result.user);
+          } else {
+            window.addDevLog?.('getRedirectResult resolved but returned null (no redirect user credential found).', 'warn');
           }
           localStorage.removeItem('firebase_pending_redirect');
         })
         .catch(err => {
+          window.addDevLog?.(`getRedirectResult error: ${err.message}`, 'error');
           console.error('Failed to get redirect result:', err);
           localStorage.removeItem('firebase_pending_redirect');
           window.hideGlobalLoader?.();
@@ -110,6 +119,7 @@ export function initFirebase() {
     
     auth.onAuthStateChanged(user => {
       if (user) {
+        window.addDevLog?.(`onAuthStateChanged: User logged in: ${user.email} (${user.uid})`, 'info');
         currentUser = {
           uid: user.uid,
           email: user.email || 'sem-email@financeos.app',
@@ -126,6 +136,7 @@ export function initFirebase() {
         syncWithFirestore(user.uid);
         authCallbacks.forEach(cb => cb(currentUser));
       } else {
+        window.addDevLog?.('onAuthStateChanged: No user logged in (user is null)', 'info');
         currentUser = null;
         if (!guestUser) {
           const loginScreen = q('#login-screen');
@@ -136,6 +147,7 @@ export function initFirebase() {
     });
     return true;
   } catch (e) {
+    window.addDevLog?.(`Firebase init crash: ${e.message}`, 'error');
     console.error('Failed to initialize Firebase:', e);
     db = null;
     auth = null;
@@ -363,29 +375,48 @@ export function signOutUser() {
 }
 
 export function syncWithFirestore(uid) {
-  if (!db) return;
+  if (!db) {
+    window.addDevLog?.('syncWithFirestore called but db is null.', 'error');
+    return;
+  }
+  window.addDevLog?.(`syncWithFirestore: Starting sync for uid=${uid}`, 'info');
   window.showGlobalLoader?.("Sincronizando dados com a Nuvem...");
   const docRef = db.collection('users').doc(uid);
   firebaseUnsub = docRef.onSnapshot(doc => {
+    window.addDevLog?.(`Firestore onSnapshot event triggered. Doc exists: ${doc.exists}`, 'info');
     window.hideGlobalLoader?.();
     if (doc.exists) {
       const remoteData = doc.data();
       console.log('Data loaded from Firestore:', remoteData);
-      setS(remoteData);
-      syncCallbacks.forEach(cb => cb());
+      window.addDevLog?.(`Data loaded from Firestore successfully. accounts=${remoteData.accounts?.length || 0}, transactions=${remoteData.transactions?.length || 0}`, 'success');
+      try {
+        setS(remoteData);
+        window.addDevLog?.('Local state updated from Firestore successfully.', 'success');
+      } catch (err) {
+        window.addDevLog?.(`Failed to update local state (setS failed): ${err.message}`, 'error');
+      }
+      syncCallbacks.forEach(cb => {
+        try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+      });
     } else {
       console.log('No data found in Firestore. Creating document with current local state.');
+      window.addDevLog?.('No document found in Firestore. Uploading current local state to cloud...', 'warn');
       docRef.set(S)
         .then(() => {
+          window.addDevLog?.('Firestore document created successfully with local state!', 'success');
           console.log('Firestore document created successfully with local state!');
-          syncCallbacks.forEach(cb => cb());
+          syncCallbacks.forEach(cb => {
+            try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+          });
         })
         .catch(err => {
+          window.addDevLog?.(`Error creating Firestore document: ${err.message}`, 'error');
           console.error('Error creating firestore doc:', err);
         });
     }
   }, err => {
     window.hideGlobalLoader?.();
+    window.addDevLog?.(`Firestore subscription error (onSnapshot failed): ${err.message}`, 'error');
     console.error('Firestore subscription error:', err);
   });
 }
