@@ -10,7 +10,7 @@ export function getAIApiKey() {
   const envKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (envKey && envKey !== '__' + 'VITE_GEMINI_API_KEY__' && envKey.trim() !== '') return envKey;
   
-  return 'AIzaSyDcg7b9EQB4cvsUQx5fnR_CwSeMUr-RGv8';
+  return '';
 }
 
 export function scrollChatToBottom() {
