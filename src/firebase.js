@@ -84,15 +84,6 @@ export function initFirebase() {
     db = window.firebase.firestore();
     auth = window.firebase.auth();
     console.log('Firebase initialized successfully!');
-
-    // Explicitly enforce local persistence (localStorage/IndexedDB)
-    auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL)
-      .then(() => {
-        console.log('Firebase Auth persistence set to LOCAL.');
-      })
-      .catch(err => {
-        console.error('Failed to set Firebase Auth persistence:', err);
-      });
     
     const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
     const hasPendingRedirect = localStorage.getItem('firebase_pending_redirect') === 'true';
