@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "201649930597",
+    "firebase_url": "https://financeos-d033a-default-rtdb.firebaseio.com",
+    "project_id": "financeos-d033a",
+    "storage_bucket": "financeos-d033a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:201649930597:android:df6b0f0caf64062673a18c",
+        "android_client_info": {
+          "package_name": "com.financeos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "201649930597-hufqhmo70rcj6ml6u4urhve7oko1imaf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkK1886A160UUjOVTeaxkY03ZRfxaklT0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "201649930597-hufqhmo70rcj6ml6u4urhve7oko1imaf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

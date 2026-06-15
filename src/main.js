@@ -29,7 +29,8 @@ import {
   sendPasswordReset,
   updateUserDisplayName,
   updateUserPassword,
-  db
+  db,
+  deleteAccountAndData
 } from './firebase.js';
 
 import { 
@@ -80,13 +81,22 @@ import {
 registerSyncCallback(() => {
   processRecurringTransactions();
   updateUI();
+  if (window.updateSyncStatusDot) window.updateSyncStatusDot();
 });
 
 registerAuthCallback((user) => {
+  if (window.updateSyncStatusDot) window.updateSyncStatusDot();
   if (user) {
     processRecurringTransactions();
     updateUI();
+    
+    // Exibe automaticamente o paywall se o plano for grátis
+    const plan = S.subscription?.plan || 'free';
+    if (plan === 'free') {
+      openM('paywall-overlay');
+    }
   }
+  window.hideGlobalLoader?.();
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -491,6 +501,12 @@ document.addEventListener('DOMContentLoaded', function() {
         acc.rent = type === 'Investimentos' ? rent : '';
       }
     } else {
+      const plan = S.subscription?.plan || 'free';
+      if (plan === 'free' && S.accounts.length >= 1) {
+        alert('O plano Grátis é limitado a 1 conta bancária. Escolha o plano Plus ou Pro para adicionar contas ilimitadas!');
+        openM('paywall-overlay');
+        return;
+      }
       S.accounts.push({
         id: uid(),
         name,
@@ -561,6 +577,16 @@ document.addEventListener('DOMContentLoaded', function() {
         g.dl = dl;
       }
     } else {
+      const plan = S.subscription?.plan || 'free';
+      if (plan === 'free' && S.goals.length >= 1) {
+        alert('O plano Grátis é limitado a 1 meta de economia. Escolha o plano Plus ou Pro para adicionar mais metas!');
+        openM('paywall-overlay');
+        return;
+      } else if (plan === 'plus' && S.goals.length >= 5) {
+        alert('O plano Plus é limitado a 5 metas de economia. Faça upgrade para o Pro para metas ilimitadas!');
+        openM('paywall-overlay');
+        return;
+      }
       S.goals.push({ id: uid(), name, tgt, cur: 0, dl });
     }
     
@@ -1207,11 +1233,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 24. Export PDF trigger
   q('#btnExportPDF')?.addEventListener('click', () => {
-    if (periodState.currentMode === 'weekly') {
-      exportWeeklyPDF(periodState.currentWeek);
-    } else {
-      exportMonthlyPDF();
+    const plan = S.subscription?.plan || 'free';
+    if (plan === 'free') {
+      alert('A exportação de relatórios PDF está disponível apenas nos planos Plus e Pro. Faça upgrade para desbloquear!');
+      openM('paywall-overlay');
+      return;
     }
+    window.showGlobalLoader?.("Gerando PDF...");
+    setTimeout(() => {
+      try {
+        if (periodState.currentMode === 'weekly') {
+          exportWeeklyPDF(periodState.currentWeek);
+        } else {
+          exportMonthlyPDF();
+        }
+      } catch (err) {
+        console.error('PDF export failed:', err);
+        alert('Falha ao gerar PDF: ' + err.message);
+      } finally {
+        window.hideGlobalLoader?.();
+      }
+    }, 100);
   });
 
   // 25. AI Assistant Panels and bubble triggers
@@ -1301,28 +1343,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 28. Auth forms listeners
   q('#btnLoginGoogle')?.addEventListener('click', () => {
+    window.showGlobalLoader?.('Conectando ao Google...');
     loginWithGoogle();
   });
 
   q('#btnGuestLogin')?.addEventListener('click', () => {
+    window.showGlobalLoader?.('Iniciando modo visitante...');
     loginAsGuest(updateUI);
   });
 
-  q('#btnSignUpEmail')?.addEventListener('click', () => {
-    const email = q('#login-email').value.trim();
-    const password = q('#login-password').value;
-    if (!email || !password) {
-      alert('Por favor, preencha o e-mail e a senha.');
-      return;
+  let authMode = 'login';
+  const btnSubmitAuth = q('#btnSubmitAuth');
+  const btnToggleAuthMode = q('#btnToggleAuthMode');
+  const btnForgotPassword = q('#btnForgotPassword');
+
+  btnToggleAuthMode?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (authMode === 'login') {
+      authMode = 'signup';
+      if (btnSubmitAuth) btnSubmitAuth.textContent = 'Criar Conta';
+      btnToggleAuthMode.textContent = 'Já tenho uma conta (Entrar)';
+      if (btnForgotPassword) btnForgotPassword.style.display = 'none';
+    } else {
+      authMode = 'login';
+      if (btnSubmitAuth) btnSubmitAuth.textContent = 'Entrar';
+      btnToggleAuthMode.textContent = 'Criar uma nova conta';
+      if (btnForgotPassword) btnForgotPassword.style.display = 'inline';
     }
-    loginWithEmail(email, password, true);
   });
 
   q('#f-login')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = q('#login-email').value.trim();
     const password = q('#login-password').value;
-    loginWithEmail(email, password, false);
+    if (!email || !password) {
+      alert('Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+    window.showGlobalLoader?.(authMode === 'signup' ? 'Criando sua conta...' : 'Autenticando...');
+    loginWithEmail(email, password, authMode === 'signup');
   });
 
   q('#btnSignOut')?.addEventListener('click', () => {
@@ -1428,40 +1487,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  q('#btnSyncCloudHeader')?.addEventListener('click', () => {
-    if (!db || !currentUser || currentUser.isAnonymous) {
-      alert('Sincronização disponível apenas para usuários autenticados na nuvem.');
-      return;
-    }
-    const btn = q('#btnSyncCloudHeader');
-    if (btn) {
-      btn.style.animation = 'spin 1s linear infinite';
-      btn.disabled = true;
-    }
-    
-    db.collection('users').doc(currentUser.uid).get()
-      .then(doc => {
-        if (doc.exists) {
-          const remoteData = doc.data();
-          setS(remoteData);
-          processRecurringTransactions();
-          updateUI();
-          console.log('Real-time sync triggered manually via header button.');
-        } else {
-          console.log('No remote data found during manual sync.');
-        }
-      })
-      .catch(err => {
-        console.error('Manual sync failed:', err);
-        alert('Erro ao sincronizar: ' + err.message);
-      })
-      .finally(() => {
-        if (btn) {
-          btn.style.animation = '';
-          btn.disabled = false;
-        }
-      });
-  });
+
 
   // 29. Firebase boot sequence
   loadFirebaseConfig();
@@ -1542,6 +1568,369 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Trigger browser notifications check on a short delay
   setTimeout(checkUpcomingBillsNotifications, 2000);
+
+  // ── PIN Lock Lógica de Segurança ──
+  const chkPinEnabled = q('#chkPinEnabled');
+  const btnConfigurePin = q('#btnConfigurePin');
+  const modalConfigPin = q('#modal-config-pin');
+  const fConfigPin = q('#f-config-pin');
+  const pinLockScreen = q('#pin-lock-screen');
+  const pinCurrent = q('#pin-current');
+  const pinInput1 = q('#pin-input1');
+  const pinInput2 = q('#pin-input2');
+  const btnDisablePin = q('#btnDisablePin');
+
+  function updatePinCheckbox() {
+    if (chkPinEnabled) {
+      chkPinEnabled.checked = localStorage.getItem('financeos_pin_enabled') === 'true';
+    }
+  }
+  updatePinCheckbox();
+
+  // Configuração do PIN Modal
+  btnConfigurePin?.addEventListener('click', () => {
+    const hasPin = !!localStorage.getItem('financeos_pin_code');
+    const pinConfirmSection = q('#pin-confirm-section');
+    const pinCurrentInput = q('#pin-current');
+    
+    if (hasPin) {
+      if (pinConfirmSection) pinConfirmSection.style.display = 'block';
+      if (pinCurrentInput) pinCurrentInput.required = true;
+      if (btnDisablePin) btnDisablePin.style.display = 'inline-block';
+    } else {
+      if (pinConfirmSection) pinConfirmSection.style.display = 'none';
+      if (pinCurrentInput) {
+        pinCurrentInput.required = false;
+        pinCurrentInput.value = '';
+      }
+      if (btnDisablePin) btnDisablePin.style.display = 'none';
+    }
+    
+    if (pinInput1) { pinInput1.value = ''; pinInput1.required = true; }
+    if (pinInput2) { pinInput2.value = ''; pinInput2.required = true; }
+    openM('modal-config-pin');
+  });
+
+  // Desativar PIN
+  btnDisablePin?.addEventListener('click', () => {
+    const storedPin = localStorage.getItem('financeos_pin_code');
+    const currentVal = pinCurrent ? pinCurrent.value : '';
+    
+    if (currentVal !== storedPin) {
+      alert('PIN atual incorreto!');
+      return;
+    }
+    
+    localStorage.removeItem('financeos_pin_code');
+    localStorage.setItem('financeos_pin_enabled', 'false');
+    updatePinCheckbox();
+    closeM('modal-config-pin');
+    alert('Bloqueio por PIN desativado com sucesso.');
+  });
+
+  // Salvar PIN
+  fConfigPin?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const storedPin = localStorage.getItem('financeos_pin_code');
+    const currentVal = pinCurrent ? pinCurrent.value : '';
+    const newPin1 = pinInput1 ? pinInput1.value : '';
+    const newPin2 = pinInput2 ? pinInput2.value : '';
+
+    if (storedPin && currentVal !== storedPin) {
+      alert('PIN atual incorreto!');
+      return;
+    }
+
+    if (newPin1.length !== 4 || !/^\d{4}$/.test(newPin1)) {
+      alert('O PIN deve conter exatamente 4 números.');
+      return;
+    }
+
+    if (newPin1 !== newPin2) {
+      alert('A confirmação do PIN não corresponde.');
+      return;
+    }
+
+    localStorage.setItem('financeos_pin_code', newPin1);
+    localStorage.setItem('financeos_pin_enabled', 'true');
+    updatePinCheckbox();
+    closeM('modal-config-pin');
+    alert('PIN de segurança configurado com sucesso!');
+  });
+
+  // Lógica do Teclado de Bloqueio por PIN
+  let typedPin = [];
+  const pinDots = qa('#pin-dots-container .pin-dot');
+
+  function updatePinDots() {
+    pinDots.forEach((dot, index) => {
+      if (index < typedPin.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+  }
+
+  function handlePinInput(val) {
+    if (typedPin.length >= 4) return;
+    typedPin.push(val);
+    updatePinDots();
+
+    if (typedPin.length === 4) {
+      const enteredPin = typedPin.join('');
+      const storedPin = localStorage.getItem('financeos_pin_code');
+
+      if (enteredPin === storedPin) {
+        // Desbloquear
+        typedPin = [];
+        updatePinDots();
+        if (pinLockScreen) pinLockScreen.style.display = 'none';
+        sessionStorage.setItem('financeos_last_unlock', Date.now().toString());
+      } else {
+        // Erro
+        const dotsContainer = q('#pin-dots-container');
+        if (dotsContainer) {
+          dotsContainer.classList.add('shake-element');
+          pinDots.forEach(d => d.classList.add('error'));
+        }
+        setTimeout(() => {
+          typedPin = [];
+          updatePinDots();
+          if (dotsContainer) {
+            dotsContainer.classList.remove('shake-element');
+            pinDots.forEach(d => d.classList.remove('error'));
+          }
+        }, 600);
+      }
+    }
+  }
+
+  qa('.pin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handlePinInput(btn.dataset.val);
+    });
+  });
+
+  q('#btnPinClear')?.addEventListener('click', () => {
+    typedPin = [];
+    updatePinDots();
+  });
+
+  q('#btnPinBackspace')?.addEventListener('click', () => {
+    typedPin.pop();
+    updatePinDots();
+  });
+
+  // Bloquear se o PIN estiver ativo no carregamento inicial
+  const pinEnabled = localStorage.getItem('financeos_pin_enabled') === 'true';
+  const storedPin = localStorage.getItem('financeos_pin_code');
+  const lastUnlock = sessionStorage.getItem('financeos_last_unlock');
+  const unlockedRecently = lastUnlock && (Date.now() - parseInt(lastUnlock) < 10000);
+
+  if (pinEnabled && storedPin && !unlockedRecently) {
+    if (pinLockScreen) pinLockScreen.style.display = 'flex';
+  }
+
+  // Monitorar retorno do segundo plano e inatividade para auto-lock
+  function checkAutoLock() {
+    const pinEnabled = localStorage.getItem('financeos_pin_enabled') === 'true';
+    const storedPin = localStorage.getItem('financeos_pin_code');
+    if (!pinEnabled || !storedPin) return;
+
+    const bgTimeStr = sessionStorage.getItem('financeos_background_time');
+    if (bgTimeStr) {
+      const bgTime = parseInt(bgTimeStr);
+      const now = Date.now();
+      const diffMinutes = (now - bgTime) / 60000;
+      // Bloquear se ficou em background por mais de 2 minutos
+      if (diffMinutes >= 2) {
+        typedPin = [];
+        updatePinDots();
+        if (pinLockScreen) pinLockScreen.style.display = 'flex';
+      }
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      sessionStorage.setItem('financeos_background_time', Date.now().toString());
+    } else if (document.visibilityState === 'visible') {
+      checkAutoLock();
+    }
+  });
+
+  // Indicador de Sincronização Status Dot
+  function updateSyncStatusDot() {
+    const dot = q('#sync-status-indicator');
+    if (!dot) return;
+    
+    if (currentUser && !currentUser.isAnonymous) {
+      dot.style.backgroundColor = 'var(--gr)'; // Verde
+      dot.title = `Conectado e Sincronizado: ${currentUser.email}`;
+    } else if (currentUser && currentUser.isAnonymous) {
+      dot.style.backgroundColor = 'var(--am)'; // Amarelo
+      dot.title = 'Modo Convidado / Local (Sem sincronização na nuvem)';
+    } else {
+      dot.style.backgroundColor = 'var(--tx2)'; // Cinza/Desconectado
+      dot.title = 'Configuração de nuvem pendente ou local';
+    }
+  }
+  window.updateSyncStatusDot = updateSyncStatusDot;
+  updateSyncStatusDot();
+
+  // ── Lógica da Zona de Risco (Exclusão de Conta) ──
+  const btnDeleteAccount = q('#btnDeleteAccount');
+  const fConfirmDelete = q('#f-confirm-delete');
+  const deleteConfirmWord = q('#delete-confirm-word');
+
+  btnDeleteAccount?.addEventListener('click', () => {
+    openM('modal-confirm-delete');
+  });
+
+  fConfirmDelete?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const word = deleteConfirmWord ? deleteConfirmWord.value.trim() : '';
+    if (word !== 'APAGAR') {
+      alert('Por favor, digite "APAGAR" exatamente como solicitado para confirmar.');
+      return;
+    }
+
+    const submitBtn = fConfirmDelete.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.textContent : 'Excluir Tudo';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Excluindo...';
+    }
+
+    deleteAccountAndData()
+      .then(() => {
+        closeM('modal-confirm-delete');
+        alert('Sua conta e todos os dados foram excluídos com sucesso!');
+        updateUI();
+      })
+      .catch(err => {
+        console.error('Failed to delete account:', err);
+        if (err.code === 'auth/requires-recent-login') {
+          alert('Por segurança, esta operação exige um login recente. Por favor, saia do aplicativo (Logout), faça login novamente e tente excluir a conta.');
+        } else {
+          alert('Erro ao excluir conta: ' + err.message);
+        }
+      })
+      .finally(() => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      });
+  });
+
+  // ── Lógica de Carregamento (Loader) ──
+  function showGlobalLoader(msg = "Processando em segundo plano...") {
+    const loader = q('#global-loader');
+    if (loader) {
+      const textEl = loader.querySelector('.loader-text');
+      if (textEl) textEl.textContent = msg;
+      loader.hidden = false;
+    }
+  }
+
+  function hideGlobalLoader() {
+    const loader = q('#global-loader');
+    if (loader) {
+      loader.hidden = true;
+    }
+  }
+
+  window.showGlobalLoader = showGlobalLoader;
+  window.hideGlobalLoader = hideGlobalLoader;
+
+  // ── Lógica da Tela de Planos (Paywall & Mercado Pago) ──
+  const billingCycleToggle = q('#billing-cycle-toggle');
+  const btnSelectFree = q('#btn-select-free');
+  const btnPaywallClose = q('#btn-paywall-close');
+  
+  // Atualizar preços iniciais
+  function updatePaywallPricing() {
+    const isYearly = billingCycleToggle?.checked;
+    const pricePlus = q('#price-plus');
+    const periodPlus = q('#period-plus');
+    const pricePro = q('#price-pro');
+    const periodPro = q('#period-pro');
+    const btnBuyPlus = q('#btn-buy-plus');
+    const btnBuyPro = q('#btn-buy-pro');
+    const monthlyLbl = q('#billing-monthly-lbl');
+    const yearlyLbl = q('#billing-yearly-lbl');
+
+    if (isYearly) {
+      if (pricePlus) pricePlus.textContent = "9,90";
+      if (periodPlus) periodPlus.textContent = "/mês (R$ 118,80/ano)";
+      if (pricePro) pricePro.textContent = "19,90";
+      if (periodPro) periodPro.textContent = "/mês (R$ 238,80/ano)";
+      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financeos-plus-anual";
+      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financeos-pro-anual";
+      monthlyLbl?.classList.remove('active');
+      yearlyLbl?.classList.add('active');
+    } else {
+      if (pricePlus) pricePlus.textContent = "14,90";
+      if (periodPlus) periodPlus.textContent = "/mês";
+      if (pricePro) pricePro.textContent = "29,90";
+      if (periodPro) periodPro.textContent = "/mês";
+      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financeos-plus-mensal";
+      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financeos-pro-mensal";
+      monthlyLbl?.classList.add('active');
+      yearlyLbl?.classList.remove('active');
+    }
+  }
+
+  billingCycleToggle?.addEventListener('change', updatePaywallPricing);
+  updatePaywallPricing();
+
+  // Fechar paywall
+  btnSelectFree?.addEventListener('click', () => closeM('paywall-overlay'));
+  btnPaywallClose?.addEventListener('click', () => closeM('paywall-overlay'));
+
+  // Simulação de compras para testes
+  q('#btn-simulate-plus')?.addEventListener('click', () => {
+    S.subscription = {
+      plan: 'plus',
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      status: 'active',
+      aiQueriesUsed: 0,
+      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+    };
+    save();
+    closeM('paywall-overlay');
+    alert('Plano Plus simulado e ativado com sucesso! Limites atualizados.');
+    updateUI();
+  });
+
+  q('#btn-simulate-pro')?.addEventListener('click', () => {
+    S.subscription = {
+      plan: 'pro',
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      status: 'active',
+      aiQueriesUsed: 0,
+      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+    };
+    save();
+    closeM('paywall-overlay');
+    alert('Plano Pro simulado e ativado com sucesso! Todos os recursos liberados.');
+    updateUI();
+  });
+
+  q('#btn-simulate-reset')?.addEventListener('click', () => {
+    S.subscription = {
+      plan: 'free',
+      expiresAt: null,
+      status: 'active',
+      aiQueriesUsed: 0,
+      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+    };
+    save();
+    alert('Assinatura resetada para o Plano Grátis.');
+    updateUI();
+  });
 
   // 30. Render initial view
   navigate(activePage);

@@ -1,4 +1,4 @@
-import { S, fmt, getCat, q } from './state.js';
+import { S, fmt, getCat, q, openM, save } from './state.js';
 
 export let aiChatHistory = [];
 
@@ -44,7 +44,33 @@ export async function sendAiMessage() {
   const text = input.value.trim();
   if (!text) return;
   
+  // Verificar limites de planos
+  const plan = S.subscription?.plan || 'free';
+  const currentResetMonth = new Date().toISOString().substring(0, 7);
+  
+  if (S.subscription) {
+    if (typeof S.subscription.aiQueriesUsed !== 'number') S.subscription.aiQueriesUsed = 0;
+    if (S.subscription.aiQueriesResetMonth !== currentResetMonth) {
+      S.subscription.aiQueriesUsed = 0;
+      S.subscription.aiQueriesResetMonth = currentResetMonth;
+    }
+  }
+
+  if (plan === 'free') {
+    alert('O Assistente de IA está disponível apenas nos planos Plus e Pro. Escolha o seu plano para começar!');
+    openM('paywall-overlay');
+    return;
+  } else if (plan === 'plus') {
+    if (S.subscription.aiQueriesUsed >= 5) {
+      alert('Você atingiu o limite de 5 perguntas mensais do seu plano Plus. Faça upgrade para o Pro para obter perguntas ilimitadas!');
+      openM('paywall-overlay');
+      return;
+    }
+  }
+
   input.value = '';
+  
+  window.showGlobalLoader?.("IA FinancesOS está pensando...");
   
   const messagesContainer = q('#aiChatMessages');
   if (!messagesContainer) return;
@@ -168,12 +194,19 @@ INSTRUÇÕES:
           parts: [{ text: reply }]
         });
 
+        // Incrementar uso do plano
+        if (S.subscription) {
+          S.subscription.aiQueriesUsed = (S.subscription.aiQueriesUsed || 0) + 1;
+          save();
+        }
+
         const loadEl = document.getElementById(loadId);
         if (loadEl) {
           loadEl.innerHTML = formatAiMarkdown(reply);
           loadEl.removeAttribute('id');
         }
         success = true;
+        window.hideGlobalLoader?.();
         break;
       }
     } catch (err) {
@@ -183,6 +216,7 @@ INSTRUÇÕES:
   }
 
   if (!success) {
+    window.hideGlobalLoader?.();
     const loadEl = document.getElementById(loadId);
     if (loadEl) {
       loadEl.innerHTML = `<span style="color:var(--rd)">${lastErrorMsg || 'Não foi possível obter resposta da IA.'}</span>`;

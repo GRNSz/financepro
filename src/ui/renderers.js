@@ -1,6 +1,16 @@
 import { S, setS, load, save, uid, fmt, fmtD, getCat, getPay, q, qa, openM, closeM, periodState, getActiveWeekRange } from '../state.js';
 import { currentUser } from '../firebase.js';
 
+export function escapeHtml(str) {
+  if (typeof str !== 'string') return str || '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let chMain = null;
 let chCat = null;
 export let activePage = 'dashboard';
@@ -868,7 +878,7 @@ export function applyFilters(){
     const inlbl=t.inst?` <span style="opacity:.6;font-size:10.5px">(${t.inst}/${t.total})</span>`:'';
     const sCls=t.status==='Pago'?'s-pago':t.status==='Recebido'?'s-recebido':'s-pendente';
     
-    const taglbl = (t.tags && t.tags.length) ? `<div style="margin-top: 4px; display:flex; gap: 4px; flex-wrap: wrap;">${t.tags.map(tag => `<span class="tag-pill" style="font-size:10px; background:var(--s3); color:var(--tx2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--bd2); cursor:pointer;" onclick="event.stopPropagation(); window.filterByTag('${tag}')">${tag}</span>`).join('')}</div>` : '';
+    const taglbl = (t.tags && t.tags.length) ? `<div style="margin-top: 4px; display:flex; gap: 4px; flex-wrap: wrap;">${t.tags.map(tag => { const escapedTag = escapeHtml(tag); return `<span class="tag-pill" style="font-size:10px; background:var(--s3); color:var(--tx2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--bd2); cursor:pointer;" onclick="event.stopPropagation(); window.filterByTag('${escapedTag}')">${escapedTag}</span>`; }).join('')}</div>` : '';
     
     let origText = '';
     if (t.currency && t.currency !== 'BRL' && t.origVal) {
@@ -878,7 +888,7 @@ export function applyFilters(){
 
     return`<tr>
       <td style="white-space:nowrap;font-size:12px">${fmtD(t.data)}</td>
-      <td><span style="font-weight:600">${t.desc}</span>${inlbl}${taglbl}<br><span style="font-size:11px;color:var(--tx2)">${pn}</span></td>
+      <td><span style="font-weight:600">${escapeHtml(t.desc)}</span>${inlbl}${taglbl}<br><span style="font-size:11px;color:var(--tx2)">${pn}</span></td>
       <td><span class="cat-pill" style="background:${c.color}1a;color:${c.color}">${c.icon} ${c.name}</span></td>
       <td><span style="font-size:11.5px;font-weight:600;color:${t.tipo==='Receita'?'var(--gr)':'var(--tx2)'}">${t.tipo}</span></td>
       <td class="${t.tipo==='Receita'?'amt-in':'amt-ex'}" style="white-space:nowrap">${t.tipo==='Receita'?'+':'−'} ${fmt(t.val)}${origText}</td>

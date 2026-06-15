@@ -1,4 +1,5 @@
 import { S, setS, load, save, q, registerSaveCallback, initState } from './state.js';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 
 export let firebaseConfig = null;
@@ -84,6 +85,25 @@ export function initFirebase() {
     auth = window.firebase.auth();
     console.log('Firebase initialized successfully!');
     
+    const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
+    if (isTauri) {
+      window.showGlobalLoader?.("Concluindo login...");
+      auth.getRedirectResult()
+        .then(result => {
+          if (result && result.user) {
+            console.log('Successfully authenticated via Google redirect inside Tauri:', result.user);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to get redirect result:', err);
+          window.hideGlobalLoader?.();
+          alert('Falha ao concluir autenticação por redirecionamento: ' + err.message);
+        })
+        .finally(() => {
+          window.hideGlobalLoader?.();
+        });
+    }
+    
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUser = {
@@ -146,13 +166,51 @@ export function checkGuestLogin(cbUpdateUI) {
 
 export function loginWithGoogle() {
   if (auth) {
+    const isCapacitor = !!window.Capacitor && window.Capacitor.isNative;
+    if (isCapacitor) {
+      FirebaseAuthentication.signInWithGoogle()
+        .then(result => {
+          if (result && result.credential && result.credential.idToken) {
+            const credential = window.firebase.auth.GoogleAuthProvider.credential(result.credential.idToken);
+            return auth.signInWithCredential(credential);
+          } else {
+            throw new Error('ID Token não retornado pelo provedor Google.');
+          }
+        })
+        .catch(err => {
+          console.error('Native Google Sign-in failed:', err);
+          window.hideGlobalLoader?.();
+          alert('Falha no login com Google nativo: ' + err.message);
+        });
+      return;
+    }
+    
+    const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
     const provider = new window.firebase.auth.GoogleAuthProvider();
+
+    if (isTauri) {
+      console.log('Running in Tauri. Using signInWithRedirect.');
+      auth.signInWithRedirect(provider)
+        .catch(err => {
+          console.error('Google Redirect Sign-in failed:', err);
+          window.hideGlobalLoader?.();
+          alert('Falha na autenticação do Google por redirecionamento: ' + err.message);
+        });
+      return;
+    }
+
     auth.signInWithPopup(provider)
       .catch(err => {
         console.error('Google Sign-in failed:', err);
-        alert('Falha na autenticação do Google: ' + err.message);
+        window.hideGlobalLoader?.();
+        if (err.code === 'auth/popup-blocked') {
+          alert('O popup de login foi bloqueado pelo seu navegador. Por favor, libere popups para esta página ou faça login utilizando e-mail e senha.');
+        } else {
+          alert('Falha na autenticação do Google: ' + err.message);
+        }
       });
   } else {
+    window.hideGlobalLoader?.();
     alert('Configurações do Firebase ausentes no arquivo .env! Adicione VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc. no .env para habilitar o Google Login.');
   }
 }
@@ -163,16 +221,19 @@ export function loginWithEmail(email, password, isSignUp = false) {
       auth.createUserWithEmailAndPassword(email, password)
         .catch(err => {
           console.error('Sign-up failed:', err);
+          window.hideGlobalLoader?.();
           alert('Erro ao criar conta: ' + err.message);
         });
     } else {
       auth.signInWithEmailAndPassword(email, password)
         .catch(err => {
           console.error('Sign-in failed:', err);
+          window.hideGlobalLoader?.();
           alert('Erro ao fazer login: ' + err.message);
         });
     }
   } else {
+    window.hideGlobalLoader?.();
     alert('Configurações do Firebase ausentes no arquivo .env! Adicione as chaves no .env para habilitar login por E-mail/Senha.');
   }
 }
@@ -277,8 +338,6 @@ export function signOutUser() {
     
     const syncCard = q('#profile-sync-card');
     if (syncCard) syncCard.style.display = 'none';
-    const headerSyncBtn = q('#btnSyncCloudHeader');
-    if (headerSyncBtn) headerSyncBtn.style.display = 'none';
     
     const loginScreen = q('#login-screen');
     if (loginScreen) loginScreen.style.display = 'flex';
@@ -299,8 +358,10 @@ export function signOutUser() {
 
 export function syncWithFirestore(uid) {
   if (!db) return;
+  window.showGlobalLoader?.("Sincronizando dados com a Nuvem...");
   const docRef = db.collection('users').doc(uid);
   firebaseUnsub = docRef.onSnapshot(doc => {
+    window.hideGlobalLoader?.();
     if (doc.exists) {
       const remoteData = doc.data();
       console.log('Data loaded from Firestore:', remoteData);
@@ -313,9 +374,12 @@ export function syncWithFirestore(uid) {
           console.log('Firestore document created successfully with local state!');
           syncCallbacks.forEach(cb => cb());
         })
-        .catch(err => console.error('Error creating firestore doc:', err));
+        .catch(err => {
+          console.error('Error creating firestore doc:', err);
+        });
     }
   }, err => {
+    window.hideGlobalLoader?.();
     console.error('Firestore subscription error:', err);
   });
 }
@@ -369,10 +433,6 @@ export function updateUserProfileUI() {
   if (syncCard) {
     syncCard.style.display = currentUser.isAnonymous ? 'none' : 'block';
   }
-  const headerSyncBtn = q('#btnSyncCloudHeader');
-  if (headerSyncBtn) {
-    headerSyncBtn.style.display = currentUser.isAnonymous ? 'none' : 'inline-block';
-  }
 }
 
 // Hook state save to sync with firestore
@@ -383,3 +443,69 @@ registerSaveCallback((state) => {
       .catch(err => console.error('Error saving to Firestore:', err));
   }
 });
+
+export function deleteAccountAndData() {
+  const clearLocalStorageAndReset = () => {
+    localStorage.removeItem('financeos_guest_user');
+    localStorage.removeItem('financeos_v4');
+    localStorage.removeItem('financeos_pin_code');
+    localStorage.removeItem('financeos_pin_enabled');
+    localStorage.removeItem('financeos_stealth');
+    localStorage.removeItem('financeos_stealth_activated');
+    localStorage.removeItem('financeos_notifications');
+    localStorage.removeItem('financeos_gcal_sync');
+    
+    // Reset state to empty
+    setS(initState());
+    save();
+    
+    currentUser = null;
+    guestUser = null;
+    
+    if (firebaseUnsub) {
+      firebaseUnsub();
+      firebaseUnsub = null;
+    }
+    
+    const syncCard = q('#profile-sync-card');
+    if (syncCard) syncCard.style.display = 'none';
+    
+    const loginScreen = q('#login-screen');
+    if (loginScreen) loginScreen.style.display = 'flex';
+    
+    authCallbacks.forEach(cb => cb(null));
+  };
+
+  // 1. If not authenticated or is anonymous (Guest/Local)
+  if (!auth || !currentUser || currentUser.isAnonymous) {
+    clearLocalStorageAndReset();
+    return Promise.resolve();
+  }
+
+  // 2. Firebase User
+  const uidToDelete = currentUser.uid;
+  const userObj = auth.currentUser;
+  
+  if (firebaseUnsub) {
+    firebaseUnsub();
+    firebaseUnsub = null;
+  }
+  
+  // A. First delete Firestore document
+  return db.collection('users').doc(uidToDelete).delete()
+    .then(() => {
+      console.log('Firestore user data deleted successfully.');
+      // B. Then delete Auth account
+      return userObj.delete();
+    })
+    .then(() => {
+      console.log('Auth user deleted successfully.');
+      // C. Clear local state and redirect
+      clearLocalStorageAndReset();
+    })
+    .catch(err => {
+      console.error('Error in deleteAccountAndData:', err);
+      // Re-throw to handle in main.js
+      throw err;
+    });
+}

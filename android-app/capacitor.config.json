@@ -1,0 +1,13 @@
+{
+  "appId": "com.financeos",
+  "appName": "FinanceOS",
+  "webDir": "../dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "FirebaseAuthentication": {
+      "providers": [
+        "google.com"
+      ]
+    }
+  }
+}

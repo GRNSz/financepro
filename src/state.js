@@ -33,6 +33,11 @@ export function initState() {
     recurring:[],
     savings:[],
     debts:[],
+    subscription: {
+      plan: 'free',
+      expiresAt: null,
+      status: 'active'
+    }
   };
 }
 
@@ -83,6 +88,9 @@ export function fixState() {
   if (!Array.isArray(S.savings))      S.savings    = [];
   if (!Array.isArray(S.debts))        S.debts      = [];
   if (!S.challenge52) S.challenge52 = { multiplier: 1, checkedWeeks: [] };
+  if (!S.subscription) {
+    S.subscription = { plan: 'free', expiresAt: null, status: 'active' };
+  }
 }
 
 export function setS(newState) {

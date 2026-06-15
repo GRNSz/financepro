@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+
+# Portable JDK
+jdk17/
+
+# Android build/local configurations
+android/local.properties
+android/.gradle/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+
+# Compiled APKs (optional to commit, but highly recommended to ignore to keep repo clean)
+apk/

@@ -48,11 +48,10 @@
         <label>Senha</label>
         <input type="password" id="login-password" class="inp" placeholder="Sua senha" minlength="6" required>
       </div>
-      <div style="display:flex;gap:10px;margin-top:10px">
-        <button type="submit" class="bp sm" style="flex:1" id="btnSignInEmail">Entrar</button>
-        <button type="button" class="bs sm" style="flex:1" id="btnSignUpEmail">Criar Conta</button>
-      </div>
-      <div style="text-align:right;margin-top:4px">
+      <button type="submit" class="bp sm" style="margin-top:10px; width:100%" id="btnSubmitAuth">Entrar</button>
+      
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <a href="#" id="btnToggleAuthMode" style="font-size:12.5px;color:var(--tx2);text-decoration:none;font-weight:600">Criar uma nova conta</a>
         <a href="#" id="btnForgotPassword" style="font-size:12.5px;color:var(--ac);text-decoration:none;font-weight:600">Esqueci minha senha</a>
       </div>
     </form>
@@ -99,7 +98,10 @@
   <header id="topbar">
     <div class="tb-l">
       <button class="menu-btn" id="menuBtn">☰</button>
-      <h1 id="pageTitle">Dashboard</h1>
+      <div style="display:flex;align-items:center;gap:8px">
+        <h1 id="pageTitle">Dashboard</h1>
+        <span id="sync-status-indicator" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--tx2); transition: background-color 0.3s;" title="Status de Conectividade"></span>
+      </div>
     </div>
     <div class="tb-r" style="display:flex;align-items:center;gap:10px">
       <span id="tbDate"></span>
@@ -122,11 +124,9 @@
           </div>
         </div>
       </div>
-      <button class="bs sm" id="btnPrint" style="font-size:14px;padding:6px 10px" title="Imprimir Relatório (PDF)">🖨️</button>
       <button class="bs sm" id="btnStealthToggle" style="font-size:14px;padding:6px 10px" title="Ocultar Saldos (Privacidade)">👁️</button>
       <button class="bs sm" id="themeToggle" style="font-size:14px;padding:6px 10px" title="Alternar Modo Claro/Escuro">🌙</button>
-      <button class="bs sm" id="btnSyncCloudHeader" style="font-size:14px;padding:6px 10px;display:none" title="Sincronizar com a Nuvem">🔄</button>
-      <button class="bp sm" id="btnNewTx">+ Lançamento</button>
+      <button class="bp sm" id="btnNewTx">+<span> Lançamento</span></button>
     </div>
   </header>
 
@@ -632,11 +632,31 @@
               </div>
               <input type="checkbox" id="chkNotifications" style="width:20px; height:20px; accent-color:var(--ac); cursor:pointer;">
             </div>
+
+            <div style="border-top: 1px solid var(--bd); padding-top:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+              <div>
+                <label style="font-weight:700; font-size:13px; display:block; color:var(--tx)">Bloqueio de Segurança (PIN)</label>
+                <small style="font-size:11px; color:var(--tx2)">Proteger o acesso ao aplicativo com código de 4 dígitos.</small>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button type="button" id="btnConfigurePin" class="bs sm" style="font-size:12px; padding:6px 12px; font-weight:700; cursor:pointer;">Configurar</button>
+                <input type="checkbox" id="chkPinEnabled" style="width:20px; height:20px; accent-color:var(--ac); cursor:pointer;" disabled>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="card fw danger-card">
           <div class="card-h"><h3>Zona de Risco</h3></div>
+          <div style="display:flex; flex-direction:column; gap:16px; margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div>
+                <label style="font-weight:700; font-size:13px; display:block; color:var(--rd)">Excluir Conta e Todos os Dados</label>
+                <small style="font-size:11px; color:var(--tx2)">Esta ação é definitiva e apagará todos os seus lançamentos, contas, metas e orçamentos.</small>
+              </div>
+              <button type="button" id="btnDeleteAccount" class="brd sm" style="font-weight:700; cursor:pointer;">Excluir Conta</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1798,6 +1818,222 @@
   <div class="ai-input-wrap">
     <input type="text" id="aiChatInput" class="ai-input" placeholder="Pergunte sobre suas finanças...">
     <button class="ai-send" id="btnAiSend">➔</button>
+  </div>
+</div>
+
+<!-- OVERLAY DE BLOQUEIO POR PIN -->
+<div id="pin-lock-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; justify-content: center; align-items: center;">
+  <div class="login-card" style="max-width: 340px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid var(--bd2);">
+    <div style="font-size: 48px; margin-bottom: 16px; animation: bounce 2s infinite;">🔒</div>
+    <h2>FinanceOS Bloqueado</h2>
+    <p style="color: var(--tx2); font-size: 13px; margin-top: 4px; margin-bottom: 24px;">Insira seu PIN de 4 dígitos para acessar seus dados</p>
+    
+    <!-- PIN Dots Indicator -->
+    <div id="pin-dots-container" style="display: flex; justify-content: center; gap: 16px; margin-bottom: 30px;">
+      <div class="pin-dot" style="width: 14px; height: 14px; border: 2px solid var(--tx2); border-radius: 50%; transition: all 0.2s;"></div>
+      <div class="pin-dot" style="width: 14px; height: 14px; border: 2px solid var(--tx2); border-radius: 50%; transition: all 0.2s;"></div>
+      <div class="pin-dot" style="width: 14px; height: 14px; border: 2px solid var(--tx2); border-radius: 50%; transition: all 0.2s;"></div>
+      <div class="pin-dot" style="width: 14px; height: 14px; border: 2px solid var(--tx2); border-radius: 50%; transition: all 0.2s;"></div>
+    </div>
+    
+    <!-- PIN Keyboard Grid -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 260px; margin: 0 auto;">
+      <button type="button" class="bs pin-btn" data-val="1" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">1</button>
+      <button type="button" class="bs pin-btn" data-val="2" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">2</button>
+      <button type="button" class="bs pin-btn" data-val="3" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">3</button>
+      
+      <button type="button" class="bs pin-btn" data-val="4" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">4</button>
+      <button type="button" class="bs pin-btn" data-val="5" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">5</button>
+      <button type="button" class="bs pin-btn" data-val="6" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">6</button>
+      
+      <button type="button" class="bs pin-btn" data-val="7" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">7</button>
+      <button type="button" class="bs pin-btn" data-val="8" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">8</button>
+      <button type="button" class="bs pin-btn" data-val="9" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">9</button>
+      
+      <button type="button" id="btnPinClear" style="width: 60px; height: 60px; font-size: 12.5px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; color: var(--tx2); background: transparent; border: none;">Limpar</button>
+      <button type="button" class="bs pin-btn" data-val="0" style="width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; background: var(--s2); border: 1px solid var(--bd); color: var(--tx);">0</button>
+      <button type="button" id="btnPinBackspace" style="width: 60px; height: 60px; font-size: 18px; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto; cursor: pointer; color: var(--tx2); background: transparent; border: none;">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA DEFINIR/CONFIGURAR PIN -->
+<div id="modal-config-pin" class="mbd" hidden>
+  <div class="modal" style="max-width: 400px;">
+    <div class="mhd">
+      <h3>Segurança: Código PIN</h3>
+      <button class="mclose" data-close="modal-config-pin">✕</button>
+    </div>
+    <form id="f-config-pin" style="display:flex; flex-direction:column; gap:16px; margin-top:10px;">
+      
+      <!-- Se o usuário já tiver PIN, ele precisa confirmar primeiro para alterar ou remover -->
+      <div id="pin-confirm-section" style="display:none; border-bottom: 1px dashed var(--bd2); padding-bottom: 16px; margin-bottom: 8px;">
+        <label style="font-weight:700; font-size:12.5px; display:block; margin-bottom:6px; color:var(--ac);">Confirme seu PIN Atual:</label>
+        <input type="password" id="pin-current" class="inp" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="••••" style="font-size:24px; text-align:center; letter-spacing:8px; width: 100%;">
+      </div>
+
+      <div id="pin-setup-section">
+        <div id="pin-config-step1">
+          <label style="font-weight:700; font-size:12.5px; display:block; margin-bottom:6px;">Novo Código PIN (4 dígitos):</label>
+          <input type="password" id="pin-input1" class="inp" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="••••" style="font-size:24px; text-align:center; letter-spacing:8px; width: 100%;">
+        </div>
+        <div id="pin-config-step2" style="margin-top:12px;">
+          <label style="font-weight:700; font-size:12.5px; display:block; margin-bottom:6px;">Confirme o Novo Código PIN:</label>
+          <input type="password" id="pin-input2" class="inp" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="••••" style="font-size:24px; text-align:center; letter-spacing:8px; width: 100%;">
+        </div>
+      </div>
+      
+      <div class="mfooter" style="display:flex; justify-content:space-between; width:100%; box-sizing:border-box;">
+        <button type="button" class="bg sm" id="btnDisablePin" style="display:none; color:var(--rd); border-color:var(--rd);">Desativar PIN</button>
+        <div style="display:flex; gap:8px; margin-left:auto;">
+          <button type="button" class="bg sm" data-close="modal-config-pin">Cancelar</button>
+          <button type="submit" class="bp sm">Confirmar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL PARA CONFIRMAR EXCLUSÃO DE CONTA -->
+<div id="modal-confirm-delete" class="mbd" hidden>
+  <div class="modal" style="max-width: 400px;">
+    <div class="mhd">
+      <h3 style="color:var(--rd);">Excluir Conta Permanentemente?</h3>
+      <button class="mclose" data-close="modal-confirm-delete">✕</button>
+    </div>
+    <form id="f-confirm-delete" style="display:flex; flex-direction:column; gap:16px; margin-top:10px;">
+      <p style="font-size:12px; color:var(--tx2); margin:0; line-height:1.5;">
+        A exclusão da conta é um processo <strong>definitivo e irreversível</strong>. Todos os seus dados sincronizados ou locais serão apagados permanentemente.
+      </p>
+      
+      <div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.2); border-radius:10px; padding:12px; font-size:11px; color:var(--rd); line-height:1.4;">
+        ⚠️ <strong>Atenção:</strong> Se você estiver logado com o Google, pode ser necessário fazer login novamente antes de podermos excluir sua conta de autenticação.
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-weight:700; font-size:11px; color:var(--tx2); text-transform:uppercase; letter-spacing:.8px;">Digite "APAGAR" para confirmar:</label>
+        <input type="text" id="delete-confirm-word" class="inp" placeholder="APAGAR" required style="text-align:center; font-weight:700; letter-spacing:2px;">
+      </div>
+      
+      <div class="mfooter" style="display:flex; justify-content:flex-end; gap:8px; width:100%; box-sizing:border-box;">
+        <button type="button" class="bg sm" data-close="modal-confirm-delete">Cancelar</button>
+        <button type="submit" class="brd sm" style="font-weight:700;">Excluir Tudo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- OVERLAY DE CARREGAMENTO GLOBAL -->
+<div id="global-loader" class="loader-overlay" hidden>
+  <div class="loader-container">
+    <svg class="loader-spinner" viewBox="0 0 50 50">
+      <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+    </svg>
+    <p class="loader-text">Processando em segundo plano...</p>
+  </div>
+</div>
+
+<!-- PAYWALL / TELA DE ASSINATURA DE PLANOS -->
+<div id="paywall-overlay" class="mbd paywall-mbd" hidden>
+  <div class="paywall-modal">
+    <div class="paywall-header" style="border-bottom: 1px solid var(--bd2); padding-bottom: 16px; display: flex; justify-content: center; align-items: center; width: 100%;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; width:100%;">
+        <span style="font-size: 24px;">🚀</span>
+        <h2 style="font-size:20px; font-weight:800; letter-spacing:-0.5px; margin:0;">Escolha seu Plano FinanceOS</h2>
+        <p style="font-size:12px; color:var(--tx2); margin:0;">Desbloqueie o poder total da gestão financeira e IA</p>
+      </div>
+    </div>
+    
+    <!-- Chave Seletora Mensal / Anual -->
+    <div class="billing-toggle-container">
+      <span class="billing-label active" id="billing-monthly-lbl">Mensal</span>
+      <label class="switch-toggle">
+        <input type="checkbox" id="billing-cycle-toggle">
+        <span class="slider-toggle-round"></span>
+      </label>
+      <span class="billing-label" id="billing-yearly-lbl">Anual <span class="discount-tag">Economize 33%</span></span>
+    </div>
+
+    <!-- Cards de Planos -->
+    <div class="plans-grid">
+      <!-- PLANO GRÁTIS -->
+      <div class="plan-card">
+        <div class="plan-badge">Atual</div>
+        <h3 class="plan-name">Grátis</h3>
+        <div class="plan-price">
+          <span class="currency">R$</span>
+          <span class="amount">0</span>
+          <span class="period">/sempre</span>
+        </div>
+        <p class="plan-desc">Controle financeiro básico local.</p>
+        <ul class="plan-features">
+          <li><span>✔️</span> 1 Conta Bancária</li>
+          <li><span>✔️</span> 1 Meta de Economia</li>
+          <li><span>❌</span> Inteligência Artificial (Gemini)</li>
+          <li><span>❌</span> Exportação de Relatórios PDF</li>
+          <li><span>❌</span> Sincronização na Nuvem</li>
+        </ul>
+        <button type="button" class="plan-btn bg" id="btn-select-free">Continuar com Grátis</button>
+      </div>
+
+      <!-- PLANO PLUS -->
+      <div class="plan-card featured">
+        <div class="plan-badge featured-badge">Popular</div>
+        <h3 class="plan-name">Plus</h3>
+        <div class="plan-price">
+          <span class="currency">R$</span>
+          <span class="amount" id="price-plus">14,90</span>
+          <span class="period" id="period-plus">/mês</span>
+        </div>
+        <p class="plan-desc">Gestão em nuvem e consultas básicas com a IA.</p>
+        <ul class="plan-features">
+          <li><span>✔️</span> Contas Bancárias ilimitadas</li>
+          <li><span>✔️</span> 5 Metas de Economia</li>
+          <li><span>✔️</span> IA Gemini (5 perguntas/mês)</li>
+          <li><span>✔️</span> Relatórios Gráficos na tela</li>
+          <li><span>✔️</span> Sincronização na Nuvem</li>
+        </ul>
+        <a href="#" target="_blank" class="plan-btn bp" id="btn-buy-plus" style="text-decoration:none; text-align:center;">Assinar Plus</a>
+      </div>
+
+      <!-- PLANO PRO -->
+      <div class="plan-card pro">
+        <div class="plan-badge pro-badge">Ilimitado</div>
+        <h3 class="plan-name">Pro</h3>
+        <div class="plan-price">
+          <span class="currency">R$</span>
+          <span class="amount" id="price-pro">29,90</span>
+          <span class="period" id="period-pro">/mês</span>
+        </div>
+        <p class="plan-desc">O poder máximo da gestão, PDF e IA ilimitada.</p>
+        <ul class="plan-features">
+          <li><span>✔️</span> Tudo do Plus ilimitado</li>
+          <li><span>✔️</span> Metas e Orçamentos ilimitados</li>
+          <li><span>✔️</span> IA Gemini Ilimitada</li>
+          <li><span>✔️</span> Exportação de Relatórios PDF</li>
+          <li><span>✔️</span> Suporte Prioritário</li>
+        </ul>
+        <a href="#" target="_blank" class="plan-btn bp" id="btn-buy-pro" style="text-decoration:none; text-align:center; background:linear-gradient(135deg, #f59e0b, #ef4444);">Assinar Pro</a>
+      </div>
+    </div>
+
+    <!-- Rodapé com Simulação e Descarte -->
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:10px; width:100%;">
+      <div style="font-size:10.5px; color:var(--tx3); text-align:center; max-width:85%;">
+        Pagamentos processados de forma segura via Mercado Pago. Ao clicar em assinar, você será redirecionado para o checkout.
+      </div>
+      
+      <!-- Seção de Testes (Cheat/Simulação) -->
+      <div style="background:rgba(99,102,241,0.08); border:1px dashed var(--ac); border-radius:10px; padding:10px; display:flex; justify-content:center; gap:8px; width:100%; box-sizing:border-box; margin-top:4px; flex-wrap:wrap;">
+        <button type="button" class="bs sm" id="btn-simulate-plus" style="font-size:10px; padding:5px 10px;">🧪 Simular Plus</button>
+        <button type="button" class="bs sm" id="btn-simulate-pro" style="font-size:10px; padding:5px 10px; border-color:#f59e0b; color:#f59e0b;">🧪 Simular Pro</button>
+        <button type="button" class="bs sm" id="btn-simulate-reset" style="font-size:10px; padding:5px 10px; border-color:var(--rd); color:var(--rd);">🧪 Resetar Grátis</button>
+      </div>
+
+      <div style="display:flex; justify-content:center; margin-top:4px;">
+        <button type="button" class="bl" id="btn-paywall-close" style="font-size:12px; color:var(--tx2);">Continuar com Plano Grátis (Limites locais)</button>
+      </div>
+    </div>
   </div>
 </div>
 

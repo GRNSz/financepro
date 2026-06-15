@@ -95,11 +95,28 @@ O aplicativo estará disponível na porta `8080`: `http://localhost:8080`.
 
 ---
 
-## 📱 Futuro Lançamento: APK Android
+## 📱 Versão Android (Capacitor)
 
-Estamos trabalhando ativamente para expandir o **FinanceOS** para dispositivos móveis! Em breve, lançaremos um instalador **APK nativo para Android** utilizando empacotadores híbridos (Capacitor/Cordova), permitindo o uso com suporte completo a notificações push nativas do sistema operacional, widget na tela inicial e acesso offline offline-first ainda mais fluido.
+O **FinanceOS** agora conta com uma versão empacotada em APK para Android utilizando o **Capacitor 6**! O projeto Android está localizado de forma isolada na pasta [`android-app/`](./android-app/).
 
-Acompanhe as próximas releases no GitHub para ter acesso ao APK assim que disponível!
+### Como gerar um novo APK:
+1. **Compilar a versão web:**
+   ```bash
+   npm run build
+   ```
+2. **Sincronizar os arquivos com o app Android:**
+   ```bash
+   cd android-app
+   npm install
+   npx cap sync
+   ```
+3. **Compilar o APK:**
+   *Entre na pasta `android-app/android/` e compile utilizando o Gradle Wrapper:*
+   ```bash
+   cd android
+   ./gradlew assembleDebug
+   ```
+   *(O APK de debug compilado será gerado na pasta `android-app/apk/financeos.apk`)*.
 
 ---
 
