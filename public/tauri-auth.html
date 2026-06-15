@@ -299,25 +299,21 @@
   </div>
 
   <script>
-    // Configuração Firebase do app (igual ao .env)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBKuWDzIhffynEnrj443tgJCov0VN7xGwY",
-      authDomain: "financeos-d033a.firebaseapp.com",
-      projectId: "financeos-d033a",
-      storageBucket: "financeos-d033a.firebasestorage.app",
-      messagingSenderId: "201649930597",
-      appId: "1:201649930597:web:44a753aff082d9f773a18c",
-      measurementId: "G-37JZRYZ210"
-    };
-
-    // Inicializa Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
+  <script>
     // Obter parâmetros da URL
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('sessionId');
+
+    // Configuração Firebase do app carregada dinamicamente via URL para evitar expor chaves no código do repositório
+    const firebaseConfig = {
+      apiKey: urlParams.get('apiKey'),
+      authDomain: urlParams.get('authDomain'),
+      projectId: urlParams.get('projectId'),
+      storageBucket: urlParams.get('storageBucket'),
+      messagingSenderId: urlParams.get('messagingSenderId'),
+      appId: urlParams.get('appId'),
+      measurementId: urlParams.get('measurementId')
+    };
 
     const stateReady = document.getElementById('state-ready');
     const stateLoading = document.getElementById('state-loading');
@@ -338,13 +334,21 @@
       if (state === 'error') stateError.classList.add('active');
     }
 
-    if (!sessionId) {
-      errorDesc.innerText = 'Sessão inválida ou ausente. Por favor, feche esta janela e clique no botão de login do Google dentro do aplicativo.';
+    // Validação de segurança dos parâmetros recebidos
+    const hasValidConfig = firebaseConfig.apiKey && firebaseConfig.projectId;
+    if (!sessionId || !hasValidConfig) {
+      errorDesc.innerText = 'Sessão inválida, parâmetros ausentes ou configuração corrompida. Por favor, feche esta janela e clique no botão de login do Google dentro do aplicativo.';
       showState('error');
-      document.getElementById('btn-retry').style.display = 'none';
+      const retryBtn = document.getElementById('btn-retry');
+      if (retryBtn) retryBtn.style.display = 'none';
+    } else {
+      // Inicializa Firebase com a config dinâmica
+      firebase.initializeApp(firebaseConfig);
     }
 
-    const provider = new firebase.auth.GoogleAuthProvider();
+    const auth = firebase.apps.length > 0 ? firebase.auth() : null;
+    const db = firebase.apps.length > 0 ? firebase.firestore() : null;
+    const provider = auth ? new firebase.auth.GoogleAuthProvider() : null;
 
     document.getElementById('btn-login').addEventListener('click', () => {
       startGoogleLogin();
@@ -355,6 +359,12 @@
     });
 
     function startGoogleLogin() {
+      if (!auth || !db || !provider) {
+        errorDesc.innerText = 'Serviço de autenticação indisponível. Inicialização do Firebase falhou.';
+        showState('error');
+        return;
+      }
+
       showState('loading');
       loadingMsg.innerText = 'Por favor, complete a autenticação na janela do Google.';
       
@@ -390,7 +400,7 @@
     }
 
     // Auto-inicia login para maior fluidez
-    if (sessionId) {
+    if (sessionId && hasValidConfig) {
       setTimeout(startGoogleLogin, 500);
     }
   </script>

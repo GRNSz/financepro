@@ -215,9 +215,18 @@ export function loginWithGoogle() {
       // Definir a URL ponte. Em desenvolvimento usa localhost:5173, em produção usa o domínio principal.
       const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const baseUrl = isDev ? 'http://localhost:5173' : 'https://financeos-d033a.firebaseapp.com';
-      const redirectUrl = `${baseUrl}/tauri-auth.html?sessionId=${sessionId}`;
+      
+      const configParams = `&apiKey=${encodeURIComponent(firebaseConfig.apiKey)}` +
+        `&authDomain=${encodeURIComponent(firebaseConfig.authDomain)}` +
+        `&projectId=${encodeURIComponent(firebaseConfig.projectId)}` +
+        `&storageBucket=${encodeURIComponent(firebaseConfig.storageBucket || '')}` +
+        `&messagingSenderId=${encodeURIComponent(firebaseConfig.messagingSenderId || '')}` +
+        `&appId=${encodeURIComponent(firebaseConfig.appId || '')}` +
+        `&measurementId=${encodeURIComponent(firebaseConfig.measurementId || '')}`;
 
-      window.addDevLog?.(`Session ID: ${sessionId}. Opening URL: ${redirectUrl}`, 'info');
+      const redirectUrl = `${baseUrl}/tauri-auth.html?sessionId=${sessionId}${configParams}`;
+
+      window.addDevLog?.(`Session ID: ${sessionId}. Opening URL (config params hidden in logs for security)`, 'info');
 
       // Escutar credenciais na sessão do Firestore
       const sessionRef = db.collection('login_sessions').doc(sessionId);
