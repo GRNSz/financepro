@@ -11,4 +11,4 @@ android/app/build/
 android/capacitor-cordova-android-plugins/build/
 
 # Compiled APKs (optional to commit, but highly recommended to ignore to keep repo clean)
-apk/
+# apk/

@@ -84,18 +84,31 @@ export function initFirebase() {
     db = window.firebase.firestore();
     auth = window.firebase.auth();
     console.log('Firebase initialized successfully!');
+
+    // Explicitly enforce local persistence (localStorage/IndexedDB)
+    auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => {
+        console.log('Firebase Auth persistence set to LOCAL.');
+      })
+      .catch(err => {
+        console.error('Failed to set Firebase Auth persistence:', err);
+      });
     
     const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
-    if (isTauri) {
+    const hasPendingRedirect = localStorage.getItem('firebase_pending_redirect') === 'true';
+
+    if (isTauri && hasPendingRedirect) {
       window.showGlobalLoader?.("Concluindo login...");
       auth.getRedirectResult()
         .then(result => {
           if (result && result.user) {
             console.log('Successfully authenticated via Google redirect inside Tauri:', result.user);
           }
+          localStorage.removeItem('firebase_pending_redirect');
         })
         .catch(err => {
           console.error('Failed to get redirect result:', err);
+          localStorage.removeItem('firebase_pending_redirect');
           window.hideGlobalLoader?.();
           alert('Falha ao concluir autenticação por redirecionamento: ' + err.message);
         })
@@ -188,11 +201,13 @@ export function loginWithGoogle() {
     const isTauri = typeof window.__TAURI__ !== 'undefined' || typeof window.__TAURI_INTERNALS__ !== 'undefined';
     const provider = new window.firebase.auth.GoogleAuthProvider();
 
-    if (isTauri) {
+     if (isTauri) {
       console.log('Running in Tauri. Using signInWithRedirect.');
+      localStorage.setItem('firebase_pending_redirect', 'true');
       auth.signInWithRedirect(provider)
         .catch(err => {
           console.error('Google Redirect Sign-in failed:', err);
+          localStorage.removeItem('firebase_pending_redirect');
           window.hideGlobalLoader?.();
           alert('Falha na autenticação do Google por redirecionamento: ' + err.message);
         });

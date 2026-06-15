@@ -1489,12 +1489,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-  // 29. Firebase boot sequence
   loadFirebaseConfig();
-  const fbInitialized = initFirebase();
-  if (!fbInitialized) {
-    checkGuestLogin(updateUI);
-  }
+  initFirebase();
+  checkGuestLogin(updateUI);
 
   // 29b. Premium Features Init
   // Stealth Mode Toggle
