@@ -1,5 +1,17 @@
 import { S, setS, load, save, q, registerSaveCallback, initState } from './state.js';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
+import { encryptData, decryptData, generateSecureId } from './crypto.js';
+
+export let syncPassword = localStorage.getItem('financeos_sync_password') || null;
+
+export function setSyncPassword(pw) {
+  syncPassword = pw;
+  if (pw) {
+    localStorage.setItem('financeos_sync_password', pw);
+  } else {
+    localStorage.removeItem('financeos_sync_password');
+  }
+}
 
 
 export let firebaseConfig = null;
@@ -210,7 +222,7 @@ export function loginWithGoogle() {
       window.showGlobalLoader?.("Aguardando login no seu navegador de internet...");
 
       // Gerar um ID de sessão único e randômico
-      const sessionId = 'tauri_login_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const sessionId = generateSecureId();
       
       // Definir a URL ponte. Em desenvolvimento usa localhost:5173, em produção usa o domínio principal.
       const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -451,6 +463,7 @@ export function signOutUser() {
       firebaseUnsub = null;
     }
     // Reset local state to blank on sign out
+    setSyncPassword(null);
     setS(initState());
     save();
     
@@ -474,6 +487,122 @@ export function signOutUser() {
   }
 }
 
+let isUnlockModalOpen = false;
+function promptForUnlock(remoteData, docRef) {
+  if (isUnlockModalOpen) return;
+  isUnlockModalOpen = true;
+  
+  const modal = q('#modal-crypto-unlock');
+  const form = q('#f-crypto-unlock');
+  const input = q('#crypto-unlock-pass');
+  const errDiv = q('#crypto-unlock-error');
+  const cancelBtn = q('#btnCancelCryptoUnlock');
+  
+  if (!modal) return;
+  
+  modal.hidden = false;
+  if (errDiv) errDiv.style.display = 'none';
+  form.reset();
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const pw = input.value;
+    window.showGlobalLoader?.("Desbloqueando dados...");
+    
+    try {
+      const decryptedStr = await decryptData(remoteData, pw);
+      const decryptedState = JSON.parse(decryptedStr);
+      
+      setSyncPassword(pw);
+      setS(decryptedState);
+      
+      modal.hidden = true;
+      isUnlockModalOpen = false;
+      window.hideGlobalLoader?.();
+      
+      syncCallbacks.forEach(cb => {
+        try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+      });
+      
+      form.removeEventListener('submit', handleSubmit);
+    } catch (err) {
+      console.error('Failed to decrypt state:', err);
+      window.hideGlobalLoader?.();
+      if (errDiv) errDiv.style.display = 'block';
+      input.value = '';
+      input.focus();
+    }
+  };
+  
+  form.addEventListener('submit', handleSubmit);
+  
+  cancelBtn.onclick = () => {
+    modal.hidden = true;
+    isUnlockModalOpen = false;
+    form.removeEventListener('submit', handleSubmit);
+    signOut();
+  };
+}
+
+let isSetupModalOpen = false;
+function promptForSetup(legacyData, docRef) {
+  if (isSetupModalOpen) return;
+  isSetupModalOpen = true;
+  
+  const modal = q('#modal-crypto-setup');
+  const form = q('#f-crypto-setup');
+  const pass1 = q('#crypto-setup-pass1');
+  const pass2 = q('#crypto-setup-pass2');
+  const cancelBtn = q('#btnCancelCryptoSetup');
+  
+  if (!modal) return;
+  
+  modal.hidden = false;
+  form.reset();
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (pass1.value !== pass2.value) {
+      alert("As senhas não coincidem!");
+      return;
+    }
+    const pw = pass1.value;
+    window.showGlobalLoader?.("Configurando criptografia...");
+    
+    try {
+      setSyncPassword(pw);
+      
+      const dataToEncrypt = legacyData || S;
+      const encrypted = await encryptData(JSON.stringify(dataToEncrypt), pw);
+      
+      await docRef.set(encrypted);
+      
+      modal.hidden = true;
+      isSetupModalOpen = false;
+      window.hideGlobalLoader?.();
+      
+      syncCallbacks.forEach(cb => {
+        try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+      });
+      
+      form.removeEventListener('submit', handleSubmit);
+    } catch (err) {
+      console.error('Failed to set up encryption:', err);
+      window.hideGlobalLoader?.();
+      alert("Erro ao configurar criptografia: " + err.message);
+    }
+  };
+  
+  form.addEventListener('submit', handleSubmit);
+  
+  cancelBtn.onclick = () => {
+    modal.hidden = true;
+    isSetupModalOpen = false;
+    form.removeEventListener('submit', handleSubmit);
+    signOut();
+  };
+}
+
 export function syncWithFirestore(uid) {
   if (!db) {
     window.addDevLog?.('syncWithFirestore called but db is null.', 'error');
@@ -482,37 +611,41 @@ export function syncWithFirestore(uid) {
   window.addDevLog?.(`syncWithFirestore: Starting sync for uid=${uid}`, 'info');
   window.showGlobalLoader?.("Sincronizando dados com a Nuvem...");
   const docRef = db.collection('users').doc(uid);
-  firebaseUnsub = docRef.onSnapshot(doc => {
+  firebaseUnsub = docRef.onSnapshot(async doc => {
     window.addDevLog?.(`Firestore onSnapshot event triggered. Doc exists: ${doc.exists}`, 'info');
     window.hideGlobalLoader?.();
     if (doc.exists) {
       const remoteData = doc.data();
-      console.log('Data loaded from Firestore:', remoteData);
-      window.addDevLog?.(`Data loaded from Firestore successfully. accounts=${remoteData.accounts?.length || 0}, transactions=${remoteData.transactions?.length || 0}`, 'success');
-      try {
-        setS(remoteData);
-        window.addDevLog?.('Local state updated from Firestore successfully.', 'success');
-      } catch (err) {
-        window.addDevLog?.(`Failed to update local state (setS failed): ${err.message}`, 'error');
+      console.log('Data loaded from Firestore. Encrypted:', !!remoteData.encrypted);
+      
+      if (remoteData.encrypted) {
+        if (syncPassword) {
+          try {
+            const decryptedStr = await decryptData(remoteData, syncPassword);
+            const decryptedState = JSON.parse(decryptedStr);
+            setS(decryptedState);
+            window.addDevLog?.('Local state updated from Firestore successfully (Decrypted).', 'success');
+            syncCallbacks.forEach(cb => {
+              try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+            });
+          } catch (err) {
+            window.addDevLog?.(`Stored password failed to decrypt: ${err.message}. Prompting...`, 'warn');
+            setSyncPassword(null);
+            promptForUnlock(remoteData, docRef);
+          }
+        } else {
+          window.addDevLog?.('Cloud document is encrypted. Prompting user for password...', 'info');
+          promptForUnlock(remoteData, docRef);
+        }
+      } else {
+        // Document is not encrypted (legacy migration)
+        window.addDevLog?.('Cloud document is not encrypted (legacy). Prompting user to set a password...', 'warn');
+        promptForSetup(remoteData, docRef);
       }
-      syncCallbacks.forEach(cb => {
-        try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
-      });
     } else {
       console.log('No data found in Firestore. Creating document with current local state.');
-      window.addDevLog?.('No document found in Firestore. Uploading current local state to cloud...', 'warn');
-      docRef.set(S)
-        .then(() => {
-          window.addDevLog?.('Firestore document created successfully with local state!', 'success');
-          console.log('Firestore document created successfully with local state!');
-          syncCallbacks.forEach(cb => {
-            try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
-          });
-        })
-        .catch(err => {
-          window.addDevLog?.(`Error creating Firestore document: ${err.message}`, 'error');
-          console.error('Error creating firestore doc:', err);
-        });
+      window.addDevLog?.('No document found in Firestore. Prompting user to set a sync password...', 'warn');
+      promptForSetup(null, docRef);
     }
   }, err => {
     window.hideGlobalLoader?.();
@@ -572,12 +705,21 @@ export function updateUserProfileUI() {
   }
 }
 
-// Hook state save to sync with firestore
-registerSaveCallback((state) => {
+// Hook state save to sync with firestore (encrypted)
+registerSaveCallback(async (state) => {
   if (db && currentUser && !currentUser.isAnonymous) {
-    db.collection('users').doc(currentUser.uid).set(state)
-      .then(() => console.log('Saved to Firestore successfully'))
-      .catch(err => console.error('Error saving to Firestore:', err));
+    if (syncPassword) {
+      try {
+        const encrypted = await encryptData(JSON.stringify(state), syncPassword);
+        db.collection('users').doc(currentUser.uid).set(encrypted)
+          .then(() => console.log('Saved encrypted state to Firestore successfully'))
+          .catch(err => console.error('Error saving to Firestore:', err));
+      } catch (err) {
+        console.error('Failed to encrypt state for saving:', err);
+      }
+    } else {
+      console.warn('Cannot save to cloud: syncPassword is not set');
+    }
   }
 });
 

@@ -15,6 +15,9 @@ import {
   setS
 } from './state.js';
 
+import { hashPin, encryptData, decryptData } from './crypto.js';
+import { syncPassword } from './firebase.js';
+
 import { 
   initFirebase, 
   loadFirebaseConfig, 
@@ -1195,7 +1198,12 @@ document.addEventListener('DOMContentLoaded', function() {
       save();
       
       if (db && currentUser && !currentUser.isAnonymous) {
-        db.collection('users').doc(currentUser.uid).set(cleanState)
+        const resetPromise = syncPassword
+          ? encryptData(JSON.stringify(cleanState), syncPassword)
+              .then(encrypted => db.collection('users').doc(currentUser.uid).set(encrypted))
+          : db.collection('users').doc(currentUser.uid).set(cleanState);
+          
+        resetPromise
           .then(() => {
             localStorage.clear();
             window.location.reload();
@@ -1433,7 +1441,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Cloud Sync Actions
-  q('#btnForceUploadCloud')?.addEventListener('click', () => {
+  q('#btnForceUploadCloud')?.addEventListener('click', async () => {
     if (!db || !currentUser || currentUser.isAnonymous) {
       alert('Você não está conectado a uma conta na nuvem.');
       return;
@@ -1442,17 +1450,19 @@ document.addEventListener('DOMContentLoaded', function() {
       const btn = q('#btnForceUploadCloud');
       if (btn) btn.disabled = true;
       
-      db.collection('users').doc(currentUser.uid).set(S)
-        .then(() => {
-          alert('Dados locais enviados para a nuvem com sucesso!');
-        })
-        .catch(err => {
-          console.error('Erro ao enviar dados para a nuvem:', err);
-          alert('Erro ao enviar dados: ' + err.message);
-        })
-        .finally(() => {
-          if (btn) btn.disabled = false;
-        });
+      try {
+        const dataToSave = syncPassword 
+          ? await encryptData(JSON.stringify(S), syncPassword) 
+          : S;
+          
+        await db.collection('users').doc(currentUser.uid).set(dataToSave);
+        alert('Dados locais enviados para a nuvem com sucesso!');
+      } catch (err) {
+        console.error('Erro ao enviar dados para a nuvem:', err);
+        alert('Erro ao enviar dados: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
   });
 
@@ -1466,10 +1476,27 @@ document.addEventListener('DOMContentLoaded', function() {
       if (btn) btn.disabled = true;
       
       db.collection('users').doc(currentUser.uid).get()
-        .then(doc => {
+        .then(async doc => {
           if (doc.exists) {
             const remoteData = doc.data();
-            setS(remoteData);
+            let stateToLoad = remoteData;
+            
+            if (remoteData.encrypted) {
+              if (!syncPassword) {
+                alert('Erro: Seus dados na nuvem estão criptografados, mas a senha de sincronização local não foi configurada.');
+                return;
+              }
+              try {
+                const decryptedStr = await decryptData(remoteData, syncPassword);
+                stateToLoad = JSON.parse(decryptedStr);
+              } catch (decErr) {
+                console.error('Failed to decrypt data on manual download:', decErr);
+                alert('Erro ao descriptografar os dados baixados: senha incorreta ou dados corrompidos.');
+                return;
+              }
+            }
+            
+            setS(stateToLoad);
             processRecurringTransactions();
             updateUI();
             alert('Dados sincronizados da nuvem com sucesso!');
@@ -1609,11 +1636,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Desativar PIN
-  btnDisablePin?.addEventListener('click', () => {
+  btnDisablePin?.addEventListener('click', async () => {
     const storedPin = localStorage.getItem('financeos_pin_code');
     const currentVal = pinCurrent ? pinCurrent.value : '';
     
-    if (currentVal !== storedPin) {
+    const hashedCurrent = await hashPin(currentVal);
+    if (hashedCurrent !== storedPin) {
       alert('PIN atual incorreto!');
       return;
     }
@@ -1626,16 +1654,19 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Salvar PIN
-  fConfigPin?.addEventListener('submit', (e) => {
+  fConfigPin?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const storedPin = localStorage.getItem('financeos_pin_code');
     const currentVal = pinCurrent ? pinCurrent.value : '';
     const newPin1 = pinInput1 ? pinInput1.value : '';
     const newPin2 = pinInput2 ? pinInput2.value : '';
 
-    if (storedPin && currentVal !== storedPin) {
-      alert('PIN atual incorreto!');
-      return;
+    if (storedPin) {
+      const hashedCurrent = await hashPin(currentVal);
+      if (hashedCurrent !== storedPin) {
+        alert('PIN atual incorreto!');
+        return;
+      }
     }
 
     if (newPin1.length !== 4 || !/^\d{4}$/.test(newPin1)) {
@@ -1648,7 +1679,8 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    localStorage.setItem('financeos_pin_code', newPin1);
+    const hashedNew = await hashPin(newPin1);
+    localStorage.setItem('financeos_pin_code', hashedNew);
     localStorage.setItem('financeos_pin_enabled', 'true');
     updatePinCheckbox();
     closeM('modal-config-pin');
@@ -1669,7 +1701,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function handlePinInput(val) {
+  async function handlePinInput(val) {
     if (typedPin.length >= 4) return;
     typedPin.push(val);
     updatePinDots();
@@ -1677,8 +1709,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typedPin.length === 4) {
       const enteredPin = typedPin.join('');
       const storedPin = localStorage.getItem('financeos_pin_code');
+      const hashedEntered = await hashPin(enteredPin);
 
-      if (enteredPin === storedPin) {
+      if (hashedEntered === storedPin) {
         // Desbloquear
         typedPin = [];
         updatePinDots();

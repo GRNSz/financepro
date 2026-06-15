@@ -1960,6 +1960,64 @@
   </div>
 </div>
 
+<!-- MODAL DE CONFIGURAÇÃO DE CRIPTOGRAFIA (SENHA DE CRIPTOGRAFIA E-TO-E) -->
+<div id="modal-crypto-setup" class="mbd" hidden>
+  <div class="modal" style="max-width: 420px;">
+    <div class="mhd">
+      <h3>Criptografia de Ponta a Ponta</h3>
+    </div>
+    <form id="f-crypto-setup" style="display:flex; flex-direction:column; gap:16px; margin-top:10px;">
+      <p style="font-size:12px; color:var(--tx2); margin:0; line-height:1.5;">
+        Para garantir a total privacidade e segurança dos seus dados, todas as informações sincronizadas na nuvem serão protegidas com <strong>criptografia de ponta a ponta</strong>. Nem os desenvolvedores terão acesso ao seu banco de dados.
+      </p>
+      
+      <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.2); border-radius:10px; padding:12px; font-size:11px; color:#10b981; line-height:1.4;">
+        🔒 <strong>Como funciona:</strong> Seus dados são criptografados no seu dispositivo antes do envio. Você precisará desta senha ao entrar em um novo dispositivo.
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-weight:700; font-size:12px; color:var(--tx2);">Crie uma Senha de Sincronização:</label>
+        <input type="password" id="crypto-setup-pass1" class="inp" placeholder="Senha forte (mínimo 6 caracteres)" required minlength="6" style="width: 100%;">
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-weight:700; font-size:12px; color:var(--tx2);">Confirme a Senha:</label>
+        <input type="password" id="crypto-setup-pass2" class="inp" placeholder="Repita a senha" required minlength="6" style="width: 100%;">
+      </div>
+      
+      <div class="mfooter" style="display:flex; justify-content:flex-end; gap:8px; width:100%; box-sizing:border-box;">
+        <button type="button" class="bg sm" id="btnCancelCryptoSetup">Cancelar & Sair</button>
+        <button type="submit" class="bp sm" style="font-weight:700;">Ativar Criptografia</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL PARA INSERIR SENHA DE DECRIPTOGRAFIA -->
+<div id="modal-crypto-unlock" class="mbd" hidden>
+  <div class="modal" style="max-width: 420px;">
+    <div class="mhd">
+      <h3>Desbloquear Dados na Nuvem</h3>
+    </div>
+    <form id="f-crypto-unlock" style="display:flex; flex-direction:column; gap:16px; margin-top:10px;">
+      <p style="font-size:12px; color:var(--tx2); margin:0; line-height:1.5;">
+        Seus dados de nuvem estão protegidos com criptografia. Insira a sua <strong>Senha de Sincronização</strong> para descriptografar e acessar suas informações.
+      </p>
+      
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-weight:700; font-size:12px; color:var(--tx2);">Senha de Sincronização:</label>
+        <input type="password" id="crypto-unlock-pass" class="inp" placeholder="Insira sua senha de criptografia" required style="width: 100%;">
+        <div id="crypto-unlock-error" style="color:var(--rd); font-size:11px; margin-top:4px; display:none;">⚠️ Senha incorreta ou dados corrompidos. Tente novamente.</div>
+      </div>
+      
+      <div class="mfooter" style="display:flex; justify-content:space-between; gap:8px; width:100%; box-sizing:border-box;">
+        <button type="button" class="bg sm" id="btnCancelCryptoUnlock" style="color:var(--rd); border-color:var(--rd);">Cancelar & Sair</button>
+        <button type="submit" class="bp sm" style="font-weight:700;">Desbloquear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- OVERLAY DE CARREGAMENTO GLOBAL -->
 <div id="global-loader" class="loader-overlay" hidden>
   <div class="loader-container">
