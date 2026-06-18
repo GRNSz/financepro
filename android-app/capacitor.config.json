@@ -1,6 +1,6 @@
 {
-  "appId": "com.financeos",
-  "appName": "FinanceOS",
+  "appId": "com.financepro",
+  "appName": "FinancePro",
   "webDir": "../dist",
   "bundledWebRuntime": false,
   "plugins": {

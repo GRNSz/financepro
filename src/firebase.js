@@ -2,13 +2,14 @@ import { S, setS, load, save, q, registerSaveCallback, initState } from './state
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { encryptData, decryptData, generateSecureId } from './crypto.js';
 
-export let syncPassword = localStorage.getItem('financeos_sync_password') || null;
+export let syncPassword = localStorage.getItem('financepro_sync_password') || localStorage.getItem('financeos_sync_password') || null;
 
 export function setSyncPassword(pw) {
   syncPassword = pw;
   if (pw) {
-    localStorage.setItem('financeos_sync_password', pw);
+    localStorage.setItem('financepro_sync_password', pw);
   } else {
+    localStorage.removeItem('financepro_sync_password');
     localStorage.removeItem('financeos_sync_password');
   }
 }
@@ -57,7 +58,7 @@ export function loadFirebaseConfig() {
       return;
     }
     
-    const raw = localStorage.getItem('financeos_firebase_config');
+    const raw = localStorage.getItem('financepro_firebase_config') || localStorage.getItem('financeos_firebase_config');
     if (raw) firebaseConfig = JSON.parse(raw);
   } catch (e) {
     console.error('Error loading firebase config', e);
@@ -66,9 +67,10 @@ export function loadFirebaseConfig() {
 
 export function saveFirebaseConfig(config) {
   if (config) {
-    localStorage.setItem('financeos_firebase_config', JSON.stringify(config));
+    localStorage.setItem('financepro_firebase_config', JSON.stringify(config));
     firebaseConfig = config;
   } else {
+    localStorage.removeItem('financepro_firebase_config');
     localStorage.removeItem('financeos_firebase_config');
     firebaseConfig = null;
   }
@@ -134,7 +136,7 @@ export function initFirebase() {
         window.addDevLog?.(`onAuthStateChanged: User logged in: ${user.email} (${user.uid})`, 'info');
         currentUser = {
           uid: user.uid,
-          email: user.email || 'sem-email@financeos.app',
+          email: user.email || 'sem-email@financepro.app',
           name: user.displayName || user.email.split('@')[0],
           photoURL: user.photoURL || null,
           isAnonymous: user.isAnonymous,
@@ -169,7 +171,7 @@ export function initFirebase() {
 
 export function checkGuestLogin(cbUpdateUI) {
   try {
-    const raw = localStorage.getItem('financeos_guest_user');
+    const raw = localStorage.getItem('financepro_guest_user') || localStorage.getItem('financeos_guest_user');
     if (raw) {
       guestUser = JSON.parse(raw);
       currentUser = guestUser;
@@ -372,14 +374,14 @@ export function loginAsGuest(cbUpdateUI) {
   console.log('Logging in as guest...');
   const mockUser = {
     uid: 'guest_user_local',
-    email: 'local@financeos.app',
+    email: 'local@financepro.app',
     name: 'Visitante Local',
     photoURL: null,
     isAnonymous: true,
     providerId: 'anonymous'
   };
   
-  localStorage.setItem('financeos_guest_user', JSON.stringify(mockUser));
+  localStorage.setItem('financepro_guest_user', JSON.stringify(mockUser));
   guestUser = mockUser;
   currentUser = mockUser;
   
@@ -426,7 +428,7 @@ export function updateUserDisplayName(newName) {
   } else if (guestUser) {
     guestUser.name = newName;
     currentUser.name = newName;
-    localStorage.setItem('financeos_guest_user', JSON.stringify(guestUser));
+    localStorage.setItem('financepro_guest_user', JSON.stringify(guestUser));
     updateUserProfileUI();
     alert('Nome do visitante atualizado com sucesso!');
     return Promise.resolve();
@@ -457,6 +459,7 @@ export function signOutUser() {
   const resetAndNavigate = () => {
     currentUser = null;
     guestUser = null;
+    localStorage.removeItem('financepro_guest_user');
     localStorage.removeItem('financeos_guest_user');
     if (firebaseUnsub) {
       firebaseUnsub();
@@ -725,6 +728,19 @@ registerSaveCallback(async (state) => {
 
 export function deleteAccountAndData() {
   const clearLocalStorageAndReset = () => {
+    // Limpar novas chaves do FinancePro
+    localStorage.removeItem('financepro_guest_user');
+    localStorage.removeItem('financepro_v4');
+    localStorage.removeItem('financepro_pin_code');
+    localStorage.removeItem('financepro_pin_enabled');
+    localStorage.removeItem('financepro_stealth');
+    localStorage.removeItem('financepro_stealth_activated');
+    localStorage.removeItem('financepro_notifications');
+    localStorage.removeItem('financepro_gcal_sync');
+    localStorage.removeItem('financepro_sync_password');
+    localStorage.removeItem('financepro_ai_api_key');
+    
+    // Limpar chaves legadas do FinanceOS por segurança
     localStorage.removeItem('financeos_guest_user');
     localStorage.removeItem('financeos_v4');
     localStorage.removeItem('financeos_pin_code');
@@ -733,6 +749,8 @@ export function deleteAccountAndData() {
     localStorage.removeItem('financeos_stealth_activated');
     localStorage.removeItem('financeos_notifications');
     localStorage.removeItem('financeos_gcal_sync');
+    localStorage.removeItem('financeos_sync_password');
+    localStorage.removeItem('financeos_ai_api_key');
     
     // Reset state to empty
     setS(initState());

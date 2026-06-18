@@ -1,11 +1,22 @@
 version: '3.8'
 
 services:
-  app:
-    container_name: oracle-financeiro-container
+  web:
+    container_name: financepro-web
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
+    environment:
+      - SITE_DOMAIN=${SITE_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     restart: always
+
+volumes:
+  caddy_data:
+  caddy_config:

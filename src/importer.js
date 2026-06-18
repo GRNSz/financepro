@@ -1,4 +1,4 @@
-import { S, save, uid, fmt, fmtD, q, qa, isoToday } from './state.js';
+import { S, save, uid, fmt, fmtD, q, qa, isoToday, closeM } from './state.js';
 
 export let importedTxs = [];
 
@@ -311,6 +311,7 @@ export function saveImportedTransactions() {
   importedTxs = [];
   q('#import-file-input').value = '';
   q('#import-preview-area').style.display = 'none';
+  closeM('m-import-extrato');
   
   if (window.applyFilters) window.applyFilters();
   if (window.renderDashboard) window.renderDashboard();

@@ -16,12 +16,15 @@ COPY . .
 RUN npm run build
 
 # Estágio de Produção
-FROM nginx:alpine
+FROM caddy:alpine
 
-# Copia os arquivos compilados do estágio anterior para o diretório padrão do Nginx
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copia os arquivos compilados do estágio anterior para o diretório padrão do Caddy
+COPY --from=build /app/dist /usr/share/caddy
 
-# Expõe a porta padrão do servidor web
-EXPOSE 80
+# Copia a configuração padrão do Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
 
-CMD ["nginx", "-g", "daemon off;"]
+# Expõe as portas padrão (HTTP e HTTPS)
+EXPOSE 80 443
+
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

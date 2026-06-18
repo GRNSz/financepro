@@ -3,7 +3,7 @@ import { S, fmt, getCat, q, openM, save } from './state.js';
 export let aiChatHistory = [];
 
 export function getAIApiKey() {
-  const localKey = localStorage.getItem('financeos_ai_api_key');
+  const localKey = localStorage.getItem('financepro_ai_api_key') || localStorage.getItem('financeos_ai_api_key');
   if (localKey && localKey.trim()) return localKey.trim();
   
   // Substituído em tempo de compilação pelo Vite (via plugin ou env nativo)
@@ -70,7 +70,7 @@ export async function sendAiMessage() {
 
   input.value = '';
   
-  window.showGlobalLoader?.("IA FinancesOS está pensando...");
+  window.showGlobalLoader?.("IA FinancePro está pensando...");
   
   const messagesContainer = q('#aiChatMessages');
   if (!messagesContainer) return;

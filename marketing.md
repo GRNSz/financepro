@@ -1,11 +1,11 @@
-# Plano de Ação de Marketing Funcional: FinanceOS
+# Plano de Ação de Marketing Funcional: FinancePro
 
-Este plano de marketing foi estruturado para lançar, tracionar e escalar a base de usuários do **FinanceOS**, maximizando a conversão de planos gratuitos em assinantes Plus e Pro.
+Este plano de marketing foi estruturado para lançar, tracionar e escalar a base de usuários do **FinancePro**, maximizando a conversão de planos gratuitos em assinantes Plus e Pro.
 
 ---
 
 ## 1. Posicionamento de Mercado e Proposta de Valor
-- **Diferencial Competitivo**: O FinanceOS não é apenas uma planilha; é um ecossistema financeiro multiplataforma rápido com **Inteligência Artificial (Gemini)** que age como um consultor financeiro pessoal ativo no chat do usuário, rodando de forma extremamente leve no Windows, Android e Web.
+- **Diferencial Competitivo**: O FinancePro não é apenas uma planilha; é um ecossistema financeiro multiplataforma rápido com **Inteligência Artificial (Gemini)** que age como um consultor financeiro pessoal ativo no chat do usuário, rodando de forma extremamente leve no Windows, Android e Web.
 - **Público-Alvo**:
   - Jovens profissionais e freelancers que precisam controlar receitas variáveis.
   - Pessoas endividadas ou que desejam poupar para metas específicas (compra de imóvel, viagem, reserva).
@@ -24,7 +24,7 @@ Este plano de marketing foi estruturado para lançar, tracionar e escalar a base
 - **Frequência**: 1 vídeo por dia em cada plataforma.
 
 ### B. Otimização de Lojas de Aplicativos (ASO - App Store Optimization)
-- **Título**: `FinanceOS - Controle Financeiro e IA` (Limita a 30 caracteres, posiciona a marca e a principal funcionalidade).
+- **Título**: `FinancePro - Controle Financeiro e IA` (Limita a 30 caracteres, posiciona a marca e a principal funcionalidade).
 - **Subtítulo / Descrição Curta**: `Gerenciador de finanças pessoais com Inteligência Artificial e metas.`
 - **Palavras-Chave Foco**: `controle financeiro`, `finanças pessoais`, `gerenciador financeiro`, `ia finanças`, `gastos`, `poupar dinheiro`, `orçamento`.
 - **Material Visual**: Prints de alta qualidade das telas do app com textos de apoio grandes destacando: "Controle em Nuvem", "Consultor IA", "Gráficos Dinâmicos".
@@ -68,7 +68,7 @@ Este plano de marketing foi estruturado para lançar, tracionar e escalar a base
 
 | Dia | Ação | Responsável | Status |
 |---|---|---|---|
-| **Dias 1-5** | Criar contas nas redes sociais (TikTok, Instagram, YouTube) com a marca @FinanceOS. | Marketing | A Fazer |
+| **Dias 1-5** | Criar contas nas redes sociais (TikTok, Instagram, YouTube) com a marca @FinancePro. | Marketing | A Fazer |
 | **Dias 6-10** | Publicar a versão de produção na Google Play Console. Iniciar ASO inicial. | Dev / Lojas | A Fazer |
 | **Dias 11-15** | Gravar e editar o primeiro lote de 10 vídeos curtos para redes sociais. | Produção | A Fazer |
 | **Dias 16-20** | Iniciar campanhas pagas de baixo orçamento (R$ 15/dia) para testar criativos no Meta Ads. | Gestor de Tráfego | A Fazer |

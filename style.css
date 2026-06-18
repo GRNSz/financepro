@@ -1239,3 +1239,86 @@ select.input {
   .goals-grid { grid-template-columns: 1fr; }
   .accounts-grid { grid-template-columns: 1fr; }
 }
+
+/* ── TUTORIAL GRID ── */
+.tut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 16px;
+}
+.tut-card {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 24px;
+  aspect-ratio: 1 / 1;
+  min-height: 260px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+.tut-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 16px var(--accent-glow);
+}
+.tut-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-start;
+}
+.tut-tag {
+  align-self: flex-start;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 750;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.tut-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.3;
+}
+.tut-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tut-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-lt);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  transition: color 0.2s;
+}
+.tut-card:hover .tut-footer {
+  color: var(--text);
+}
+.tut-tip {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--surface-3);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 11px;
+}

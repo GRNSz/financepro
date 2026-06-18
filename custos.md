@@ -1,6 +1,6 @@
-# Análise de Custos de Infraestrutura e Operação: FinanceOS
+# Análise de Custos de Infraestrutura e Operação: FinancePro
 
-Este documento detalha os custos operacionais necessários para hospedar, manter e escalar o aplicativo **FinanceOS** (Web, Windows e Android).
+Este documento detalha os custos operacionais necessários para hospedar, manter e escalar o aplicativo **FinancePro** (Web, Windows e Android).
 
 ---
 

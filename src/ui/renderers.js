@@ -1,4 +1,4 @@
-import { S, setS, load, save, uid, fmt, fmtD, getCat, getPay, q, qa, openM, closeM, periodState, getActiveWeekRange } from '../state.js';
+import { S, setS, load, save, uid, fmt, fmtD, getCat, getPay, q, qa, openM, closeM, periodState, getActiveWeekRange, calendarState } from '../state.js';
 import { currentUser } from '../firebase.js';
 
 export function escapeHtml(str) {
@@ -23,7 +23,7 @@ const PAGE_TITLES = {
   dashboard:'Dashboard', calculadora:'Calculadora', lancamentos:'Lançamentos', dividas:'Dívidas',
   guardado:'Dinheiro Guardado', contas:'Contas & Cartões',
   metas:'Metas', config:'Configurações', notificacoes:'Central de Notificações', perfil:'Meu Perfil',
-  calendario:'Calendário', tutoriais:'Tutoriais'
+  calendario:'Calendário', tutoriais:'Tutoriais', suporte:'Suporte & Contato'
 };
 
 export function navigate(page) {
@@ -70,6 +70,7 @@ export function renderPage(p) {
   if(p==='config')      renderConfig();
   if(p==='calendario')  renderCalendar();
   if(p==='perfil')      renderPerfil();
+  if(p==='suporte')     renderSuporte();
 }
 
 export function updateUI() {
@@ -1772,15 +1773,15 @@ export function renderCalendar() {
   // Initialize checkbox value from localStorage
   const cbSync = q('#cbGoogleCalendarSync');
   if (cbSync) {
-    if (localStorage.getItem('financeos_gcal_sync') === null) {
-      localStorage.setItem('financeos_gcal_sync', 'false');
+    if (localStorage.getItem('financepro_gcal_sync') === null && localStorage.getItem('financeos_gcal_sync') === null) {
+      localStorage.setItem('financepro_gcal_sync', 'false');
     }
-    cbSync.checked = localStorage.getItem('financeos_gcal_sync') === 'true';
+    cbSync.checked = (localStorage.getItem('financepro_gcal_sync') || localStorage.getItem('financeos_gcal_sync')) === 'true';
     
     // Add event listener once
     if (!cbSync.dataset.listenerBound) {
       cbSync.addEventListener('change', function() {
-        localStorage.setItem('financeos_gcal_sync', this.checked);
+        localStorage.setItem('financepro_gcal_sync', this.checked ? 'true' : 'false');
         renderCalendar();
       });
       cbSync.dataset.listenerBound = 'true';
@@ -1788,8 +1789,8 @@ export function renderCalendar() {
   }
 
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  const year = periodState.currentYear;
-  const month = periodState.currentMonth;
+  const year = calendarState.currentYear;
+  const month = calendarState.currentMonth;
 
   monthLbl.textContent = `${MESES[month]} de ${year}`;
 
@@ -1899,7 +1900,7 @@ export function showDayDetails(dayIso, dayNum, monthName, year, txs) {
       const nextD = String(dObj.getDate()).padStart(2, '0');
       const dateEndClean = `${nextY}${nextM}${nextD}`;
       
-      const eventTitle = encodeURIComponent(`[FinanceOS] ${t.desc}`);
+      const eventTitle = encodeURIComponent(`[FinancePro] ${t.desc}`);
       const eventDetails = encodeURIComponent(`Lançamento: ${t.tipo}\nValor: ${fmt(t.val)}\nCategoria: ${c.name}\nConta: ${pn}\nStatus: ${t.status}`);
       const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${dateClean}/${dateEndClean}&details=${eventDetails}`;
       
@@ -1983,7 +1984,7 @@ export function renderAchievements() {
   }
 
   const isCidadaoGlobal = Array.isArray(S.transactions) && S.transactions.some(t => t.moeda && t.moeda !== 'BRL');
-  const isAgenteSecreto = localStorage.getItem('financeos_stealth_activated') === 'true' || localStorage.getItem('financeos_stealth') === 'true';
+  const isAgenteSecreto = localStorage.getItem('financepro_stealth_activated') === 'true' || localStorage.getItem('financeos_stealth_activated') === 'true' || localStorage.getItem('financepro_stealth') === 'true' || localStorage.getItem('financeos_stealth') === 'true';
   const hasVision = Array.isArray(S.goals) && S.goals.length >= 1;
   const txCount = (S.transactions || []).length;
 
@@ -2063,6 +2064,87 @@ export function render52WeekChallenge() {
   gridContainer.innerHTML = gridHtml;
 }
 
+export function renderSuporte() {
+  const user = currentUser();
+  const name = user ? (user.displayName || 'Usuário Sincronizado') : (S.userName || 'Usuário Local');
+  const email = user ? (user.email || '—') : (S.userEmail || 'local@financepro.app');
+
+  const nameInput = q('#support-name-input');
+  const emailInput = q('#support-email-input');
+  if (nameInput) nameInput.value = name;
+  if (emailInput) emailInput.value = email;
+
+  const countEl = q('#support-ticket-count');
+  const tickets = S.supportTickets || [];
+  if (countEl) {
+    countEl.textContent = tickets.length === 1 ? '1 chamado aberto' : `${tickets.length} chamados abertos`;
+  }
+
+  const emailDisp = q('#support-email-display');
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@financepro.app';
+  if (emailDisp) {
+    emailDisp.textContent = supportEmail;
+  }
+
+  const listEl = q('#support-tickets-list');
+  if (listEl) {
+    if (tickets.length === 0) {
+      listEl.innerHTML = `<p style="font-size:12px; color:var(--tx2); text-align:center; padding:20px 0; margin:0;">Nenhum chamado enviado ainda.</p>`;
+    } else {
+      listEl.innerHTML = tickets.map(t => {
+        let badgeColor = '#64748b';
+        if (t.category === 'bug') badgeColor = '#ef4444';
+        if (t.category === 'sugestao') badgeColor = '#3b82f6';
+        if (t.category === 'financeiro') badgeColor = '#10b981';
+
+        return `
+          <div style="background:var(--s2); border:1px solid var(--bd); padding:10px 12px; border-radius:8px; display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:11px; font-weight:600; color:var(--tx2);">${t.date}</span>
+              <span style="background:${badgeColor}22; color:${badgeColor}; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; text-transform:uppercase;">
+                ${t.category}
+              </span>
+            </div>
+            <div style="font-size:13px; font-weight:700; color:var(--tx);">${escapeHtml(t.subject)}</div>
+            <p style="font-size:12px; color:var(--tx2); margin:4px 0 0 0; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+              ${escapeHtml(t.message)}
+            </p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; border-top:1px dashed var(--bd); padding-top:6px;">
+              <span style="font-size:10px; color:var(--tx2)">ID: <code style="font-family:monospace;">${t.id}</code></span>
+              <button class="bs xs" onclick="copySupportTicketText('${t.id}')" style="padding:2px 6px; font-size:10.5px;">Copiar Detalhes</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+export function copySupportTicketText(id) {
+  const tickets = S.supportTickets || [];
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+
+  let text = `=== CHAMADO DE SUPORTE ===\n`;
+  text += `ID: ${t.id}\n`;
+  text += `Data: ${t.date}\n`;
+  text += `Nome: ${t.name}\n`;
+  text += `E-mail: ${t.email}\n`;
+  text += `Categoria: ${t.category}\n`;
+  text += `Assunto: ${t.subject}\n\n`;
+  text += `Mensagem:\n${t.message}\n\n`;
+  if (t.logs) {
+    text += `=== LOGS DO SISTEMA ===\n`;
+    text += `${t.logs}\n`;
+  }
+
+  navigator.clipboard.writeText(text)
+    .then(() => alert('Detalhes do chamado copiados para a área de transferência!'))
+    .catch(err => alert('Erro ao copiar detalhes: ' + err));
+}
+
 window.renderPerfil = renderPerfil;
 window.renderAchievements = renderAchievements;
 window.render52WeekChallenge = render52WeekChallenge;
+window.renderSuporte = renderSuporte;
+window.copySupportTicketText = copySupportTicketText;

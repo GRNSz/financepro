@@ -12,7 +12,8 @@ import {
   closeM, 
   periodState,
   initState,
-  setS
+  setS,
+  calendarState
 } from './state.js';
 
 import { hashPin, encryptData, decryptData } from './crypto.js';
@@ -87,18 +88,30 @@ registerSyncCallback(() => {
   if (window.updateSyncStatusDot) window.updateSyncStatusDot();
 });
 
+let paywallCheckedThisSession = false;
+
+function checkPaywallAccess() {
+  if (paywallCheckedThisSession) return;
+  paywallCheckedThisSession = true;
+
+  const plan = S.subscription?.plan || 'free';
+  if (plan === 'free') {
+    let count = parseInt(localStorage.getItem('financepro_access_count') || '0', 10);
+    count += 1;
+    localStorage.setItem('financepro_access_count', count);
+    if (count % 3 === 0) {
+      openM('paywall-overlay');
+    }
+  }
+}
+
 registerAuthCallback((user) => {
   if (window.updateSyncStatusDot) window.updateSyncStatusDot();
   if (user) {
     processRecurringTransactions();
     updateUI();
-    
-    // Exibe automaticamente o paywall se o plano for grátis
-    const plan = S.subscription?.plan || 'free';
-    if (plan === 'free') {
-      openM('paywall-overlay');
-    }
   }
+  checkPaywallAccess();
   window.hideGlobalLoader?.();
 });
 
@@ -823,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = u;
-    a.download = 'financeos-backup-' + isoToday() + '.json';
+    a.download = 'financepro-backup-' + isoToday() + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -862,6 +875,79 @@ document.addEventListener('DOMContentLoaded', function() {
     r.readAsText(e.target.files[0]);
   });
 
+  q('#f-suporte-ticket')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const subject = q('#support-subject-input').value.trim();
+    const category = q('#support-category-input').value;
+    const message = q('#support-message-input').value.trim();
+    const attachLogs = q('#support-attach-logs').checked;
+    
+    const name = q('#support-name-input')?.value.trim() || 'Usuário Local';
+    const email = q('#support-email-input')?.value.trim() || 'local@financepro.app';
+    
+    let logsText = '';
+    if (attachLogs && window.devLogs) {
+      logsText = window.devLogs.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`).join('\n');
+    }
+    
+    const ticketId = 'tk_' + uid();
+    const newTicket = {
+      id: ticketId,
+      name,
+      email,
+      subject,
+      category,
+      message,
+      logs: logsText,
+      date: new Date().toLocaleDateString('pt-BR'),
+      status: 'Enviado'
+    };
+    
+    if (!Array.isArray(S.supportTickets)) {
+      S.supportTickets = [];
+    }
+    S.supportTickets.unshift(newTicket);
+    save();
+    
+    const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@financepro.app';
+    const emailSubject = `[FinancePro Suporte] [${category.toUpperCase()}] ${subject}`;
+    
+    let emailBody = `Olá, gostaria de abrir um chamado de suporte.\n\n`;
+    emailBody += `=== DETALHES DO CHAMADO ===\n`;
+    emailBody += `ID: ${ticketId}\n`;
+    emailBody += `Data: ${newTicket.date}\n`;
+    emailBody += `Nome: ${name}\n`;
+    emailBody += `E-mail: ${email}\n`;
+    emailBody += `Categoria: ${category}\n`;
+    emailBody += `Assunto: ${subject}\n\n`;
+    emailBody += `Mensagem:\n${message}\n\n`;
+    
+    if (attachLogs && logsText) {
+      emailBody += `=== LOGS DO SISTEMA ===\n`;
+      emailBody += `${logsText}\n`;
+    }
+    
+    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    
+    const statusMsg = q('#support-status-msg');
+    if (statusMsg) {
+      statusMsg.innerHTML = `<span style="color:#10b981">Chamado criado! Caso seu app de e-mail não abra, envie para ${supportEmail}.</span>`;
+      setTimeout(() => {
+        statusMsg.innerHTML = '';
+      }, 6000);
+    }
+    
+    q('#support-subject-input').value = '';
+    q('#support-message-input').value = '';
+    q('#support-attach-logs').checked = false;
+    
+    if (window.renderSuporte) {
+      window.renderSuporte();
+    }
+  });
+
   // Drag and drop spreadsheet/OFX import zones
   // 1. General Import Card
   const generalDropZone = q('#drop-zone');
@@ -889,35 +975,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (file) handleImportFile(file);
   });
 
-  // 2. Banco Inter Import Card
-  const interDropZone = q('#dropZone');
-  const interFileInput = q('#bankFile');
 
-  interDropZone?.addEventListener('click', () => interFileInput?.click());
-  interDropZone?.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    interDropZone.style.borderColor = 'var(--ac)';
-  });
-  interDropZone?.addEventListener('dragleave', () => {
-    interDropZone.style.borderColor = '';
-  });
-  interDropZone?.addEventListener('drop', (e) => {
-    e.preventDefault();
-    interDropZone.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file) handleImportFile(file);
-  });
-  interFileInput?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) handleImportFile(file);
-  });
 
   q('#btnConfirmImport')?.addEventListener('click', saveImportedTransactions);
   q('#btnCancelImport')?.addEventListener('click', () => {
     if (generalFileInput) generalFileInput.value = '';
     const previewArea = q('#import-preview-area');
     if (previewArea) previewArea.style.display = 'none';
+    closeM('m-import-extrato');
   });
+  q('#btnOpenImportExtrato')?.addEventListener('click', () => openM('m-import-extrato'));
 
   // 18. Theme Manager (Light/Dark and Premium Themes)
   function applyTheme(theme) {
@@ -1023,19 +1090,19 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   q('#calPrevBtn')?.addEventListener('click', () => {
-    periodState.currentMonth--;
-    if (periodState.currentMonth < 0) {
-      periodState.currentMonth = 11;
-      periodState.currentYear--;
+    calendarState.currentMonth--;
+    if (calendarState.currentMonth < 0) {
+      calendarState.currentMonth = 11;
+      calendarState.currentYear--;
     }
     renderCalendar();
   });
 
   q('#calNextBtn')?.addEventListener('click', () => {
-    periodState.currentMonth++;
-    if (periodState.currentMonth > 11) {
-      periodState.currentMonth = 0;
-      periodState.currentYear++;
+    calendarState.currentMonth++;
+    if (calendarState.currentMonth > 11) {
+      calendarState.currentMonth = 0;
+      calendarState.currentYear++;
     }
     renderCalendar();
   });
@@ -1087,108 +1154,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   updatePeriodLabel();
 
-  // 21. Banco Inter sync simulation
-  q('#btnSyncInter')?.addEventListener('click', () => openM('m-inter-sync'));
 
-  q('#f-inter-sync')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    q('#f-inter-sync').style.display = 'none';
-    const progArea = q('#inter-sync-progress');
-    if (progArea) progArea.style.display = 'flex';
-    
-    const statusText = q('#inter-sync-status');
-    const progressBar = q('#inter-sync-bar');
-    
-    const steps = [
-      { pct: 20, status: 'Estabelecendo handshake TLS mútuo (mTLS)...', delay: 800 },
-      { pct: 50, status: 'Autenticando e gerando Token OAuth...', delay: 700 },
-      { pct: 85, status: 'Consultando extrato via API de Contas Correntes Inter...', delay: 1200 },
-      { pct: 100, status: 'Importação e reconciliação concluídas!', delay: 600 }
-    ];
-    
-    let currentStep = 0;
-    
-    function runSyncStep() {
-      if (currentStep < steps.length) {
-        const step = steps[currentStep];
-        if (progressBar) progressBar.style.width = step.pct + '%';
-        if (statusText) statusText.textContent = step.status;
-        currentStep++;
-        setTimeout(runSyncStep, step.delay);
-      } else {
-        closeM('m-inter-sync');
-        q('#f-inter-sync').style.display = 'flex';
-        if (progArea) progArea.style.display = 'none';
-        if (progressBar) progressBar.style.width = '0%';
-        
-        const tgtAcc = S.accounts.find(a => a.name.toLowerCase().includes('inter')) || S.accounts[0];
-        if (!tgtAcc) {
-          alert('Por favor, crie uma conta bancária primeiro.');
-          return;
-        }
-        
-        const importedTxs = [
-          {
-            id: uid(),
-            tipo: 'Receita',
-            desc: 'Pix Recebido - Banco Inter',
-            val: 180.00,
-            catId: 'c_outr',
-            payId: tgtAcc.id,
-            data: isoToday(),
-            status: 'Recebido',
-            inst: null,
-            total: null
-          },
-          {
-            id: uid(),
-            tipo: 'Despesa',
-            desc: 'Inter Mall Cashback',
-            val: 14.90,
-            catId: 'c_comp',
-            payId: tgtAcc.id,
-            data: isoToday(),
-            status: 'Recebido',
-            inst: null,
-            total: null
-          },
-          {
-            id: uid(),
-            tipo: 'Despesa',
-            desc: 'Assinatura Inter Pass',
-            val: 19.90,
-            catId: 'c_fixa',
-            payId: tgtAcc.id,
-            data: isoToday(),
-            status: 'Pago',
-            inst: null,
-            total: null
-          }
-        ];
-        
-        let addedCount = 0;
-        importedTxs.forEach(tx => {
-          const isDup = S.transactions.some(t => t.desc === tx.desc && t.val === tx.val && t.data === tx.data);
-          if (!isDup) {
-            S.transactions.unshift(tx);
-            tgtAcc.balance += (tx.tipo === 'Receita' ? tx.val : -tx.val);
-            addedCount++;
-          }
-        });
-        
-        if (addedCount > 0) {
-          save();
-          if (activePage === 'lancamentos') applyFilters();
-          renderDashboard();
-          alert(`Sincronização concluída com sucesso!\n${addedCount} novas transações importadas para a conta "${tgtAcc.name}".`);
-        } else {
-          alert('Sincronização realizada com sucesso. Nenhuma nova transação encontrada.');
-        }
-      }
-    }
-    
-    setTimeout(runSyncStep, 100);
-  });
 
   // 22. App reset
   q('#btnReset')?.addEventListener('click', () => {
@@ -1293,14 +1259,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const aiKeyInput = q('#ai-api-key-input');
   if (aiKeyInput) {
-    aiKeyInput.value = localStorage.getItem('financeos_ai_api_key') || '';
+    aiKeyInput.value = localStorage.getItem('financepro_ai_api_key') || localStorage.getItem('financeos_ai_api_key') || '';
   }
 
   q('#btnSaveAIKey')?.addEventListener('click', async () => {
     const key = q('#ai-api-key-input').value.trim();
     if (key) {
-      localStorage.setItem('financeos_ai_api_key', key);
+      localStorage.setItem('financepro_ai_api_key', key);
     } else {
+      localStorage.removeItem('financepro_ai_api_key');
       localStorage.removeItem('financeos_ai_api_key');
     }
     
@@ -1523,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 29b. Premium Features Init
   // Stealth Mode Toggle
   const btnStealth = q('#btnStealthToggle');
-  let isStealth = localStorage.getItem('financeos_stealth') === 'true';
+  let isStealth = (localStorage.getItem('financepro_stealth') || localStorage.getItem('financeos_stealth')) === 'true';
   function applyStealth(stealth) {
     if (stealth) {
       document.body.classList.add('stealth-active');
@@ -1535,9 +1502,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   btnStealth?.addEventListener('click', () => {
     isStealth = !isStealth;
-    localStorage.setItem('financeos_stealth', isStealth);
+    localStorage.setItem('financepro_stealth', isStealth);
     if (isStealth) {
-      localStorage.setItem('financeos_stealth_activated', 'true');
+      localStorage.setItem('financepro_stealth_activated', 'true');
     }
     applyStealth(isStealth);
     if (activePage === 'perfil') renderAchievements();
@@ -1559,32 +1526,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Calendar Export ICS click
   q('#btnExportICS')?.addEventListener('click', function() {
-    exportCalendarICS(periodState.currentYear, periodState.currentMonth);
+    exportCalendarICS(calendarState.currentYear, calendarState.currentMonth);
   });
 
   // Browser Notifications checkbox & request permission
   const chkNotif = q('#chkNotifications');
   if (chkNotif) {
-    chkNotif.checked = localStorage.getItem('financeos_notifications') === 'true';
+    chkNotif.checked = (localStorage.getItem('financepro_notifications') || localStorage.getItem('financeos_notifications')) === 'true';
     chkNotif.addEventListener('change', function() {
-      localStorage.setItem('financeos_notifications', this.checked);
+      localStorage.setItem('financepro_notifications', this.checked);
       if (this.checked) {
         if ('Notification' in window) {
           Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
-              new Notification('FinanceOS', {
+              new Notification('FinancePro', {
                 body: 'Notificações ativadas com sucesso! 🔔'
               });
             } else {
               alert('Permissão de notificação negada pelo navegador.');
               this.checked = false;
-              localStorage.setItem('financeos_notifications', 'false');
+              localStorage.setItem('financepro_notifications', 'false');
             }
           });
          } else {
           alert('Este navegador não suporta notificações de área de trabalho.');
           this.checked = false;
-          localStorage.setItem('financeos_notifications', 'false');
+          localStorage.setItem('financepro_notifications', 'false');
         }
       }
     });
@@ -1606,14 +1573,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updatePinCheckbox() {
     if (chkPinEnabled) {
-      chkPinEnabled.checked = localStorage.getItem('financeos_pin_enabled') === 'true';
+      chkPinEnabled.checked = (localStorage.getItem('financepro_pin_enabled') || localStorage.getItem('financeos_pin_enabled')) === 'true';
     }
   }
   updatePinCheckbox();
 
   // Configuração do PIN Modal
   btnConfigurePin?.addEventListener('click', () => {
-    const hasPin = !!localStorage.getItem('financeos_pin_code');
+    const hasPin = !!(localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code'));
     const pinConfirmSection = q('#pin-confirm-section');
     const pinCurrentInput = q('#pin-current');
     
@@ -1637,7 +1604,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Desativar PIN
   btnDisablePin?.addEventListener('click', async () => {
-    const storedPin = localStorage.getItem('financeos_pin_code');
+    const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
     const currentVal = pinCurrent ? pinCurrent.value : '';
     
     const hashedCurrent = await hashPin(currentVal);
@@ -1646,7 +1613,9 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
+    localStorage.removeItem('financepro_pin_code');
     localStorage.removeItem('financeos_pin_code');
+    localStorage.setItem('financepro_pin_enabled', 'false');
     localStorage.setItem('financeos_pin_enabled', 'false');
     updatePinCheckbox();
     closeM('modal-config-pin');
@@ -1656,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Salvar PIN
   fConfigPin?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const storedPin = localStorage.getItem('financeos_pin_code');
+    const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
     const currentVal = pinCurrent ? pinCurrent.value : '';
     const newPin1 = pinInput1 ? pinInput1.value : '';
     const newPin2 = pinInput2 ? pinInput2.value : '';
@@ -1680,8 +1649,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const hashedNew = await hashPin(newPin1);
-    localStorage.setItem('financeos_pin_code', hashedNew);
-    localStorage.setItem('financeos_pin_enabled', 'true');
+    localStorage.setItem('financepro_pin_code', hashedNew);
+    localStorage.setItem('financepro_pin_enabled', 'true');
     updatePinCheckbox();
     closeM('modal-config-pin');
     alert('PIN de segurança configurado com sucesso!');
@@ -1708,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (typedPin.length === 4) {
       const enteredPin = typedPin.join('');
-      const storedPin = localStorage.getItem('financeos_pin_code');
+      const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
       const hashedEntered = await hashPin(enteredPin);
 
       if (hashedEntered === storedPin) {
@@ -1716,7 +1685,7 @@ document.addEventListener('DOMContentLoaded', function() {
         typedPin = [];
         updatePinDots();
         if (pinLockScreen) pinLockScreen.style.display = 'none';
-        sessionStorage.setItem('financeos_last_unlock', Date.now().toString());
+        sessionStorage.setItem('financepro_last_unlock', Date.now().toString());
       } else {
         // Erro
         const dotsContainer = q('#pin-dots-container');
@@ -1753,9 +1722,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Bloquear se o PIN estiver ativo no carregamento inicial
-  const pinEnabled = localStorage.getItem('financeos_pin_enabled') === 'true';
-  const storedPin = localStorage.getItem('financeos_pin_code');
-  const lastUnlock = sessionStorage.getItem('financeos_last_unlock');
+  const pinEnabled = (localStorage.getItem('financepro_pin_enabled') || localStorage.getItem('financeos_pin_enabled')) === 'true';
+  const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
+  const lastUnlock = sessionStorage.getItem('financepro_last_unlock') || sessionStorage.getItem('financeos_last_unlock');
   const unlockedRecently = lastUnlock && (Date.now() - parseInt(lastUnlock) < 10000);
 
   if (pinEnabled && storedPin && !unlockedRecently) {
@@ -1764,11 +1733,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Monitorar retorno do segundo plano e inatividade para auto-lock
   function checkAutoLock() {
-    const pinEnabled = localStorage.getItem('financeos_pin_enabled') === 'true';
-    const storedPin = localStorage.getItem('financeos_pin_code');
+    const pinEnabled = (localStorage.getItem('financepro_pin_enabled') || localStorage.getItem('financeos_pin_enabled')) === 'true';
+    const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
     if (!pinEnabled || !storedPin) return;
 
-    const bgTimeStr = sessionStorage.getItem('financeos_background_time');
+    const bgTimeStr = sessionStorage.getItem('financepro_background_time') || sessionStorage.getItem('financeos_background_time');
     if (bgTimeStr) {
       const bgTime = parseInt(bgTimeStr);
       const now = Date.now();
@@ -1784,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      sessionStorage.setItem('financeos_background_time', Date.now().toString());
+      sessionStorage.setItem('financepro_background_time', Date.now().toString());
     } else if (document.visibilityState === 'visible') {
       checkAutoLock();
     }
@@ -1897,8 +1866,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (periodPlus) periodPlus.textContent = "/mês (R$ 118,80/ano)";
       if (pricePro) pricePro.textContent = "19,90";
       if (periodPro) periodPro.textContent = "/mês (R$ 238,80/ano)";
-      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financeos-plus-anual";
-      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financeos-pro-anual";
+      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financepro-plus-anual";
+      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financepro-pro-anual";
       monthlyLbl?.classList.remove('active');
       yearlyLbl?.classList.add('active');
     } else {
@@ -1906,8 +1875,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (periodPlus) periodPlus.textContent = "/mês";
       if (pricePro) pricePro.textContent = "29,90";
       if (periodPro) periodPro.textContent = "/mês";
-      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financeos-plus-mensal";
-      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financeos-pro-mensal";
+      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financepro-plus-mensal";
+      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financepro-pro-mensal";
       monthlyLbl?.classList.add('active');
       yearlyLbl?.classList.remove('active');
     }
@@ -2085,7 +2054,7 @@ export function exportCalendarICS(year, month) {
   let ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//FinanceOS//Calendar Export//PT',
+    'PRODID:-//FinancePro//Calendar Export//PT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH'
   ];
@@ -2108,7 +2077,7 @@ export function exportCalendarICS(year, month) {
     const description = `Tipo: ${t.tipo}\\nValor: ${valueStr}\\nCategoria: ${cat.name}\\nConta/Cartão: ${payName}\\nStatus: ${t.status}`;
     
     ics.push('BEGIN:VEVENT');
-    ics.push(`UID:${t.id}@financeos.app`);
+    ics.push(`UID:${t.id}@financepro.app`);
     ics.push(`DTSTAMP:${timestamp}`);
     ics.push(`DTSTART;VALUE=DATE:${startIso}`);
     ics.push(`DTEND;VALUE=DATE:${endIso}`);
@@ -2124,21 +2093,22 @@ export function exportCalendarICS(year, month) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', `financeos_agenda_${year}_${String(month + 1).padStart(2, '0')}.ics`);
+  link.setAttribute('download', `financepro_agenda_${year}_${String(month + 1).padStart(2, '0')}.ics`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
 
 export function checkUpcomingBillsNotifications() {
-  if (localStorage.getItem('financeos_notifications') !== 'true') return;
+  const notifEnabled = localStorage.getItem('financepro_notifications') || localStorage.getItem('financeos_notifications');
+  if (notifEnabled !== 'true') return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayStr = today.toISOString().split('T')[0];
   
-  const notifiedTxs = JSON.parse(sessionStorage.getItem('financeos_notified_txs') || '{}');
+  const notifiedTxs = JSON.parse(sessionStorage.getItem('financepro_notified_txs') || sessionStorage.getItem('financeos_notified_txs') || '{}');
   let hasNewNotification = false;
   
   (S.transactions || []).forEach(t => {
@@ -2156,7 +2126,7 @@ export function checkUpcomingBillsNotifications() {
   });
   
   if (hasNewNotification) {
-    sessionStorage.setItem('financeos_notified_txs', JSON.stringify(notifiedTxs));
+    sessionStorage.setItem('financepro_notified_txs', JSON.stringify(notifiedTxs));
   }
 }
 
@@ -2251,3 +2221,15 @@ export function depositChallengeWeek(weekIndex, valueBRL) {
 window.toggleWeek52Challenge = toggleWeek52Challenge;
 window.changeMultiplier52 = changeMultiplier52;
 window.depositChallengeWeek = depositChallengeWeek;
+
+window.openTutorial = function(card) {
+  const title = card.querySelector('.tut-title').textContent;
+  const content = card.querySelector('.tut-full-content').innerHTML;
+  const viewTitle = document.getElementById('tut-view-title');
+  const viewBody = document.getElementById('tut-view-body');
+  
+  if (viewTitle) viewTitle.textContent = title;
+  if (viewBody) viewBody.innerHTML = content;
+  
+  openM('m-tutorial-view');
+};

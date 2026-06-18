@@ -701,7 +701,7 @@
     <!-- ════ TUTORIAIS ════════════════════════════════════════════ -->
     <section id="page-tutoriais" class="page">
       <div class="sec-h" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-        <h3>Central de Ajuda & Tutoriais</h3>
+        <h3>Central de Ajuda &amp; Tutoriais</h3>
         <span style="font-size:12px;color:var(--tx2)">Aprenda a dominar o FinanceOS</span>
       </div>
 
@@ -710,235 +710,340 @@
         <input type="text" id="tutSearchInput" class="inp" placeholder="🔍 O que você deseja aprender hoje? (Ex: recorrência, pdf, metas, nuvem...)" style="padding-left: 38px;">
       </div>
 
-      <!-- Tutorials List -->
-      <div style="display:flex;flex-direction:column;gap:12px" id="tutContainer">
+      <!-- Tutorials Grid -->
+      <div class="tut-grid" id="tutContainer">
         
-        <!-- PAINEL & NUVEM -->
-        <h4 style="font-size:13px;color:var(--ac);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📊 Painel & Sincronização em Nuvem</h4>
-        
-        <details class="card tut-card" data-keywords="dashboard painel kpi saldo receitas despesas grafico nuvem sync sincronizar firestore backup stealth privacidade seguranca esconder ocultar saude diagnostico 50/30/20">
-          <summary>Como funciona o Dashboard Principal e Modo Stealth?</summary>
-          <div class="tut-content">
-            <p>O <strong>Dashboard</strong> é o painel de controle das suas finanças. Ele reúne os dados mais importantes de forma clara e visual:</p>
-            <ul>
-              <li><strong>Saldo Atual:</strong> Mostra a soma dos saldos de todas as suas contas bancárias cadastradas.</li>
-              <li><strong>Total de Receitas:</strong> Soma todos os lançamentos de entrada (recebidos) no período selecionado.</li>
-              <li><strong>Total de Despesas:</strong> Soma todas as saídas (pagas) no período selecionado.</li>
-              <li><strong>Dinheiro Guardado:</strong> Exibe o montante total que você poupou em suas metas de economia.</li>
-            </ul>
-            <p><strong>Diagnóstico de Saúde Financeira (50/30/20):</strong> Exibe uma análise automática de seus gastos divididos em Necessidades, Desejos e Poupança/Investimento, classificando sua saúde financeira com notas e dicas personalizadas.</p>
-            <p><strong>🕶️ Modo Stealth (Privacidade):</strong> Clique no ícone de óculos escuros no canto superior esquerdo (ou no cabeçalho) para borrar todos os seus saldos, despesas e receitas. Ideal para usar o app em público sem expor seus números!</p>
-            <p><strong>Gráfico de Receitas vs Despesas:</strong> Exibe um comparativo visual do seu fluxo de caixa mensal ou semestral. Você pode filtrar o gráfico por ano ou alternar a exibição no seletor localizado no topo do card.</p>
-            <div class="tut-tip">💡 <strong>Dica de UX:</strong> Use a barra global de períodos no topo do app para alternar o dashboard entre as visões <strong>Semanal</strong>, <strong>Mensal</strong>, <strong>Anual</strong> ou <strong>Tudo Junto</strong>.</div>
+        <!-- CARD 1: Dashboard e Modo Stealth -->
+        <div class="tut-card" data-keywords="dashboard painel kpi saldo receitas despesas grafico nuvem sync sincronizar firestore backup stealth privacidade seguranca esconder ocultar saude diagnostico 50/30/20" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(99,102,241,0.1); color: var(--accent-lt);">Painel</span>
+            <h4 class="tut-title">Dashboard &amp; Modo Stealth</h4>
+            <p class="tut-desc">Entenda como ler os indicadores do painel principal e como ativar o modo stealth de privacidade.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O <strong>Dashboard</strong> é o painel de controle das suas finanças. Ele reúne os dados mais importantes de forma clara e visual:</p>
+              <ul>
+                <li><strong>Saldo Atual:</strong> Mostra a soma dos saldos de todas as suas contas bancárias cadastradas.</li>
+                <li><strong>Total de Receitas:</strong> Soma todos os lançamentos de entrada (recebidos) no período selecionado.</li>
+                <li><strong>Total de Despesas:</strong> Soma todas as saídas (pagas) no período selecionado.</li>
+                <li><strong>Dinheiro Guardado:</strong> Exibe o montante total que você poupou em suas metas de economia.</li>
+              </ul>
+              <p><strong>Diagnóstico de Saúde Financeira (50/30/20):</strong> Exibe uma análise automática de seus gastos divididos em Necessidades, Desejos e Poupança/Investimento, classificando sua saúde financeira com notas e dicas personalizadas.</p>
+              <p><strong>🕶️ Modo Stealth (Privacidade):</strong> Clique no ícone de óculos escuros no canto superior esquerdo (ou no cabeçalho) para borrar todos os seus saldos, despesas e receitas. Ideal para usar o app em público sem expor seus números!</p>
+              <p><strong>Gráfico de Receitas vs Despesas:</strong> Exibe um comparativo visual do seu fluxo de caixa mensal ou semestral. Você pode filtrar o gráfico por ano ou alternar a exibição no seletor localizado no topo do card.</p>
+              <div class="tut-tip">💡 <strong>Dica de UX:</strong> Use a barra global de períodos no topo do app para alternar o dashboard entre as visões <strong>Semanal</strong>, <strong>Mensal</strong>, <strong>Anual</strong> ou <strong>Tudo Junto</strong>.</div>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="nuvem sync sincronizar firestore dados conta google login outro computador offline salvar">
-          <summary>Como funciona a sincronização e backup em nuvem?</summary>
-          <div class="tut-content">
-            <p>O FinanceOS foi projetado sob o conceito de <strong>Offline-First</strong>:</p>
-            <ol>
-              <li>Mesmo sem internet ou em modo visitante, você pode cadastrar e gerenciar seus lançamentos normalmente, pois todos os dados são salvos em cache local seguro.</li>
-              <li>Ao realizar o login com sua conta do <strong>Google</strong> ou e-mail/senha, o aplicativo sincroniza automaticamente o cache local com o banco de dados seguro na nuvem (Firestore).</li>
-              <li>Isso permite acessar seus lançamentos de qualquer computador, tablet ou celular, mantendo os dados atualizados em tempo real.</li>
-            </ol>
-            <p><strong>Controles de Sincronização Manual (Meu Perfil):</strong></p>
-            <ul>
-              <li><strong>Forçar Envio para Nuvem ⬆️:</strong> Envia os dados locais da máquina para o servidor (ideal se você usou offline e quer garantir que suba para a conta).</li>
-              <li><strong>Forçar Busca da Nuvem ⬇️:</strong> Apaga os dados locais e baixa a versão mais atual do servidor (útil ao logar em um novo aparelho).</li>
-              <li><strong>Botão de Sincronização Rápida (🔄):</strong> Localizado no canto superior direito do cabeçalho global, permite puxar atualizações silenciosas na hora.</li>
-            </ul>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <!-- LANÇAMENTOS & RECORRÊNCIAS -->
-        <h4 style="font-size:13px;color:var(--gr);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📋 Lançamentos & Recorrências</h4>
-
-        <details class="card tut-card" data-keywords="adicionar lancamento receita despesa conta parcelado cartao categoria novo tag tags projeto multimoeda cambio moeda dolar euro original">
-          <summary>Como cadastrar lançamentos normais, parcelados, tags e multimoedas?</summary>
-          <div class="tut-content">
-            <p>Para registrar uma movimentação financeira:</p>
-            <ol>
-              <li>Vá para a aba <strong>Lançamentos</strong> e clique em <strong>+ Novo Lançamento</strong> (ou use a aba rápida <strong>Lançar</strong> no celular).</li>
-              <li>Preencha a <strong>Descrição</strong>, o <strong>Valor</strong> e selecione a <strong>Data</strong> do lançamento.</li>
-              <li>Escolha a <strong>Categoria</strong> (ex: Alimentação, Transporte) e a <strong>Conta Bancária / Cartão</strong> de origem.</li>
-              <li>Defina o <strong>Status</strong>: <em>Pago/Recebido</em> (se já foi realizado) ou <em>Pendente</em> (se é um compromisso futuro).</li>
-              <li><strong>Lançamento Parcelado (ex: compras no cartão):</strong> Marque a caixinha "Lançamento Parcelado", informe o número de parcelas (ex: 12x) e o app distribuirá automaticamente o valor parcelado nos meses seguintes com a marcação correspondente (ex: 1/12, 2/12).</li>
-              <li><strong>Tags/Projetos:</strong> Insira tags separadas por vírgula (ex: <code>viagem-2026, compras</code>) para organizar transações associadas a um projeto ou viagem e filtrá-las no extrato.</li>
-              <li><strong>Multimoedas (USD/EUR):</strong> Caso faça compras internacionais, selecione a moeda correspondente (ex: USD) e informe a taxa de câmbio. O app fará a conversão automática para BRL, mas registrará os dados originais para o extrato.</li>
-            </ol>
-            <div class="tut-tip">💡 <strong>UX Dica:</strong> Ao marcar como Pago/Recebido, o saldo da conta selecionada é atualizado automaticamente. Lançamentos "Pendentes" não afetam o saldo atual das contas até que sejam marcados como pagos.</div>
+        <!-- CARD 2: Sincronização e Nuvem -->
+        <div class="tut-card" data-keywords="nuvem sync sincronizar firestore dados conta google login outro computador offline salvar" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(99,102,241,0.1); color: var(--accent-lt);">Nuvem</span>
+            <h4 class="tut-title">Sincronização &amp; Nuvem</h4>
+            <p class="tut-desc">Aprenda como funciona o backup automático e como sincronizar seus dados offline e online.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O FinanceOS foi projetado sob o conceito de <strong>Offline-First</strong>:</p>
+              <ol>
+                <li>Mesmo sem internet ou em modo visitante, você pode cadastrar e gerenciar seus lançamentos normalmente, pois todos os dados são salvos em cache local seguro.</li>
+                <li>Ao realizar o login com sua conta do <strong>Google</strong> ou e-mail/senha, o aplicativo sincroniza automaticamente o cache local com o banco de dados seguro na nuvem (Firestore).</li>
+                <li>Isso permite acessar seus lançamentos de qualquer computador, tablet ou celular, mantendo os dados atualizados em tempo real.</li>
+              </ol>
+              <p><strong>Controles de Sincronização Manual (Meu Perfil):</strong></p>
+              <ul>
+                <li><strong>Forçar Envio para Nuvem ⬆️:</strong> Envia os dados locais da máquina para o servidor (ideal se você usou offline e quer garantir que suba para a conta).</li>
+                <li><strong>Forçar Busca da Nuvem ⬇️:</strong> Apaga os dados locais e baixa a versão mais atual do servidor (útil ao logar em um novo aparelho).</li>
+                <li><strong>Botão de Sincronização Rápida (🔄):</strong> Localizado no canto superior direito do cabeçalho global, permite puxar atualizações silenciosas na hora.</li>
+              </ul>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="recorrente recorrencia fixo mensal semanal dia semana dropdown repetir automatico pendente">
-          <summary>Como programar pagamentos recorrentes (Semanais e Mensais)?</summary>
-          <div class="tut-content">
-            <p>Se você tem despesas ou receitas fixas (como aluguel, salário ou assinatura de streaming):</p>
-            <ol>
-              <li>No modal de <strong>Novo Lançamento</strong>, marque a opção <strong>"Lançamento Fixo / Recorrente"</strong>.</li>
-              <li>Escolha a frequência:
-                <ul>
-                  <li><strong>Mensal:</strong> Digite o dia do mês em que a cobrança deve ocorrer (ex: dia 5). O app cuidará automaticamente de meses com menos de 31 dias.</li>
-                  <li><strong>Semanal:</strong> Escolha o dia da semana no dropdown (ex: toda Sexta-feira, todo Domingo).</li>
-                </ul>
-              </li>
-              <li>Salve o lançamento. O motor do FinanceOS gerará automaticamente todas as ocorrências deste lançamento para os próximos <strong>180 dias (6 meses)</strong> com o status <em>Pendente</em>.</li>
-            </ol>
-            <p><strong>Gerenciamento:</strong> Você pode visualizar e excluir seus modelos de lançamentos recorrentes acessando a aba <strong>Configurações</strong> e rolando até a seção <strong>Lançamentos Recorrentes</strong>.</p>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <!-- CALENDÁRIO & GOOGLE AGENDA -->
-        <h4 style="font-size:13px;color:var(--pu);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">📅 Calendário de Pagamentos & Google Agenda</h4>
-
-        <details class="card tut-card" data-keywords="calendario agenda google sincronizar agendar dia card bolinha status toggle">
-          <summary>Como utilizar o Calendário de Pagamentos?</summary>
-          <div class="tut-content">
-            <p>O <strong>Calendário de Pagamentos</strong> (aba "Agenda" no celular) oferece uma visualização em grade do mês para acompanhar suas obrigações:</p>
-            <ul>
-              <li>Cada quadrado representa um dia do mês. Os dias que possuem transações exibem mini-etiquetas com a descrição do lançamento (verde para receitas, vermelho para despesas).</li>
-              <li>Lançamentos com status <em>Pendente</em> aparecem levemente transparentes no calendário, facilitando a identificação do que ainda não foi pago.</li>
-              <li>Ao clicar em qualquer dia, um painel detalhado de lançamentos é aberto logo abaixo do calendário.</li>
-            </ul>
-            <div class="tut-tip">💡 <strong>UX Dica:</strong> No painel detalhado de transações do dia, você pode clicar diretamente na pílula de status (ex: <em>Pendente</em>) para alterá-la para <em>Pago</em> de forma rápida, sem precisar abrir formulários.</div>
+        <!-- CARD 3: Lançamentos & Parcelas -->
+        <div class="tut-card" data-keywords="adicionar lancamento receita despesa conta parcelado cartao categoria novo tag tags projeto multimoeda cambio moeda dolar euro original" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(16,185,129,0.1); color: var(--green);">Lançamento</span>
+            <h4 class="tut-title">Cadastro de Lançamentos</h4>
+            <p class="tut-desc">Como registrar movimentações únicas, parcelamentos simples no cartão e compras em moedas estrangeiras.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Para registrar uma movimentação financeira:</p>
+              <ol>
+                <li>Vá para a aba <strong>Lançamentos</strong> e clique em <strong>+ Novo Lançamento</strong> (ou use a aba rápida <strong>Lançar</strong> no celular).</li>
+                <li>Preencha a <strong>Descrição</strong>, o <strong>Valor</strong> e selecione a <strong>Data</strong> do lançamento.</li>
+                <li>Escolha a <strong>Categoria</strong> (ex: Alimentação, Transporte) e a <strong>Conta Bancária / Cartão</strong> de origem.</li>
+                <li>Defina o <strong>Status</strong>: <em>Pago/Recebido</em> (se já foi realizado) ou <em>Pendente</em> (se é um compromisso futuro).</li>
+                <li><strong>Lançamento Parcelado (ex: compras no cartão):</strong> Marque a caixinha "Lançamento Parcelado", informe o número de parcelas (ex: 12x) e o app distribuirá automaticamente o valor parcelado nos meses seguintes com a marcação correspondente (ex: 1/12, 2/12).</li>
+                <li><strong>Tags/Projetos:</strong> Insira tags separadas por vírgula (ex: <code>viagem-2026, compras</code>) para organizar transações associadas a um projeto ou viagem e filtrá-las no extrato.</li>
+                <li><strong>Multimoedas (USD/EUR):</strong> Caso faça compras internacionais, selecione a moeda correspondente (ex: USD) e informe a taxa de câmbio. O app fará a conversão automática para BRL, mas registrará os dados originais para o extrato.</li>
+              </ol>
+              <div class="tut-tip">💡 <strong>UX Dica:</strong> Ao marcar como Pago/Recebido, o saldo da conta selecionada é atualizado automaticamente. Lançamentos "Pendentes" não afetam o saldo atual das contas até que sejam marcados como pagos.</div>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="google agenda agenda gcal sync sincronizar agendar calendario link exportar">
-          <summary>Como sincronizar lançamentos com o Google Agenda?</summary>
-          <div class="tut-content">
-            <p>Para agendar seus pagamentos diretamente na sua agenda pessoal do Google sem burocracias de permissão:</p>
-            <ol>
-              <li>Na aba do <strong>Calendário</strong>, marque a caixa de seleção <strong>"Sincronizar Google Agenda"</strong>. O app lembrará dessa escolha.</li>
-              <li>Clique no dia da transação para exibir a listagem detalhada abaixo do calendário.</li>
-              <li>Um botão azul escrito <strong>📅 Agendar</strong> aparecerá ao lado de cada transação.</li>
-              <li>Ao clicar nele, uma nova aba abrirá no seu navegador diretamente no formulário de criação de eventos do Google Calendar.</li>
-              <li>O título (com tag `[FinanceOS]`), a descrição detalhada (valor, categoria, conta de pagamento, status) e a data correta já estarão totalmente preenchidos. Basta clicar em <strong>Salvar</strong> na tela do Google.</li>
-            </ol>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <!-- CONTAS, CARTÕES & DÍVIDAS -->
-        <h4 style="font-size:13px;color:var(--am);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🏦 Contas, Cartões & Dívidas</h4>
-
-        <details class="card tut-card" data-keywords="conta cartao saldo limite credito banco cadastrar fatura pagamento">
-          <summary>Como gerenciar Contas Bancárias e Cartões de Crédito?</summary>
-          <div class="tut-content">
-            <p>Acesse a aba <strong>Contas & Cartões</strong> para controlar suas carteiras financeiras:</p>
-            <ul>
-              <li><strong>Contas Bancárias:</strong> Você pode adicionar contas (Corrente, Poupança, Investimentos, etc.) definindo o saldo inicial. Transações associadas a essas contas somam ou subtraem o valor de seus saldos reais.</li>
-              <li><strong>Cartões de Crédito:</strong> Cadastre seus cartões definindo o limite de crédito total e o dia de vencimento da fatura. Ao fazer compras associadas ao cartão, o app debita do limite disponível e projeta o pagamento na fatura correta.</li>
-            </ul>
+        <!-- CARD 4: Recorrências -->
+        <div class="tut-card" data-keywords="recorrente recorrencia fixo mensal semanal dia semana dropdown repetir automatico pendente" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(16,185,129,0.1); color: var(--green);">Lançamento</span>
+            <h4 class="tut-title">Despesas e Receitas Fixas</h4>
+            <p class="tut-desc">Como automatizar o lançamento automático de contas que se repetem toda semana ou mês.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Se você tem despesas ou receitas fixas (como aluguel, salário ou assinatura de streaming):</p>
+              <ol>
+                <li>No modal de <strong>Novo Lançamento</strong>, marque a opção <strong>"Lançamento Fixo / Recorrente"</strong>.</li>
+                <li>Escolha a frequência:
+                  <ul>
+                    <li><strong>Mensal:</strong> Digite o dia do mês em que a cobrança deve ocorrer (ex: dia 5). O app cuidará automaticamente de meses com menos de 31 dias.</li>
+                    <li><strong>Semanal:</strong> Escolha o dia da semana no dropdown (ex: toda Sexta-feira, todo Domingo).</li>
+                  </ul>
+                </li>
+                <li>Salve o lançamento. O motor do FinanceOS gerará automaticamente todas as ocorrências deste lançamento para os próximos <strong>180 dias (6 meses)</strong> com o status <em>Pendente</em>.</li>
+              </ol>
+              <p><strong>Gerenciamento:</strong> Você pode visualizar e excluir seus modelos de lançamentos recorrentes acessando a aba <strong>Configurações</strong> e rolando até a seção <strong>Lançamentos Recorrentes</strong>.</p>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="dividas divida desconto negociacao pagar credor controle juros">
-          <summary>Como funciona o Controle de Dívidas?</summary>
-          <div class="tut-content">
-            <p>A aba <strong>Dívidas</strong> ajuda você a planejar a quitação de débitos pendentes:</p>
-            <ol>
-              <li>Clique em <strong>+ Nova Dívida</strong> para cadastrar o nome do credor, o valor total original da dívida, ofertas de negociação com desconto (se houver), e a forma de quitação.</li>
-              <li>O painel exibe de forma clara os descontos percentuais obtidos e consolida o saldo total devedor no topo.</li>
-              <li>Você pode alterar o status da dívida para <em>Quitada</em> ou <em>Negociando</em> diretamente na listagem para acompanhar a evolução dos pagamentos.</li>
-            </ol>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <!-- METAS & POUPANÇA -->
-        <h4 style="font-size:13px;color:var(--ac);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🎯 Metas & Poupança</h4>
-
-        <details class="card tut-card" data-keywords="metas meta poupanca guardar dinheiro porquinho objetivo barra progresso transferir">
-          <summary>Como criar Metas Financeiras e poupar dinheiro?</summary>
-          <div class="tut-content">
-            <p>O FinanceOS possui duas ferramentas integradas de economia na aba <strong>Dinheiro Guardado</strong> e <strong>Metas</strong>:</p>
-            <ul>
-              <li><strong>Dinheiro Guardado (Cofrinho):</strong> Permite guardar valores sem uma meta fixa. Clique em "Guardar" para mover saldos de suas contas bancárias para a reserva, ou "Resgatar" para devolver o dinheiro ao saldo ativo.</li>
-              <li><strong>Metas (Objetivos de Longo Prazo):</strong> Crie objetivos específicos (ex: Compra de Carro, Viagem de Férias, Reserva de Emergência) definindo um valor alvo.</li>
-              <li><strong>Barra de Progresso:</strong> Cada meta exibe uma barra de progresso visual de preenchimento e a porcentagem atual concluída, calculando automaticamente quanto falta economizar.</li>
-            </ul>
+        <!-- CARD 5: Calendário -->
+        <div class="tut-card" data-keywords="calendario agenda google sincronizar agendar dia card bolinha status toggle" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(168,85,247,0.1); color: var(--purple);">Agenda</span>
+            <h4 class="tut-title">Calendário de Pagamentos</h4>
+            <p class="tut-desc">Use a visão mensal em calendário para identificar e pagar contas do dia de forma prática.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O <strong>Calendário de Pagamentos</strong> (aba "Agenda" no celular) oferece uma visualização em grade do mês para acompanhar suas obrigações:</p>
+              <ul>
+                <li>Cada quadrado representa um dia do mês. Os dias que possuem transações exibem mini-etiquetas com a descrição do lançamento (verde para receitas, vermelho para despesas).</li>
+                <li>Lançamentos com status <em>Pendente</em> aparecem levemente transparentes no calendário, facilitando a identificação do que ainda não foi pago.</li>
+                <li>Ao clicar em qualquer dia, um painel detalhado de lançamentos é aberto logo abaixo do calendário.</li>
+              </ul>
+              <div class="tut-tip">💡 <strong>UX Dica:</strong> No painel detalhado de transações do dia, você pode clicar diretamente na pílula de status (ex: <em>Pendente</em>) para alterá-la para <em>Pago</em> de forma rápida, sem precisar abrir formulários.</div>
+            </div>
           </div>
-        </details>
-
-        <!-- DOCUMENTOS, CALCULADORAS & PDF -->
-        <h4 style="font-size:13px;color:var(--tx2);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🧮 Calculadoras & Relatórios PDF</h4>
-
-        <details class="card tut-card" data-keywords="pdf exportar relatorio semanal mensal anual consolidado imprimir guardar">
-          <summary>Como exportar Relatórios PDF?</summary>
-          <div class="tut-content">
-            <p>Você pode gerar relatórios impressos ou digitais em formato PDF de qualquer período selecionado:</p>
-            <ol>
-              <li>Use a barra global de períodos no topo do app para escolher a visualização desejada:
-                <ul>
-                  <li><strong>Semanal:</strong> Gera o PDF correspondente apenas às datas da semana ativa.</li>
-                  <li><strong>Mensal:</strong> Gera o relatório do mês corrente.</li>
-                  <li><strong>Anual:</strong> Compila um consolidado de todos os meses do ano selecionado.</li>
-                  <li><strong>Tudo Junto:</strong> Exporta um dossiê com todo o histórico de lançamentos já cadastrados.</li>
-                </ul>
-              </li>
-              <li>Clique no botão <strong>📄 PDF (Semanal/Mensal/Anual/Consolidado)</strong> localizado na barra de períodos.</li>
-              <li>O aplicativo gerará um documento PDF formatado profissionalmente em segundo plano e iniciará o download automático no seu dispositivo.</li>
-            </ol>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <details class="card tut-card" data-keywords="calculadora calculadora simples amortizacao horas extras fire independente juros simulacao compostos aportes rendimento">
-          <summary>Como usar as calculadoras especiais e simuladores?</summary>
-          <div class="tut-content">
-            <p>O aplicativo vem equipado com cinco simuladores financeiros na aba <strong>Calculadora</strong>:</p>
-            <ul>
-              <li><strong>Simples:</strong> Uma calculadora matemática tradicional com histórico de operações.</li>
-              <li><strong>Horas Extras:</strong> Calcula o valor da sua hora extra com base no seu salário bruto mensal, jornada de trabalho e porcentagem de acréscimo (ex: 50% ou 100%).</li>
-              <li><strong>Amortização:</strong> Simula financiamentos bancários (tabela SAC ou PRICE) demonstrando o impacto de amortizações extraordinárias na redução do prazo das parcelas e juros economizados.</li>
-              <li><strong>Independência FIRE:</strong> Calcula quando você poderá se aposentar com base na sua renda, taxa de poupança, despesas mensais projetadas e taxa média de retorno de investimentos.</li>
-              <li><strong>Juros Compostos:</strong> Permite planejar a evolução do seu capital no longo prazo inserindo o valor inicial, aporte mensal e taxa de juros, gerando um gráfico interativo de projeção.</li>
-            </ul>
+        <!-- CARD 6: Sincronia Google Agenda -->
+        <div class="tut-card" data-keywords="google agenda agenda gcal sync sincronizar agendar calendario link exportar" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(168,85,247,0.1); color: var(--purple);">Agenda</span>
+            <h4 class="tut-title">Integração Google Agenda</h4>
+            <p class="tut-desc">Como enviar lembretes de despesas e receitas diretamente para a sua agenda pessoal do Google.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Para agendar seus pagamentos diretamente na sua agenda pessoal do Google sem burocracias de permissão:</p>
+              <ol>
+                <li>Na aba do <strong>Calendário</strong>, marque a caixa de seleção <strong>"Sincronizar Google Agenda"</strong>. O app lembrará dessa escolha.</li>
+                <li>Clique no dia da transação para exibir a listagem detalhada abaixo do calendário.</li>
+                <li>Um botão azul escrito <strong>📅 Agendar</strong> aparecerá ao lado de cada transação.</li>
+                <li>Ao clicar nele, uma nova aba abrirá no seu navegador diretamente no formulário de criação de eventos do Google Calendar.</li>
+                <li>O título (com tag `[FinanceOS]`), a descrição detalhada (valor, categoria, conta de pagamento, status) e a data correta já estarão totalmente preenchidos. Basta clicar em <strong>Salvar</strong> na tela do Google.</li>
+              </ol>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="ics agenda exportar calendario outlook google iCal compromissos contas baixar">
-          <summary>Como exportar o calendário de pagamentos (.ICS)?</summary>
-          <div class="tut-content">
-            <p>Se você deseja visualizar e receber alertas das suas contas a pagar diretamente em agendas externas (como Google Agenda, Outlook ou Apple Calendar):</p>
-            <ol>
-              <li>Acesse a aba <strong>Calendário</strong> (ou Agenda).</li>
-              <li>Clique no botão <strong>Exportar Agenda (.ics)</strong> localizado no topo.</li>
-              <li>O app gerará e baixará um arquivo padronizado contendo todas as transações pendentes daquele mês como compromissos com data e hora. Basta importar esse arquivo no seu gerenciador de agenda de preferência!</li>
-            </ol>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
 
-        <!-- GAMIFICAÇÃO & DESAFIOS -->
-        <h4 style="font-size:13px;color:var(--pu);font-weight:750;text-transform:uppercase;letter-spacing:1px;margin-top:10px">🏆 Gamificação & Desafios</h4>
-
-        <details class="card tut-card" data-keywords="conquistas conquista selos selo badge perfil medalha gamificacao gamificar mestre poupador">
-          <summary>Como funcionam as Conquistas e Selos?</summary>
-          <div class="tut-content">
-            <p>O aplicativo recompensa seus hábitos saudáveis de controle financeiro com medalhas e selos na aba <strong>Meu Perfil</strong>:</p>
-            <ul>
-              <li><strong>Disciplinado:</strong> Desbloqueado ao atingir um histórico de pelo menos 5 lançamentos.</li>
-              <li><strong>Poupador Fiel:</strong> Concedido se sua taxa de poupança mensal (sobra líquida em relação às receitas) for de no mínimo 20%.</li>
-              <li><strong>Mestre do Controle:</strong> Desbloqueado se todas as suas categorias com limites de orçamento definidos ficarem abaixo de 100% dos limites no mês corrente.</li>
-              <li><strong>Cidadão Global:</strong> Ativado quando você cadastra pelo menos um lançamento em moeda estrangeira (como dólar USD ou euro EUR).</li>
-              <li><strong>Agente Secreto:</strong> Desbloqueado após ativar o Modo Stealth (desfoque de privacidade) pelo menos uma vez no cabeçalho.</li>
-              <li><strong>Visão de Futuro:</strong> Conquistado ao cadastrar pelo menos uma meta de economia a longo prazo.</li>
-            </ul>
-            <p>Os selos bloqueados aparecem opacos e em cinza. Quando desbloqueados, eles ganham cor e um efeito de brilho neon pulsante.</p>
+        <!-- CARD 7: Contas e Cartões -->
+        <div class="tut-card" data-keywords="conta cartao saldo limite credito banco cadastrar fatura pagamento" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(245,158,11,0.1); color: var(--amber);">Finanças</span>
+            <h4 class="tut-title">Contas &amp; Cartões</h4>
+            <p class="tut-desc">Como cadastrar contas correntes e cartões de crédito configurando limites e faturas.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Acesse a aba <strong>Contas & Cartões</strong> para controlar suas carteiras financeiras:</p>
+              <ul>
+                <li><strong>Contas Bancárias:</strong> Você pode adicionar contas (Corrente, Poupança, Investimentos, etc.) definindo o saldo inicial. Transações associadas a essas contas somam ou subtraem o valor de seus saldos reais.</li>
+                <li><strong>Cartões de Crédito:</strong> Cadastre seus cartões definindo o limite de crédito total e o dia de vencimento da fatura. Ao fazer compras associadas ao cartão, o app debita do limite disponível e projeta o pagamento na fatura correta.</li>
+              </ul>
+            </div>
           </div>
-        </details>
-
-        <details class="card tut-card" data-keywords="desafio 52 semanas poupanca guardar dinheiro progressivo multiplicador lancar meta acumulado">
-          <summary>Como participar do Desafio das 52 Semanas?</summary>
-          <div class="tut-content">
-            <p>O <strong>Desafio das 52 Semanas</strong> é uma metodologia consagrada de poupança progressiva localizada em <strong>Meu Perfil</strong>:</p>
-            <ol>
-              <li>A cada semana do ano, você poupa uma quantia correspondente ao número da semana (Semana 1 = R$ 1, Semana 2 = R$ 2... Semana 52 = R$ 52).</li>
-              <li><strong>Multiplicadores:</strong> Ajuste a meta de acordo com seu orçamento selecionando multiplicadores de 1x (acumula R$ 1.378), 2x (acumula R$ 2.756), 5x (acumula R$ 6.890) ou 10x (acumula R$ 13.780).</li>
-              <li><strong>💰 Botão Lançar:</strong> Clique no botão de atalho ao lado da semana para abrir o modal de Lançamento pré-preenchido com o valor exato da semana na categoria Investimentos/Poupança e a tag <code>Desafio52</code>.</li>
-              <li><strong>Marcar Semana:</strong> Clique em qualquer semana para marcá-la como paga. O total acumulado e a barra de progresso no topo se atualizam automaticamente.</li>
-            </ol>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
           </div>
-        </details>
+        </div>
+
+        <!-- CARD 8: Controle de Dívidas -->
+        <div class="tut-card" data-keywords="dividas divida desconto negociacao pagar credor controle juros" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(245,158,11,0.1); color: var(--amber);">Finanças</span>
+            <h4 class="tut-title">Gestão de Dívidas</h4>
+            <p class="tut-desc">Aprenda a cadastrar seus credores e projetar amortização de débitos com descontos.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>A aba <strong>Dívidas</strong> ajuda você a planejar a quitação de débitos pendentes:</p>
+              <ol>
+                <li>Clique em <strong>+ Nova Dívida</strong> para cadastrar o nome do credor, o valor total original da dívida, ofertas de negociação com desconto (se houver), e a forma de quitação.</li>
+                <li>O painel exibe de forma clara os descontos percentuais obtidos e consolida o saldo total devedor no topo.</li>
+                <li>Você pode alterar o status da dívida para <em>Quitada</em> ou <em>Negociando</em> diretamente na listagem para acompanhar a evolução dos pagamentos.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 9: Metas -->
+        <div class="tut-card" data-keywords="metas meta poupanca guardar dinheiro porquinho objetivo barra progresso transferir" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(244,63,94,0.1); color: var(--red);">Metas</span>
+            <h4 class="tut-title">Metas &amp; Cofrinho</h4>
+            <p class="tut-desc">Crie objetivos financeiros com prazos definidos e barras de progresso interativas.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O FinanceOS possui duas ferramentas integradas de economia na aba <strong>Dinheiro Guardado</strong> e <strong>Metas</strong>:</p>
+              <ul>
+                <li><strong>Dinheiro Guardado (Cofrinho):</strong> Permite guardar valores sem uma meta fixa. Clique em "Guardar" para mover saldos de suas contas bancárias para a reserva, ou "Resgatar" para devolver o dinheiro ao saldo ativo.</li>
+                <li><strong>Metas (Objetivos de Longo Prazo):</strong> Crie objetivos específicos (ex: Compra de Carro, Viagem de Férias, Reserva de Emergência) definindo um valor alvo.</li>
+                <li><strong>Barra de Progresso:</strong> Cada meta exibe uma barra de progresso visual de preenchimento e a porcentagem atual concluída, calculando automaticamente quanto falta economizar.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 10: Relatórios PDF -->
+        <div class="tut-card" data-keywords="pdf exportar relatorio semanal mensal anual consolidado imprimir guardar" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(255,255,255,0.06); color: var(--text-muted);">Utilitários</span>
+            <h4 class="tut-title">Relatórios em PDF</h4>
+            <p class="tut-desc">Como exportar e imprimir relatórios consolidados mensais, semanais ou anuais das suas finanças.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Você pode gerar relatórios impressos ou digitais em formato PDF de qualquer período selecionado:</p>
+              <ol>
+                <li>Use a barra global de períodos no topo do app para escolher a visualização desejada:
+                  <ul>
+                    <li><strong>Semanal:</strong> Gera o PDF correspondente apenas às datas da semana ativa.</li>
+                    <li><strong>Mensal:</strong> Gera o relatório do mês corrente.</li>
+                    <li><strong>Anual:</strong> Compila um consolidado de todos os meses do ano selecionado.</li>
+                    <li><strong>Tudo Junto:</strong> Exporta um dossiê com todo o histórico de lançamentos já cadastrados.</li>
+                  </ul>
+                </li>
+                <li>Clique no botão <strong>📄 PDF (Semanal/Mensal/Anual/Consolidado)</strong> localizado na barra de períodos.</li>
+                <li>O aplicativo gerará um documento PDF formatado profissionalmente em segundo tempo e iniciará o download automático no seu dispositivo.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 11: Calculadoras -->
+        <div class="tut-card" data-keywords="calculadora calculadora simples amortizacao horas extras fire independente juros simulacao compostos aportes rendimento" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(255,255,255,0.06); color: var(--text-muted);">Utilitários</span>
+            <h4 class="tut-title">Calculadoras Financeiras</h4>
+            <p class="tut-desc">Aproveite simuladores de amortização de financiamento, juros compostos e previdência FIRE.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O aplicativo vem equipado com cinco simuladores financeiros na aba <strong>Calculadora</strong>:</p>
+              <ul>
+                <li><strong>Simples:</strong> Uma calculadora matemática tradicional com histórico de operações.</li>
+                <li><strong>Horas Extras:</strong> Calcula o valor da sua hora extra com base no seu salário bruto mensal, jornada de trabalho e porcentagem de acréscimo (ex: 50% ou 100%).</li>
+                <li><strong>Amortização:</strong> Simula financiamentos bancários (tabela SAC ou PRICE) demonstrando o impacto de amortizações extraordinárias na redução do prazo das parcelas e juros economizados.</li>
+                <li><strong>Independência FIRE:</strong> Calcula quando você poderá se aposentar com base na sua renda, taxa de poupança, despesas mensais projetadas e taxa média de retorno de investimentos.</li>
+                <li><strong>Juros Compostos:</strong> Permite planejar a evolução do seu capital no longo prazo inserindo o valor inicial, aporte mensal e taxa de juros, gerando um gráfico interativo de projeção.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 12: Agenda ICS -->
+        <div class="tut-card" data-keywords="ics agenda exportar calendario outlook google iCal compromissos contas baixar" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(168,85,247,0.1); color: var(--purple);">Agenda</span>
+            <h4 class="tut-title">Exportação (.ICS)</h4>
+            <p class="tut-desc">Como exportar seus vencimentos pendentes em formato iCal para integrar com Outlook ou Apple Calendar.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>Se você deseja visualizar e receber alertas das suas contas a pagar diretamente em agendas externas (como Google Agenda, Outlook ou Apple Calendar):</p>
+              <ol>
+                <li>Acesse a aba <strong>Calendário</strong> (ou Agenda).</li>
+                <li>Clique no botão <strong>Exportar Agenda (.ics)</strong> localizado no topo.</li>
+                <li>O app gerará e baixará um arquivo padronizado contendo todas as transações pendentes daquele mês como compromissos com data e hora. Basta importar esse arquivo no seu gerenciador de agenda de preferência!</li>
+              </ol>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 13: Conquistas -->
+        <div class="tut-card" data-keywords="conquistas conquista selos selo badge perfil medalha gamificacao gamificar mestre poupador" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(245,158,11,0.1); color: var(--amber);">Desafios</span>
+            <h4 class="tut-title">Gamificação &amp; Selos</h4>
+            <p class="tut-desc">Acompanhe seu progresso e conquiste medalhas conforme gerencia bem seu dinheiro.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O aplicativo recompensa seus hábitos saudáveis de controle financeiro com medalhas e selos na aba <strong>Meu Perfil</strong>:</p>
+              <ul>
+                <li><strong>Disciplinado:</strong> Desbloqueado ao atingir um histórico de pelo menos 5 lançamentos.</li>
+                <li><strong>Poupador Fiel:</strong> Concedido se sua taxa de poupança mensal (sobra líquida em relação às receitas) for de no mínimo 20%.</li>
+                <li><strong>Mestre do Controle:</strong> Desbloqueado se todas as suas categorias com limites de orçamento definidos ficarem abaixo de 100% dos limites no mês corrente.</li>
+                <li><strong>Cidadão Global:</strong> Ativado quando você cadastra pelo menos um lançamento em moeda estrangeira (como dólar USD ou euro EUR).</li>
+                <li><strong>Agente Secreto:</strong> Desbloqueado após ativar o Modo Stealth (desfoque de privacidade) pelo menos uma vez no cabeçalho.</li>
+                <li><strong>Visão de Futuro:</strong> Conquistado ao cadastrar pelo menos uma meta de economia a longo prazo.</li>
+              </ul>
+              <p>Os selos bloqueados aparecem opacos e em cinza. Quando desbloqueados, eles ganham cor e um efeito de brilho neon pulsante.</p>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
+
+        <!-- CARD 14: Desafio 52 Semanas -->
+        <div class="tut-card" data-keywords="desafio 52 semanas poupanca guardar dinheiro progressivo multiplicador lancar meta acumulado" onclick="openTutorial(this)">
+          <div class="tut-body">
+            <span class="tut-tag" style="background: rgba(245,158,11,0.1); color: var(--amber);">Desafios</span>
+            <h4 class="tut-title">Desafio de 52 Semanas</h4>
+            <p class="tut-desc">Aprenda a criar reservas financeiras progressivas semanais e acumule mais de R$ 13.000.</p>
+            <div class="tut-full-content" style="display:none;">
+              <p>O <strong>Desafio das 52 Semanas</strong> é uma metodologia consagrada de poupança progressiva localizada em <strong>Meu Perfil</strong>:</p>
+              <ol>
+                <li>A cada semana do ano, você poupa uma quantia correspondente ao número da semana (Semana 1 = R$ 1, Semana 2 = R$ 2... Semana 52 = R$ 52).</li>
+                <li><strong>Multiplicadores:</strong> Ajuste a meta de acordo com seu orçamento selecionando multiplicadores de 1x (acumula R$ 1.378), 2x (acumula R$ 2.756), 5x (acumula R$ 6.890) ou 10x (acumula R$ 13.780).</li>
+                <li><strong>💰 Botão Lançar:</strong> Clique no botão de atalho ao lado da semana para abrir o modal de Lançamento pré-preenchido com o valor exato da semana na categoria Investimentos/Poupança e a tag <code>Desafio52</code>.</li>
+                <li><strong>Marcar Semana:</strong> Clique em qualquer semana para marcá-la como paga. O total acumulado e a barra de progresso no topo se atualizam automaticamente.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="tut-footer">
+            <span>Ler Artigo</span>
+            <span>➔</span>
+          </div>
+        </div>
 
       </div>
     </section>
@@ -1827,6 +1932,22 @@
         <button type="submit" class="bp sm">Registrar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- TUTORIAL VIEW MODAL -->
+<div id="m-tutorial-view" class="mbd" hidden>
+  <div class="modal" style="max-width:650px">
+    <div class="mhd">
+      <h3 id="tut-view-title">Tutorial</h3>
+      <button class="mclose" data-close="m-tutorial-view">✕</button>
+    </div>
+    <div style="padding:20px;max-height:60vh;overflow-y:auto" id="tut-view-body">
+      <!-- Carregado dinamicamente -->
+    </div>
+    <div class="mfooter">
+      <button type="button" class="bg sm" data-close="m-tutorial-view">Fechar</button>
+    </div>
   </div>
 </div>
 

@@ -33,6 +33,7 @@ export function initState() {
     recurring:[],
     savings:[],
     debts:[],
+    supportTickets: [],
     subscription: {
       plan: 'free',
       expiresAt: null,
@@ -41,7 +42,7 @@ export function initState() {
   };
 }
 
-export const SKEY = 'financeos_v4';
+export const SKEY = 'financepro_v4';
 export let S = {};
 
 let saveCallbacks = [];
@@ -62,7 +63,15 @@ export function save() {
 
 export function load() {
   try {
-    const r = localStorage.getItem(SKEY);
+    let r = localStorage.getItem(SKEY);
+    if (!r) {
+      const oldData = localStorage.getItem('financeos_v4');
+      if (oldData) {
+        r = oldData;
+        localStorage.setItem(SKEY, oldData);
+        // Mantemos o antigo por segurança ou removemos
+      }
+    }
     if (r) {
       S = JSON.parse(r);
       fixState();
@@ -87,6 +96,7 @@ export function fixState() {
   if (!Array.isArray(S.recurring))    S.recurring  = [];
   if (!Array.isArray(S.savings))      S.savings    = [];
   if (!Array.isArray(S.debts))        S.debts      = [];
+  if (!Array.isArray(S.supportTickets)) S.supportTickets = [];
   if (!S.challenge52) S.challenge52 = { multiplier: 1, checkedWeeks: [] };
   if (!S.subscription) {
     S.subscription = { plan: 'free', expiresAt: null, status: 'active' };
@@ -145,6 +155,11 @@ export let periodState = {
   currentYear: new Date().getFullYear(),
   currentMonth: new Date().getMonth(), // 0-indexed
   currentWeek: 0
+};
+
+export let calendarState = {
+  currentYear: new Date().getFullYear(),
+  currentMonth: new Date().getMonth()
 };
 
 export function getActiveWeekRange() {

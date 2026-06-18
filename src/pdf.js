@@ -24,7 +24,7 @@ function generateVectorPDF(activeTxs, periodLabel, subLabel, filename) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  doc.text('💸 FinanceOS', 15, 20);
+  doc.text('💸 FinancePro', 15, 20);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -235,7 +235,7 @@ function generateVectorPDF(activeTxs, periodLabel, subLabel, filename) {
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text(`FinanceOS · Página ${i} de ${pageCount}`, 105, 288, { align: 'center' });
+    doc.text(`FinancePro · Página ${i} de ${pageCount}`, 105, 288, { align: 'center' });
   }
 
   // Save the PDF

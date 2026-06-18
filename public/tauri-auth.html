@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinanceOS - Autenticação Desktop</title>
+  <title>FinancePro - Autenticação Desktop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -246,13 +246,13 @@
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
           </svg>
         </div>
-        <div class="logo-text">FinanceOS</div>
+        <div class="logo-text">FinancePro</div>
       </div>
 
       <!-- STATE 1: Ready to Login -->
       <div id="state-ready" class="state active">
         <h2>Autenticação Desktop</h2>
-        <p class="description">Estamos conectando seu aplicativo FinanceOS ao Google. Clique no botão abaixo para prosseguir com o login seguro.</p>
+        <p class="description">Estamos conectando seu aplicativo FinancePro ao Google. Clique no botão abaixo para prosseguir com o login seguro.</p>
         <button id="btn-login" class="btn-google">
           <svg class="google-icon" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -279,7 +279,7 @@
           </svg>
         </div>
         <h2>Login Concluído!</h2>
-        <p class="description" style="margin-bottom: 0;">Sua conta foi vinculada com sucesso. Você já pode fechar esta janela e voltar para o aplicativo FinanceOS.</p>
+        <p class="description" style="margin-bottom: 0;">Sua conta foi vinculada com sucesso. Você já pode fechar esta janela e voltar para o aplicativo FinancePro.</p>
       </div>
 
       <!-- STATE 4: Error -->
@@ -298,7 +298,6 @@
     </div>
   </div>
 
-  <script>
   <script>
     // Obter parâmetros da URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -371,7 +370,7 @@
       auth.signInWithPopup(provider)
         .then(result => {
           if (result && result.credential) {
-            loadingMsg.innerText = 'Conectando ao aplicativo FinanceOS...';
+            loadingMsg.innerText = 'Conectando ao aplicativo FinancePro...';
             
             // Grava os tokens de credencial do Google para o Firestore
             db.collection('login_sessions').doc(sessionId).set({

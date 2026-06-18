@@ -1,11 +1,11 @@
-# 💸 FinanceOS - Controle Financeiro Premium
+# 💸 FinancePro - Controle Financeiro Premium
 
 [![Vite Build](https://img.shields.io/badge/Vite-5.x-blueviolet?logo=vite)](https://vitejs.dev/)
 [![Firebase Support](https://img.shields.io/badge/Firebase-v10.x-orange?logo=firebase)](https://firebase.google.com/)
 [![Docker Deployment](https://img.shields.io/badge/Docker-Supported-blue?logo=docker)](https://www.docker.com/)
 [![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
 
-O **FinanceOS** é um web app premium e elegante de controle financeiro pessoal, desenvolvido sob a arquitetura **Offline-First**. Ele funciona de maneira totalmente local com cache inteligente do navegador e sincroniza em tempo real com o Firestore (Firebase) assim que o login é efetuado.
+O **FinancePro** é um web app premium e elegante de controle financeiro pessoal, desenvolvido sob a arquitetura **Offline-First**. Ele funciona de maneira totalmente local com cache inteligente do navegador e sincroniza em tempo real com o Firestore (Firebase) assim que o login é efetuado.
 
 Seu design é responsivo, polido e moderno, oferecendo uma experiência digna de aplicativo nativo de celular.
 
@@ -97,7 +97,7 @@ O aplicativo estará disponível na porta `8080`: `http://localhost:8080`.
 
 ## 📱 Versão Android (Capacitor)
 
-O **FinanceOS** agora conta com uma versão empacotada em APK para Android utilizando o **Capacitor 6**! O projeto Android está localizado de forma isolada na pasta [`android-app/`](./android-app/).
+O **FinancePro** agora conta com uma versão empacotada em APK para Android utilizando o **Capacitor 6**! O projeto Android está localizado de forma isolada na pasta [`android-app/`](./android-app/).
 
 ### Como gerar um novo APK:
 1. **Compilar a versão web:**
@@ -116,7 +116,7 @@ O **FinanceOS** agora conta com uma versão empacotada em APK para Android utili
    cd android
    ./gradlew assembleDebug
    ```
-   *(O APK de debug compilado será gerado na pasta `android-app/apk/financeos.apk`)*.
+   *(O APK de debug compilado será gerado na pasta `android-app/apk/financepro.apk`)*.
 
 ---
 
