@@ -1694,7 +1694,7 @@ export function markNotificationAsPaid(txId) {
     // Toast feedback
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,0.4);z-index:9999;animation:fadeup 0.3s ease;';
-    toast.innerHTML = `✅ "${tx.desc}" marcado como pago!`;
+    toast.textContent = `✅ "${tx.desc}" marcado como pago!`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
@@ -2539,9 +2539,11 @@ export function renderProjecaoFluxoCaixa() {
     if (a.type !== 'Investimentos') currentBalance += (a.initialVal || 0);
   });
 
+  const accountsMap = new Map((S.accounts || []).map(acc => [acc.id, acc]));
+
   (S.transactions || []).forEach(t => {
     if (t.status === 'Pago') {
-      const a = (S.accounts || []).find(acc => acc.id === t.payId);
+      const a = accountsMap.get(t.payId);
       if (!a || a.type !== 'Investimentos') {
         currentBalance += (t.tipo === 'Receita' ? t.val : -t.val);
       }

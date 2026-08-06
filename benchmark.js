@@ -1,56 +1,79 @@
-const fs = require('fs');
+const { performance } = require('perf_hooks');
 
-// Mock data
-const S = {
-  accounts: Array.from({ length: 100 }, (_, i) => ({ id: `acc_${i}`, balance: 1000 })),
-  transactions: Array.from({ length: 10000 }, (_, i) => ({
+const numAccounts = 500;
+const numTransactions = 50000;
+
+const accounts = [];
+for (let i = 0; i < numAccounts; i++) {
+  accounts.push({ id: `acc_${i}`, balance: 1000 });
+}
+
+const transactions = [];
+for (let i = 0; i < numTransactions; i++) {
+  transactions.push({
     id: `tx_${i}`,
-    payId: `acc_${i % 100}`,
-    status: i % 10 === 0 ? 'Pendente' : 'Pago',
-    tipo: i % 2 === 0 ? 'Receita' : 'Despesa',
-    val: 50,
-    data: '2023-10-01'
-  }))
-};
-
-function original() {
-  let saldoInicial = S.accounts.reduce((s, a) => s + a.balance, 0);
-  let allNet = 0;
-  S.transactions.forEach(t => {
-    if (t.status !== 'Pendente') {
-      const acc = S.accounts.find(a => a.id === t.payId);
-      if (acc) {
-        allNet += (t.tipo === 'Receita' ? t.val : -t.val);
-      }
-    }
+    payId: `acc_${Math.floor(Math.random() * numAccounts)}`,
+    data: '2023-10-01',
+    status: 'Pago',
+    tipo: Math.random() > 0.5 ? 'Receita' : 'Despesa',
+    val: Math.random() * 100
   });
-  saldoInicial -= allNet;
-  return saldoInicial;
 }
 
-function optimized() {
-  let saldoInicial = S.accounts.reduce((s, a) => s + a.balance, 0);
-  let allNet = 0;
-  const accMap = new Map(S.accounts.map(a => [a.id, a]));
-  S.transactions.forEach(t => {
-    if (t.status !== 'Pendente') {
-      const acc = accMap.get(t.payId);
-      if (acc) {
-        allNet += (t.tipo === 'Receita' ? t.val : -t.val);
-      }
+const endIso = '2023-01-01';
+
+function calculateAfterNetA(endIso, transactions, accounts) {
+    let totalBal = accounts.reduce((s,a)=>s+a.balance,0);
+    if (endIso && Array.isArray(transactions)) {
+      let afterNet = 0;
+      transactions.forEach(t => {
+        if (t.data > endIso && t.status !== 'Pendente') {
+          const acc = accounts.find(a => a.id === t.payId);
+          if (acc) {
+            afterNet += (t.tipo === 'Receita' ? t.val : -t.val);
+          }
+        }
+      });
+      totalBal -= afterNet;
     }
-  });
-  saldoInicial -= allNet;
-  return saldoInicial;
+    return totalBal;
 }
 
-const t1 = performance.now();
-for (let i = 0; i < 1000; i++) original();
-const t2 = performance.now();
+function calculateAfterNetB(endIso, transactions, accounts) {
+    let totalBal = accounts.reduce((s,a)=>s+a.balance,0);
+    if (endIso && Array.isArray(transactions)) {
+      let afterNet = 0;
+      const accountMap = new Map();
+      accounts.forEach(a => accountMap.set(a.id, a));
+      transactions.forEach(t => {
+        if (t.data > endIso && t.status !== 'Pendente') {
+          const acc = accountMap.get(t.payId);
+          if (acc) {
+            afterNet += (t.tipo === 'Receita' ? t.val : -t.val);
+          }
+        }
+      });
+      totalBal -= afterNet;
+    }
+    return totalBal;
+}
 
-const t3 = performance.now();
-for (let i = 0; i < 1000; i++) optimized();
-const t4 = performance.now();
+// warmup
+for (let i = 0; i < 10; i++) {
+  calculateAfterNetA(endIso, transactions, accounts);
+  calculateAfterNetB(endIso, transactions, accounts);
+}
 
-console.log(`Original: ${(t2 - t1).toFixed(2)} ms`);
-console.log(`Optimized: ${(t4 - t3).toFixed(2)} ms`);
+const iter = 100;
+
+const startA = performance.now();
+for (let i = 0; i < iter; i++) calculateAfterNetA(endIso, transactions, accounts);
+const endA = performance.now();
+
+const startB = performance.now();
+for (let i = 0; i < iter; i++) calculateAfterNetB(endIso, transactions, accounts);
+const endB = performance.now();
+
+console.log(`Baseline (O(N*M)): ${(endA - startA) / iter} ms per run`);
+console.log(`Optimized (Map): ${(endB - startB) / iter} ms per run`);
+console.log(`Speedup: ${((endA - startA) / (endB - startB)).toFixed(2)}x`);
