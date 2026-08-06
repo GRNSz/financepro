@@ -23,6 +23,18 @@ export function sendAiQuick(text) {
 
 window.sendAiQuick = sendAiQuick;
 
+export function escapeHTML(str) {
+  return str.replace(/[&<>'"]/g,
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag)
+  );
+}
+
 export function formatAiMarkdown(text) {
   if (!text) return '';
   return text
@@ -309,7 +321,9 @@ export async function sendAiMessage() {
   const messagesContainer = q('#aiChatMessages');
   if (!messagesContainer) return;
   
-  messagesContainer.innerHTML += `<div class="ai-msg user">${text}</div>`;
+  // 🛡️ Sentinel: Sanitize user input before inserting into DOM to prevent XSS
+  const safeText = escapeHTML(text);
+  messagesContainer.innerHTML += `<div class="ai-msg user">${safeText}</div>`;
   scrollChatToBottom();
   
   const loadId = 'ai-load-' + Date.now();
