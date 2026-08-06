@@ -304,7 +304,7 @@ export async function sendAiMessage() {
 
   input.value = '';
   
-  window.showGlobalLoader?.("IA FinanceOS está pensando...");
+  window.showGlobalLoader?.("IA PoupaFy está pensando...");
   
   const messagesContainer = q('#aiChatMessages');
   if (!messagesContainer) return;

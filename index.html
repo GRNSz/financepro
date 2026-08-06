@@ -3,16 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Controle Financeiro</title>
+<title>PoupaFy — Controle Financeiro Inteligente</title>
+<link rel="icon" type="image/png" href="/Logo.png">
+<link rel="apple-touch-icon" href="/Logo_512.png">
+<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
 <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
@@ -40,28 +36,28 @@
         panel.appendChild(div);
         panel.scrollTop = panel.scrollHeight;
       }
-      console.log(`[DEV_LOG] [${type}] ${msg}`);
     };
 
     window.addEventListener('error', function(e) {
-      window.addDevLog(e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno, 'error');
+      if (e && e.message) {
+        window.addDevLog(e.message + ' at ' + (e.filename || 'app') + ':' + (e.lineno || 0), 'error');
+      }
     });
     window.addEventListener('unhandledrejection', function(e) {
       window.addDevLog('Promise rejection: ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'), 'error');
     });
-
-    window.addDevLog('Debug logger initialized successfully.', 'success');
   })();
 </script>
 
 <!-- TELA DE LOGIN / OVERLAY -->
 <div id="login-screen" style="display: none;">
   <div class="login-card">
-    <div class="login-header">
-      <h2>💸 FinanceOS</h2>
-      <p>Gerencie suas finanças com elegância</p>
+    <div class="login-header" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <img src="/Logo_512.png" style="width:52px;height:52px;border-radius:12px;object-fit:cover;margin-bottom:4px;" alt="PoupaFy Logo">
+      <h2 style="margin:0;">PoupaFy</h2>
+      <p style="margin:0;">Gerencie suas finanças com inteligência e praticidade</p>
     </div>
-    
+
     <!-- Google OAuth Button -->
     <button class="google-btn" id="btnLoginGoogle">
       <svg viewBox="0 0 24 24">
@@ -103,9 +99,9 @@
 
 <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════ -->
 <nav id="sidebar">
-  <div class="logo" style="cursor:pointer">
-    <div class="logo-ico">💸</div>
-    <span class="logo-txt">FinanceOS</span>
+  <div class="logo" style="cursor:pointer; display:flex; align-items:center; gap:10px;">
+    <div class="logo-ico" style="display:flex; align-items:center; justify-content:center;"><img src="/Logo.png" style="width:28px; height:28px; border-radius:6px; object-fit:cover;" alt="PoupaFy Logo"></div>
+    <span class="logo-txt">PoupaFy</span>
   </div>
 
   <span class="nav-sep">Menu</span>
@@ -380,6 +376,14 @@
         <div class="card tx-filters">
           <h3>Filtros</h3>
           <div class="fgrp"><label>Buscar</label><input type="text" id="fSearch" class="inp" placeholder="Descrição..."></div>
+          <div class="fgrp"><label>Período</label>
+            <select id="fPeriod" class="inp">
+              <option value="with_future" selected>Mês Selecionado + Futuros 🔮</option>
+              <option value="current">Somente Mês Selecionado</option>
+              <option value="only_future">Somente Lançamentos Futuros 🔮</option>
+              <option value="all">Todos os Lançamentos (Tudo)</option>
+            </select>
+          </div>
           <div class="fgrp"><label>Tipo</label>
             <select id="fTipo" class="inp">
               <option value="">Todos</option>
@@ -595,7 +599,10 @@
     <section id="page-guardado" class="page">
       <div class="sec-h">
         <h3>Dinheiro Guardado</h3>
-        <button class="bp sm" id="btnNewSaving">+ Adicionar</button>
+        <div style="display:flex;gap:8px;">
+          <button class="bs sm" onclick="adjustSavingsBalancePrompt()" title="Ajustar saldo total diretamente">✏️ Ajustar Saldo</button>
+          <button class="bp sm" id="btnNewSaving" onclick="openSavingModal()">+ Registrar Reserva</button>
+        </div>
       </div>
       <div class="card" style="margin-bottom:16px">
         <div class="card-h">
@@ -740,7 +747,7 @@
 
         <div class="card fw">
           <div class="card-h"><h3>Aparência e Preferências</h3></div>
-          <p class="card-desc">Personalize o tema visual e gerencie alertas do FinanceOS.</p>
+          <p class="card-desc">Personalize o tema visual e gerencie alertas do PoupaFy.</p>
           <div style="margin-top:14px; display:flex; flex-direction:column; gap:16px;">
             <div>
               <label style="font-weight:700; font-size:12.5px; display:block; margin-bottom:8px; color:var(--tx2);">Tema Visual do Sistema</label>
@@ -1204,7 +1211,7 @@
         <div class="profile-avatar" id="userAvatar">👤</div>
         <div class="profile-details">
           <div class="profile-name" id="userName">Usuário Local</div>
-          <div class="profile-email" id="userEmail">local@financeos.app</div>
+          <div class="profile-email" id="userEmail">local@poupafy.app</div>
           <span class="profile-badge" id="userProvider">Modo Convidado</span>
         </div>
       </div>
@@ -1675,9 +1682,9 @@
   <div class="modal">
     <div class="mhd"><h3>Registrar Dinheiro Guardado</h3><button class="mclose" data-close="m-saving">✕</button></div>
     <form id="f-saving">
-      <div class="fg"><label>Valor (R$)</label><input type="number" id="sv-val" class="inp" step="0.01" placeholder="0,00" required></div>
+      <div class="fg"><label>Valor (R$)</label><input type="number" id="sv-val" class="inp" step="0.01" placeholder="Ex: 500,00 (negativo para retirada)" required></div>
       <div class="fg"><label>Data</label><input type="date" id="sv-data" class="inp" required></div>
-      <div class="fg"><label>Descrição (opcional)</label><input type="text" id="sv-desc" class="inp" placeholder="Ex: Economizado em junho"></div>
+      <div class="fg"><label>Descrição (opcional)</label><input type="text" id="sv-desc" class="inp" placeholder="Ex: Economizado em julho"></div>
       <div class="mfooter">
         <button type="button" class="bg sm" data-close="m-saving">Cancelar</button>
         <button type="submit" class="bp sm">Registrar</button>
@@ -1734,7 +1741,7 @@
 <div id="pin-lock-screen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; justify-content: center; align-items: center;">
   <div class="login-card" style="max-width: 340px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border: 1px solid var(--bd2);">
     <div style="font-size: 48px; margin-bottom: 16px; animation: bounce 2s infinite;">🔒</div>
-    <h2>FinanceOS Bloqueado</h2>
+    <h2>PoupaFy Bloqueado</h2>
     <p style="color: var(--tx2); font-size: 13px; margin-top: 4px; margin-bottom: 24px;">Insira seu PIN de 4 dígitos para acessar seus dados</p>
     
     <!-- PIN Dots Indicator -->
@@ -1906,7 +1913,7 @@
     <div class="paywall-header" style="border-bottom: 1px solid var(--bd2); padding-bottom: 16px; display: flex; justify-content: center; align-items: center; width: 100%;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; width:100%;">
         <span style="font-size: 24px;">🚀</span>
-        <h2 style="font-size:20px; font-weight:800; letter-spacing:-0.5px; margin:0;">Escolha seu Plano FinanceOS</h2>
+        <h2 style="font-size:20px; font-weight:800; letter-spacing:-0.5px; margin:0;">Escolha seu Plano PoupaFy</h2>
         <p style="font-size:12px; color:var(--tx2); margin:0;">Desbloqueie o poder total da gestão financeira e IA</p>
       </div>
     </div>
@@ -2007,7 +2014,7 @@
 <!-- PAINEL DE LOGS DE DESENVOLVIMENTO (DEBUG CONSOLE) -->
 <div id="dev-console-panel" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 250px; background: #0f172a; border-top: 2px solid #ef4444; color: #f1f5f9; font-family: monospace; font-size: 11px; z-index: 99999; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); display: flex; flex-direction: column;">
   <div style="background: #1e293b; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
-    <span style="font-weight: bold; color: #ef4444; display: flex; align-items: center; gap: 6px;">🛠️ Debug Console (FinanceOS Dev)</span>
+    <span style="font-weight: bold; color: #ef4444; display: flex; align-items: center; gap: 6px;">🛠️ Debug Console (PoupaFy Dev)</span>
     <div style="display: flex; gap: 8px;">
       <button type="button" id="btn-dev-copy" style="background: #475569; color: white; border: none; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">Copiar Logs</button>
       <button type="button" id="btn-dev-clear" style="background: #475569; color: white; border: none; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 10px;">Limpar</button>

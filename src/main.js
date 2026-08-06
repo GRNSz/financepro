@@ -1,12 +1,14 @@
 import Chart from 'chart.js/auto';
 import { NotificationsListener } from 'capacitor-notifications-listener';
 import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { initDevLogger, setupDevConsolePanel } from './devLogs.js';
 
 if (typeof window !== 'undefined') {
   window.Chart = Chart;
   window.jsPDF = jsPDF;
+  window.autoTable = autoTable;
   window.XLSX = XLSX;
   initDevLogger();
 }
@@ -227,6 +229,7 @@ function initBankNotificationListener() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  try {
   // 1. Synchronously load state from LocalStorage to prevent crashes
   load();
   processRecurringTransactions();
@@ -325,15 +328,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // 5. Modal Close Controls
-  qa('[data-close]').forEach(btn => {
-    btn.addEventListener('click', () => closeM(btn.dataset.close));
+  // 5. Modal Close Controls (Event Delegation & Global Shortcuts)
+  document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn && closeBtn.dataset.close) {
+      closeM(closeBtn.dataset.close);
+      return;
+    }
+    if (e.target.classList && e.target.classList.contains('mbd')) {
+      closeM(e.target.id);
+    }
   });
 
-  qa('.mbd').forEach(el => {
-    el.addEventListener('click', (e) => {
-      if (e.target === el) closeM(el.id);
-    });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const openModals = Array.from(document.querySelectorAll('.mbd')).filter(m => !m.hidden);
+      openModals.forEach(m => closeM(m.id));
+    }
   });
 
   // 6. Chart controls
@@ -341,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
   q('#chartYear')?.addEventListener('change', renderDashboard);
 
   // 7. Transaction List Filter controls
-  ['#fSearch', '#fTipo', '#fCat', '#fStatus'].forEach(sel => {
+  ['#fSearch', '#fTipo', '#fCat', '#fStatus', '#fPeriod'].forEach(sel => {
     const el = q(sel);
     if (el) {
       el.addEventListener('input', applyFilters);
@@ -365,12 +376,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 8. Open/Create Transaction Modals
   function openTxCreateModal() {
-    q('#tx-id').value = '';
-    const tipo = q('#tx-tipo').value;
+    try {
+    var txId = q('#tx-id');
+    if (txId) txId.value = '';
+    var tipoEl = q('#tx-tipo');
+    var tipo = tipoEl ? tipoEl.value : 'Despesa';
     fillCatSelect(q('#tx-cat'), tipo);
     fillPaySelect(q('#tx-conta'));
-    q('#tx-data').value = isoToday();
-    q('#tx-status').value = tipo === 'Receita' ? 'Recebido' : 'Pago';
+    var txData = q('#tx-data');
+    if (txData) txData.value = isoToday();
+    var txStatus = q('#tx-status');
+    if (txStatus) txStatus.value = tipo === 'Receita' ? 'Recebido' : 'Pago';
     
     const isInst = q('#tx-is-installment');
     if (isInst) isInst.checked = false;
@@ -406,13 +422,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (q('#tx-taxa')) q('#tx-taxa').value = '1';
     if (q('#tx-taxa-wrap')) q('#tx-taxa-wrap').style.display = 'none';
 
-    q('#tx-modal-title').textContent = "Novo Lançamento";
+    var txTitle = q('#tx-modal-title');
+    if (txTitle) txTitle.textContent = "Novo Lançamento";
 
     const keepOpenWrap = q('#tx-keep-open-wrap');
     if (keepOpenWrap) keepOpenWrap.style.display = 'flex';
 
     openM('m-tx');
     updateTxLivePreview();
+    } catch (err) {
+      console.error('[TX] openTxCreateModal error:', err);
+      openM('m-tx');
+    }
   }
 
   q('#btnNewTx')?.addEventListener('click', openTxCreateModal);
@@ -1265,67 +1286,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderDashboard();
   });
 
-  // 16. Dinheiro Guardado (Savings)
-  q('#btnNewSaving')?.addEventListener('click', () => {
-    q('#sv-data').value = isoToday();
-    openM('m-saving');
-  });
-
-  q('#f-saving')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const val = parseFloat(q('#sv-val').value) || 0;
-    const data = q('#sv-data').value;
-    const desc = q('#sv-desc').value.trim();
-
-    S.savings.push({
-      id: uid(),
-      val: val,
-      data: data,
-      desc: desc
-    });
-    
-    save();
-    closeM('m-saving');
-    renderGuardado();
-    renderDashboard();
-
-    if (val > 0) {
-      if (window.Swal) {
-        window.Swal.fire({
-          title: 'Lançar Despesa?',
-          text: `Deseja lançar essa reserva de R$ ${val.toFixed(2)} como uma despesa em seus Lançamentos?`,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'Sim',
-          cancelButtonText: 'Não'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            if (window.fillCatSelect) window.fillCatSelect(q('#tx-cat'), 'Despesa');
-            if (window.fillPaySelect) window.fillPaySelect(q('#tx-conta'));
-            openM('m-tx');
-            if (window.setTxType) window.setTxType('Despesa');
-            else if (q('#tx-tipo')) q('#tx-tipo').value = 'Despesa';
-            if (q('#tx-val')) q('#tx-val').value = val.toFixed(2);
-            if (q('#tx-data')) q('#tx-data').value = data;
-            if (q('#tx-desc')) q('#tx-desc').value = 'Dinheiro Guardado' + (desc ? ` - ${desc}` : '');
-            if (q('#tx-status')) q('#tx-status').value = 'Pago';
-          }
-        });
-      } else {
-        if (confirm(`Deseja lançar essa reserva de R$ ${val.toFixed(2)} como uma despesa em seus Lançamentos?`)) {
-          if (window.fillCatSelect) window.fillCatSelect(q('#tx-cat'), 'Despesa');
-          if (window.fillPaySelect) window.fillPaySelect(q('#tx-conta'));
-          openM('m-tx');
-          if (window.setTxType) window.setTxType('Despesa');
-          else if (q('#tx-tipo')) q('#tx-tipo').value = 'Despesa';
-          if (q('#tx-val')) q('#tx-val').value = val.toFixed(2);
-          if (q('#tx-data')) q('#tx-data').value = data;
-          if (q('#tx-desc')) q('#tx-desc').value = 'Dinheiro Guardado' + (desc ? ` - ${desc}` : '');
-          if (q('#tx-status')) q('#tx-status').value = 'Pago';
-        }
-      }
-    }
-  });
+  // 16. Dinheiro Guardado — moved outside DOMContentLoaded for reliability
 
   // 17. Backup & Restore / Excel & OFX Importer
   // 17. Backup & Restore / Excel & OFX Importer / CSV & Google Sheets
@@ -1892,136 +1853,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ─── NGROK REMOTE ACCESS TUNNEL ─────────────────────────────────────────────
-  const btnToggleNgrok = q('#btnToggleNgrok');
-  const btnCopyNgrokUrl = q('#btnCopyNgrokUrl');
-  const ngrokStatusDesc = q('#ngrok-status-desc');
-  const ngrokUrlContainer = q('#ngrok-url-container');
-  const ngrokUrlInput = q('#ngrok-url-input');
-
-  const isCapacitor = !!window.Capacitor && window.Capacitor.isNative;
-  if (isCapacitor) {
-    const ngrokCard = btnToggleNgrok?.closest('.card');
-    if (ngrokCard) {
-      ngrokCard.style.display = 'none';
-    }
-  }
-
-  let ngrokActive = false;
-
-  async function updateNgrokStatus() {
-    try {
-      const res = await fetch('/api/tunnel');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.active && data.url) {
-          ngrokActive = true;
-          if (btnToggleNgrok) {
-            btnToggleNgrok.textContent = 'Parar Túnel';
-            btnToggleNgrok.className = 'brd sm';
-          }
-          if (ngrokStatusDesc) {
-            ngrokStatusDesc.innerHTML = `<span style="color:var(--gr); font-weight:bold;">● Ativo e acessível publicamente</span>`;
-          }
-          if (ngrokUrlContainer) ngrokUrlContainer.style.display = 'block';
-          if (ngrokUrlInput) ngrokUrlInput.value = data.url;
-        } else {
-          ngrokActive = false;
-          if (btnToggleNgrok) {
-            btnToggleNgrok.textContent = 'Iniciar Túnel';
-            btnToggleNgrok.className = 'bp sm';
-          }
-          if (ngrokStatusDesc) {
-            ngrokStatusDesc.textContent = 'O túnel está inativo no momento.';
-          }
-          if (ngrokUrlContainer) ngrokUrlContainer.style.display = 'none';
-          if (ngrokUrlInput) ngrokUrlInput.value = '';
-        }
-      }
-    } catch (err) {
-      console.warn('Erro ao consultar status do túnel ngrok:', err);
-    }
-  }
-
-  btnToggleNgrok?.addEventListener('click', async () => {
-    btnToggleNgrok.disabled = true;
-    const originalText = btnToggleNgrok.textContent;
-    btnToggleNgrok.textContent = ngrokActive ? 'Parando...' : 'Iniciando...';
-
-    try {
-      const res = await fetch('/api/tunnel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: ngrokActive ? 'stop' : 'start' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (!ngrokActive) {
-          alert('Túnel ngrok criado com sucesso! Sua aplicação agora está visível publicamente.');
-        } else {
-          alert('Túnel ngrok encerrado.');
-        }
-        await updateNgrokStatus();
-      } else {
-        alert('Erro ao gerenciar o túnel ngrok: ' + (data.error || 'Erro desconhecido'));
-        btnToggleNgrok.textContent = originalText;
-      }
-    } catch (err) {
-      alert('Falha na comunicação com o servidor local.');
-      btnToggleNgrok.textContent = originalText;
-    } finally {
-      btnToggleNgrok.disabled = false;
-    }
-  });
-
-  btnCopyNgrokUrl?.addEventListener('click', () => {
-    if (ngrokUrlInput && ngrokUrlInput.value) {
-      navigator.clipboard.writeText(ngrokUrlInput.value)
-        .then(() => alert('URL copiada para a área de transferência!'))
-        .catch(err => alert('Falha ao copiar: ' + err));
-    }
-  });
-
-  const btnSaveNgrokToken = q('#btnSaveNgrokToken');
-  const ngrokTokenInput = q('#ngrok-token-input');
-
-  if (ngrokTokenInput) {
-    ngrokTokenInput.value = localStorage.getItem('financepro_ngrok_authtoken') || '';
-  }
-
-  btnSaveNgrokToken?.addEventListener('click', async () => {
-    const token = ngrokTokenInput.value.trim();
-    if (!token) {
-      alert('Por favor, insira um token válido.');
-      return;
-    }
-
-    btnSaveNgrokToken.disabled = true;
-    btnSaveNgrokToken.textContent = 'Salvando...';
-
-    try {
-      const res = await fetch('/api/tunnel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set-token', token })
-      });
-      const data = await res.json();
-      if (data.success) {
-        localStorage.setItem('financepro_ngrok_authtoken', token);
-        alert('Authtoken do ngrok configurado com sucesso no sistema local!');
-      } else {
-        alert('Erro ao salvar token: ' + (data.error || 'Erro desconhecido'));
-      }
-    } catch (err) {
-      alert('Falha na comunicação com o servidor local.');
-    } finally {
-      btnSaveNgrokToken.disabled = false;
-      btnSaveNgrokToken.textContent = 'Salvar';
-    }
-  });
-
-  // Consultar status ao inicializar
-  updateNgrokStatus();
+  // (Ngrok removido)
 
   // 26. Calculator DSR options toggle
   q('#he-has-dsr')?.addEventListener('change', function() {
@@ -2705,7 +2537,120 @@ document.addEventListener('DOMContentLoaded', function() {
   // 30. Render initial view
   navigate(activePage);
   updateNotifications();
+
+  } catch(initErr) {
+    console.error('[FinancePro] CRITICAL: DOMContentLoaded init error:', initErr);
+  }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Savings (Dinheiro Guardado) — FORA do DOMContentLoaded
+// para garantir que funciona independente de erros em outro lugar
+// ═══════════════════════════════════════════════════════════════
+(function initSavingsModule() {
+  function showSavingToast(msg, color) {
+    color = color || '#8b5cf6';
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:' + color + ';color:#fff;padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:99999;animation:fadeup 0.3s ease;pointer-events:none;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function() { t.remove(); }, 3200);
+  }
+
+  function parseBRLInput(raw) {
+    if (!raw) return NaN;
+    var s = String(raw).trim().replace(/[R$\s]/g, '');
+    if (s.indexOf(',') !== -1) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    return parseFloat(s);
+  }
+
+  window.openSavingModal = function() {
+    try {
+      var form = document.getElementById('f-saving');
+      if (form) form.reset();
+      var dateEl = document.getElementById('sv-data');
+      if (dateEl) dateEl.value = isoToday();
+      var valEl = document.getElementById('sv-val');
+      if (valEl) {
+        valEl.value = '';
+        setTimeout(function() { try { valEl.focus(); } catch(e) {} }, 150);
+      }
+      openM('m-saving');
+    } catch (err) {
+      console.error('[Savings] openSavingModal error:', err);
+      // Fallback: tentar abrir o modal manualmente
+      var el = document.getElementById('m-saving');
+      if (el) { el.removeAttribute('hidden'); el.style.display = 'flex'; }
+    }
+  };
+
+  function handleSavingSubmit(e) {
+    if (e) e.preventDefault();
+    try {
+      var valRaw = (document.getElementById('sv-val') || {}).value || '';
+      var val = parseBRLInput(valRaw);
+      var dataInput = document.getElementById('sv-data');
+      var data = (dataInput && dataInput.value) ? dataInput.value : isoToday();
+      var descEl = document.getElementById('sv-desc');
+      var desc = descEl ? (descEl.value || '').trim() : '';
+
+      if (isNaN(val) || val === 0) {
+        showSavingToast('⚠️ Informe um valor diferente de zero.', '#e17055');
+        var focus1 = document.getElementById('sv-val');
+        if (focus1) focus1.focus();
+        return;
+      }
+
+      if (!Array.isArray(S.savings)) S.savings = [];
+      S.savings.push({ id: uid(), val: val, data: data, desc: desc });
+      save();
+
+      closeM('m-saving');
+      var form = document.getElementById('f-saving');
+      if (form) form.reset();
+      if (typeof renderGuardado === 'function') renderGuardado();
+      if (typeof renderDashboard === 'function') renderDashboard();
+
+      var signal = val >= 0 ? '💰 +' + fmt(val) + ' guardado!' : '📤 ' + fmt(Math.abs(val)) + ' retirado.';
+      showSavingToast(signal);
+
+      if (val > 0) {
+        setTimeout(function() {
+          var pergunta = 'Deseja lançar R$ ' + val.toFixed(2) + ' como despesa em Lançamentos?';
+          if (confirm(pergunta)) {
+            if (window.fillCatSelect) window.fillCatSelect(document.getElementById('tx-cat'), 'Despesa');
+            if (window.fillPaySelect) window.fillPaySelect(document.getElementById('tx-conta'));
+            openM('m-tx');
+            if (window.setTxType) window.setTxType('Despesa');
+            var fields = { 'tx-val': val.toFixed(2), 'tx-data': data, 'tx-desc': 'Dinheiro Guardado' + (desc ? ' – ' + desc : ''), 'tx-status': 'Pago' };
+            for (var id in fields) { var el = document.getElementById(id); if (el) el.value = fields[id]; }
+          }
+        }, 250);
+      }
+    } catch (err) {
+      console.error('[Savings] submit error:', err);
+      alert('Erro ao salvar reserva: ' + err.message);
+    }
+  }
+
+  // Register on DOMContentLoaded to bind to form
+  document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('btnNewSaving');
+    if (btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.openSavingModal();
+      });
+    }
+    var form = document.getElementById('f-saving');
+    if (form) {
+      form.addEventListener('submit', handleSavingSubmit);
+    }
+  });
+})();
 
 export function processRecurringTransactions() {
   if (!S || !Array.isArray(S.recurring)) return;

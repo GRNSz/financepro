@@ -20,11 +20,12 @@ export function initDevLogger() {
       panel.appendChild(div);
       panel.scrollTop = panel.scrollHeight;
     }
-    console.log(`[DEV_LOG] [${type}] ${msg}`);
   };
 
   window.addEventListener('error', function(e) {
-    window.addDevLog(e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno, 'error');
+    if (e && e.message) {
+      window.addDevLog(e.message + ' at ' + (e.filename || 'app') + ':' + (e.lineno || 0), 'error');
+    }
   });
   window.addEventListener('unhandledrejection', function(e) {
     window.addDevLog('Promise rejection: ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'), 'error');
@@ -55,8 +56,6 @@ export function initDevLogger() {
       if (panel) panel.style.display = 'none';
     }
   };
-
-  window.addDevLog('Debug logger initialized successfully.', 'success');
 }
 
 export function setupDevConsolePanel() {

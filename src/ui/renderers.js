@@ -904,6 +904,9 @@ export function applyFilters(){
   const tipo  = (q('#fTipo')||{value:''}).value;
   const catId = (q('#fCat')||{value:''}).value;
   const stat  = (q('#fStatus')||{value:''}).value;
+  const periodSel = (q('#fPeriod')||{value:'with_future'}).value;
+
+  const todayIso = isoToday();
 
   const list = (S.transactions || []).filter(t=>{
     if (srch) {
@@ -920,21 +923,49 @@ export function applyFilters(){
     if(catId && t.catId!==catId) return false;
     if(stat && t.status!==stat) return false;
     
-    // Apply global period filter
-    const d=new Date(t.data+'T00:00:00');
-    if (periodState.currentMode === 'weekly') {
-      const range = getActiveWeekRange();
-      if (t.data < range.startIso || t.data > range.endIso) return false;
-    } else if (periodState.currentMode === 'monthly') {
-      if (d.getFullYear() !== periodState.currentYear || d.getMonth() !== periodState.currentMonth) return false;
-    } else if (periodState.currentMode === 'yearly') {
-      if (d.getFullYear() !== periodState.currentYear) return false;
+    // Period filter handling
+    if (periodSel === 'all') {
+      return true;
+    } else if (periodSel === 'only_future') {
+      if (!t.data || t.data <= todayIso) return false;
+    } else if (periodSel === 'with_future') {
+      // Include current selected period OR any future transactions (t.data >= todayIso)
+      if (t.data && t.data >= todayIso) return true;
+      const d = new Date((t.data || '') + 'T00:00:00');
+      if (periodState.currentMode === 'weekly') {
+        const range = getActiveWeekRange();
+        if (t.data < range.startIso || t.data > range.endIso) return false;
+      } else if (periodState.currentMode === 'monthly') {
+        if (d.getFullYear() !== periodState.currentYear || d.getMonth() !== periodState.currentMonth) return false;
+      } else if (periodState.currentMode === 'yearly') {
+        if (d.getFullYear() !== periodState.currentYear) return false;
+      }
+    } else {
+      // 'current' mode: strictly within current selected period
+      const d = new Date((t.data || '') + 'T00:00:00');
+      if (periodState.currentMode === 'weekly') {
+        const range = getActiveWeekRange();
+        if (t.data < range.startIso || t.data > range.endIso) return false;
+      } else if (periodState.currentMode === 'monthly') {
+        if (d.getFullYear() !== periodState.currentYear || d.getMonth() !== periodState.currentMonth) return false;
+      } else if (periodState.currentMode === 'yearly') {
+        if (d.getFullYear() !== periodState.currentYear) return false;
+      }
     }
     return true;
-  }).sort((a,b)=>b.data.localeCompare(a.data));
+  }).sort((a,b)=>(b.data || '').localeCompare(a.data || ''));
 
   const tb=q('#txTbody');
   if(!tb)return;
+  const container = q('.tx-tbl-container');
+  const table = q('.tx-tbl');
+  if (typeof isSpreadsheetMode !== 'undefined' && isSpreadsheetMode) {
+    container?.classList.add('spreadsheet-mode');
+    table?.classList.add('spreadsheet-mode');
+  } else {
+    container?.classList.remove('spreadsheet-mode');
+    table?.classList.remove('spreadsheet-mode');
+  }
   q('#txTitle').textContent=list.length+' Lançamento(s)';
   if(!list.length){tb.innerHTML='<tr><td colspan="7" class="empty">Nenhum lançamento encontrado.</td></tr>';return;}
   tb.innerHTML=list.map(t=>{
@@ -942,6 +973,8 @@ export function applyFilters(){
     const pn=getPay(t.payId);
     const inlbl=t.inst?` <span style="opacity:.6;font-size:10.5px">(${t.inst}/${t.total})</span>`:'';
     const sCls=t.status==='Pago'?'s-pago':t.status==='Recebido'?'s-recebido':'s-pendente';
+    const isFuture = t.data && t.data > todayIso;
+    const futureBadge = isFuture ? ` <span class="tag-pill" style="font-size:9.5px; background:rgba(99,102,241,0.15); color:var(--ac); border:1px solid rgba(99,102,241,0.3); padding:1px 5px; border-radius:4px;" title="Lançamento Agendado para o Futuro">🔮 Futuro</span>` : '';
     
     const taglbl = (t.tags && t.tags.length) ? `<div style="margin-top: 4px; display:flex; gap: 4px; flex-wrap: wrap;">${t.tags.map(tag => { const escapedTag = escapeHtml(tag); return `<span class="tag-pill" style="font-size:10px; background:var(--s3); color:var(--tx2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--bd2); cursor:pointer;" onclick="event.stopPropagation(); window.filterByTag('${escapedTag}')">${escapedTag}</span>`; }).join('')}</div>` : '';
     
@@ -954,7 +987,7 @@ export function applyFilters(){
     const receiptBtn = t.receiptData ? `<button class="bs sm" style="padding: 4px 6px; font-size: 10.5px; border-radius: 6px; margin-left:2px;" onclick="viewReceipt('${t.id}')" title="Ver Comprovante Anexado">📎 Foto</button>` : '';
 
     return`<tr>
-      <td style="white-space:nowrap;font-size:12px">${fmtD(t.data)}</td>
+      <td style="white-space:nowrap;font-size:12px">${fmtD(t.data)}${futureBadge}</td>
       <td><span style="font-weight:600">${escapeHtml(t.desc)}</span>${inlbl}${taglbl}<br><span style="font-size:11px;color:var(--tx2)">${pn}${loclbl}</span></td>
       <td><span class="cat-pill" style="background:${c.color}1a;color:${c.color}">${c.icon} ${c.name}</span></td>
       <td><span style="font-size:11.5px;font-weight:600;color:${t.tipo==='Receita'?'var(--gr)':'var(--tx2)'}">${t.tipo}</span></td>
@@ -2705,25 +2738,34 @@ window.openSubMenuCalendario = function() {
 
 let isSpreadsheetMode = false;
 window.toggleSpreadsheetView = function() {
+  const currentPg = document.querySelector('.page.on')?.id;
+  if (currentPg !== 'page-lancamentos') {
+    if (typeof window.navigate === 'function') {
+      window.navigate('lancamentos');
+    }
+  }
+
   isSpreadsheetMode = !isSpreadsheetMode;
   const btn = q('#btnToggleSpreadsheetMode');
-  const tableWrap = q('.table-wrap');
+  const container = q('.tx-tbl-container');
+  const table = q('.tx-tbl');
   
   if (btn) {
     btn.textContent = isSpreadsheetMode ? '📋 Lista Normal' : '📊 Planilha';
-    btn.style.background = isSpreadsheetMode ? 'var(--ac)' : '';
+    btn.style.background = isSpreadsheetMode ? '#10b981' : '';
     btn.style.color = isSpreadsheetMode ? '#fff' : '';
   }
   
-  if (tableWrap) {
-    if (isSpreadsheetMode) {
-      tableWrap.style.overflowX = 'auto';
-      tableWrap.style.boxShadow = '0 0 0 2px var(--ac)';
-      tableWrap.style.borderRadius = '12px';
-      tableWrap.style.background = 'var(--s2)';
-    } else {
-      tableWrap.style.boxShadow = 'none';
-      tableWrap.style.background = '';
-    }
+  if (container) {
+    if (isSpreadsheetMode) container.classList.add('spreadsheet-mode');
+    else container.classList.remove('spreadsheet-mode');
+  }
+  if (table) {
+    if (isSpreadsheetMode) table.classList.add('spreadsheet-mode');
+    else table.classList.remove('spreadsheet-mode');
+  }
+
+  if (typeof window.applyFilters === 'function') {
+    window.applyFilters();
   }
 };

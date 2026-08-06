@@ -159,20 +159,29 @@ export function qa(sel) { return document.querySelectorAll(sel); }
 
 export function openM(id) {
   const el = document.getElementById(id);
-  if (el) {
-    el.hidden = false;
-    document.body.style.overflow = 'hidden';
-  }
+  if (!el) return;
+  // Remove hidden attribute so CSS [hidden] rule doesn't apply
+  el.removeAttribute('hidden');
+  // Use a class instead of inline style to avoid !important conflicts
+  el.classList.add('modal-open');
+  document.body.style.overflow = 'hidden';
 }
 
 export function closeM(id) {
   const el = document.getElementById(id);
-  if (el) el.hidden = true;
-  
-  const openModals = Array.from(document.querySelectorAll('.mbd')).filter(m => !m.hidden && m.style.display !== 'none');
-  if (openModals.length === 0) {
-    document.body.style.overflow = '';
+  if (el) {
+    el.classList.remove('modal-open');
+    // Re-add hidden attribute after transition
+    setTimeout(() => { el.setAttribute('hidden', ''); }, 10);
   }
+
+  // Restore body scroll only if no other modals are open
+  setTimeout(() => {
+    const stillOpen = Array.from(document.querySelectorAll('.mbd.modal-open'));
+    if (stillOpen.length === 0) {
+      document.body.style.overflow = '';
+    }
+  }, 15);
 }
 
 if (typeof window !== 'undefined') {

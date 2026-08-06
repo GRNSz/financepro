@@ -444,8 +444,9 @@ body.light .card:hover {
 .danger-card{border-color:rgba(239,68,68,.18)!important}
 
 /* ── MODAL ──────────────────────────────── */
-.mbd{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;animation:fadein .15s ease}
+.mbd{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:100000;padding:16px}
 .mbd[hidden]{display:none!important}
+.mbd.modal-open{display:flex!important;animation:fadein .15s ease}
 .modal{background:var(--s1);border:1px solid var(--bd2);border-radius:20px;padding:24px;width:100%;max-width:470px;box-shadow:0 24px 64px rgba(0,0,0,.75);animation:slideup .25s cubic-bezier(0.16, 1, 0.3, 1);display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto}
 .mhd{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mhd h3{font-size:16px;font-weight:750;letter-spacing:-0.3px}
@@ -2049,4 +2050,50 @@ body.stealth-active #challenge-saved-text {
 }
 .plan-btn:hover {
   transform: translateY(-1px);
+}
+
+/* ── SPREADSHEET MODE (VISUALIZAÇÃO DE PLANILHA EXCEL) ── */
+.tx-tbl-container.spreadsheet-mode {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px #10b981, 0 8px 24px rgba(0, 0, 0, 0.25);
+  background: var(--s1);
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid #10b981;
+}
+
+.tx-tbl.spreadsheet-mode {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  font-size: 12px !important;
+}
+
+.tx-tbl.spreadsheet-mode th {
+  background: linear-gradient(180deg, #1e293b, #0f172a) !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0.5px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  text-align: left !important;
+}
+
+.tx-tbl.spreadsheet-mode td {
+  border: 1px solid var(--bd2) !important;
+  padding: 8px 12px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 12px !important;
+  background: var(--s1);
+  color: var(--tx);
+}
+
+.tx-tbl.spreadsheet-mode tr:nth-child(even) td {
+  background: var(--s2);
+}
+
+.tx-tbl.spreadsheet-mode tr:hover td {
+  background: rgba(16, 185, 129, 0.12) !important;
+  outline: 1px dashed #10b981;
 }
