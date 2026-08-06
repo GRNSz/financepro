@@ -2,3 +2,4 @@
 **Vulnerability:** The AI chat component (`src/ai.js`) takes user input and directly inserts it into the DOM using `innerHTML` (`messagesContainer.innerHTML += \`<div class="ai-msg user">${text}</div>\`;`). This allows for arbitrary script execution if a user inputs malicious HTML/JavaScript.
 **Learning:** Even internal chat applications need input sanitization. The assumption that user-generated chat input is safe for `innerHTML` without a sanitization step is a common pitfall. The vulnerability is especially dangerous because it could lead to the theft of sensitive data from `localStorage` (like sync passwords or API keys).
 **Prevention:** Always use `textContent` when displaying user input, or pass the input through an `escapeHTML` utility before passing it to `innerHTML`.
+- Cross-Site Scripting (XSS) in Dashboard Recent Transactions fixed. Unescaped variables were being assigned to innerHTML. Fixed by wrapping variables with escapeHtml().

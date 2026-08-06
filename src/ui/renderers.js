@@ -717,7 +717,7 @@ export function renderDashRecent(){
     const c=getCat(t.catId);
     return`<tr>
       <td style="width:38px"><div style="width:34px;height:34px;border-radius:8px;background:${c.color}1a;color:${c.color};display:flex;align-items:center;justify-content:center;font-size:16px">${c.icon}</div></td>
-      <td><div style="font-size:12.5px;font-weight:600">${t.desc}</div><div style="font-size:11px;color:var(--tx2)">${fmtD(t.data)}</div></td>
+      <td><div style="font-size:12.5px;font-weight:600">${escapeHtml(t.desc)}</div><div style="font-size:11px;color:var(--tx2)">${fmtD(t.data)}</div></td>
       <td style="text-align:right"><span class="${t.tipo==='Receita'?'amt-in':'amt-ex'}">${t.tipo==='Receita'?'+':'−'} ${fmt(t.val)}</span></td>
     </tr>`;
   }).join('')+'</tbody></table>';
@@ -1143,11 +1143,11 @@ export function renderDividas(){
     const descVal= d.total-oferta;
     const sCls=d.status==='Pago'?'s-pago':d.status==='Negociando'?'s-pendente':'s-pendente';
     return`<tr>
-      <td style="font-weight:600">${d.nome}</td>
+      <td style="font-weight:600">${escapeHtml(d.nome)}</td>
       <td style="color:var(--rd);font-weight:700">${fmt(d.total)}</td>
       <td style="color:var(--gr);font-weight:700">${oferta?fmt(oferta):'—'}</td>
       <td><span class="status-pill ${sCls}" onclick="toggleDebtStatus('${d.id}')" title="Clique para alternar status">${d.status}</span></td>
-      <td style="font-size:12px;color:var(--tx2)">${d.forma}</td>
+      <td style="font-size:12px;color:var(--tx2)">${escapeHtml(d.forma)}</td>
       <td style="font-weight:600">${oferta?fmt(descVal):'—'}</td>
       <td style="font-weight:600">${oferta?descPct+'%':'—'}</td>
       <td style="white-space:nowrap">
@@ -1654,7 +1654,7 @@ export function renderInstallmentTracker() {
       <div class="inst-card">
         <div class="inst-header">
           <div>
-            <h4 class="inst-title">${g.desc}</h4>
+            <h4 class="inst-title">${escapeHtml(g.desc)}</h4>
             <span style="font-size:11px;color:var(--tx2)">Valor por parcela: <b>${fmt(g.val)}</b></span>
           </div>
           <span class="inst-pill" style="background:${g.tipo === 'Receita' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)'};color:${g.tipo === 'Receita' ? 'var(--gr)' : 'var(--acl)'}">
@@ -2069,7 +2069,7 @@ export function renderCalendar() {
       const pills = showTxs.map(t => {
         const color = t.tipo === 'Receita' ? 'var(--gr)' : 'var(--rd)';
         const statusOpacity = t.status === 'Pendente' ? 'opacity:0.6' : 'font-weight:700';
-        return `<div style="font-size:8px;padding:1px 3px;border-radius:3px;background:${color}22;color:${color};text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:100%;${statusOpacity}">${t.desc}</div>`;
+        return `<div style="font-size:8px;padding:1px 3px;border-radius:3px;background:${color}22;color:${color};text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:100%;${statusOpacity}">${escapeHtml(t.desc)}</div>`;
       }).join('');
       
       const badge = remainingCount > 0 ? `<div style="font-size:8px;color:var(--tx2);text-align:right">+${remainingCount}</div>` : '';
@@ -2183,7 +2183,7 @@ export function showDayDetails(dayIso, dayNum, monthName, year, txs) {
       <div class="li-l" style="display:flex;align-items:center;gap:10px">
         <span class="li-ico" style="font-size:18px">${c.icon}</span>
         <div>
-          <div style="font-weight:600;font-size:13px;color:var(--tx)">${t.desc}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--tx)">${escapeHtml(t.desc)}</div>
           <div style="font-size:11px;color:var(--tx2)">${c.name} · ${pn}</div>
         </div>
       </div>
@@ -2377,8 +2377,8 @@ export function renderAchievements() {
   container.innerHTML = badges.map(b => {
     return `<div class="achievement-card ${b.unlocked ? 'unlocked' : 'locked'}" title="${b.unlocked ? 'Conquista desbloqueada!' : 'Bloqueada'}">
       <div class="achievement-badge">${b.icon}</div>
-      <div class="achievement-title">${b.title}</div>
-      <div class="achievement-desc">${b.desc}</div>
+      <div class="achievement-title">${escapeHtml(b.title)}</div>
+      <div class="achievement-desc">${escapeHtml(b.desc)}</div>
     </div>`;
   }).join('');
 }
