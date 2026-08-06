@@ -86,6 +86,10 @@ function today(offset = 0) {
   return d.toISOString().split('T')[0];
 }
 
+function parseLocalDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00');
+}
+
 function fmt(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 }
@@ -159,7 +163,7 @@ function renderDashboard() {
   // Month figures
   let mIncome = 0, mExpense = 0, mIncCount = 0, mExpCount = 0;
   S.transactions.forEach(t => {
-    const d = new Date(t.date + 'T00:00:00');
+    const d = parseLocalDate(t.date);
     if (d.getFullYear() === cy && d.getMonth() === cm) {
       if (t.type === 'income')  { mIncome  += t.amount; mIncCount++; }
       else                      { mExpense += t.amount; mExpCount++; }
@@ -192,7 +196,7 @@ function cardInvoice(cardId, year, month) {
   let total = 0;
   S.transactions.forEach(t => {
     if (t.payId !== cardId || t.type !== 'expense') return;
-    const d = new Date(t.date + 'T00:00:00');
+    const d = parseLocalDate(t.date);
     let im = d.getMonth(), iy = d.getFullYear();
     if (d.getDate() > card.closingDay) {
       im++; if (im > 11) { im = 0; iy++; }
@@ -215,7 +219,7 @@ function renderMainChart() {
       labels.push(MONTHS[d.getMonth()]);
       let si = 0, se = 0;
       S.transactions.forEach(t => {
-        const td = new Date(t.date + 'T00:00:00');
+        const td = parseLocalDate(t.date);
         if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
@@ -227,7 +231,7 @@ function renderMainChart() {
       labels.push(MONTHS[m]);
       let si = 0, se = 0;
       S.transactions.forEach(t => {
-        const td = new Date(t.date + 'T00:00:00');
+        const td = parseLocalDate(t.date);
         if (td.getFullYear() === yr && td.getMonth() === m) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
@@ -263,7 +267,7 @@ function renderCatChart() {
   const map = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = new Date(t.date + 'T00:00:00');
+    const d = parseLocalDate(t.date);
     if (d.getFullYear() === cy && d.getMonth() === cm) {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     }
@@ -301,7 +305,7 @@ function renderDashBudgets() {
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = new Date(t.date + 'T00:00:00');
+    const d = parseLocalDate(t.date);
     if (d.getFullYear() === cy && d.getMonth() === cm) {
       spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
     }
@@ -371,7 +375,7 @@ function applyFilters() {
     if (catId !== 'all' && t.categoryId !== catId) return false;
     if (accId !== 'all' && t.payId !== accId) return false;
     if (period !== 'all') {
-      const d = new Date(t.date + 'T00:00:00');
+      const d = parseLocalDate(t.date);
       if (period === 'thisMonth'  && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return false;
       if (period === 'lastMonth') {
         const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -545,7 +549,7 @@ function renderBudgets() {
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = new Date(t.date + 'T00:00:00');
+    const d = parseLocalDate(t.date);
     if (d.getFullYear() === cy && d.getMonth() === cm) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
   });
 
@@ -885,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (inst > 1 && isCard && type === 'expense') {
       for (let i = 1; i <= inst; i++) {
-        const d = new Date(date + 'T00:00:00');
+        const d = parseLocalDate(date);
         d.setMonth(d.getMonth() + i - 1);
         S.transactions.unshift({
           id: uid(), type, description: `${desc}`, amount: +(amount / inst).toFixed(2),
