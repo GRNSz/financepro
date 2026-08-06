@@ -229,11 +229,10 @@ function initBankNotificationListener() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  try {
   // 1. Synchronously load state from LocalStorage to prevent crashes
-  load();
-  processRecurringTransactions();
-  initBankNotificationListener();
+  try { load(); } catch(e) { console.error('Error loading state:', e); }
+  try { processRecurringTransactions(); } catch(e) { console.error('Error processing recurring:', e); }
+  try { initBankNotificationListener(); } catch(e) { console.error('Error init bank listener:', e); }
 
   // 2. Configure Chart.js Defaults if present
   if (window.Chart) {
@@ -2535,12 +2534,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // 30. Render initial view
-  navigate(activePage);
-  updateNotifications();
-
-  } catch(initErr) {
-    console.error('[FinancePro] CRITICAL: DOMContentLoaded init error:', initErr);
-  }
+  try { navigate(activePage); } catch(e) { console.error(e); }
+  try { updateNotifications(); } catch(e) { console.error(e); }
 });
 
 // ═══════════════════════════════════════════════════════════════
