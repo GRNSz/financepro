@@ -158,30 +158,37 @@ export function q(sel) { return document.querySelector(sel); }
 export function qa(sel) { return document.querySelectorAll(sel); }
 
 export function openM(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  // Remove hidden attribute so CSS [hidden] rule doesn't apply
-  el.removeAttribute('hidden');
-  // Use a class instead of inline style to avoid !important conflicts
-  el.classList.add('modal-open');
-  document.body.style.overflow = 'hidden';
+  try {
+    const el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!el) {
+      console.warn('[openM] Modal element not found:', id);
+      return;
+    }
+    el.removeAttribute('hidden');
+    el.classList.add('modal-open');
+    el.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  } catch (err) {
+    console.error('[openM] Error opening modal:', id, err);
+  }
 }
 
 export function closeM(id) {
-  const el = document.getElementById(id);
-  if (el) {
-    el.classList.remove('modal-open');
-    // Re-add hidden attribute after transition
-    setTimeout(() => { el.setAttribute('hidden', ''); }, 10);
-  }
+  try {
+    const el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (el) {
+      el.classList.remove('modal-open');
+      el.style.display = 'none';
+      el.setAttribute('hidden', '');
+    }
 
-  // Restore body scroll only if no other modals are open
-  setTimeout(() => {
-    const stillOpen = Array.from(document.querySelectorAll('.mbd.modal-open'));
+    const stillOpen = Array.from(document.querySelectorAll('.mbd.modal-open, .mbd[style*="display: flex"]'));
     if (stillOpen.length === 0) {
       document.body.style.overflow = '';
     }
-  }, 15);
+  } catch (err) {
+    console.error('[closeM] Error closing modal:', id, err);
+  }
 }
 
 if (typeof window !== 'undefined') {

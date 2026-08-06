@@ -154,7 +154,7 @@
       </div>
       <button class="bs sm" id="btnStealthToggle" style="font-size:14px;padding:6px 10px" title="Ocultar Saldos (Privacidade)">👁️</button>
       <button class="bs sm" id="themeToggle" style="font-size:14px;padding:6px 10px" title="Alternar Modo Claro/Escuro">🌙</button>
-      <button class="bp sm" id="btnNewTx">+<span> Lançamento</span></button>
+      <button class="bp sm" id="btnNewTx" data-action="open-tx" onclick="window.openTxCreateModal && window.openTxCreateModal()">+<span> Lançamento</span></button>
     </div>
   </header>
 
@@ -170,10 +170,10 @@
         <button class="bs sm" id="wNext" style="padding:6px 10px" title="Próxima Semana">▶</button>
       </div>
       <button class="bs sm" id="btnExportPDF" style="padding:6px 10px;margin-left:6px" title="Gerar Relatório PDF do Mês (PoupaFy)">📄 PDF Mensal</button>
-      <button class="bs sm" onclick="openSubMenuDividas()" style="padding:6px 10px;" title="Ver Controle de Dívidas">💳 Dívidas</button>
-      <button class="bs sm" onclick="openSubMenuCalendario()" style="padding:6px 10px;" title="Ver Agenda / Calendário">📅 Calendário</button>
-      <button class="bs sm" id="btnToggleSpreadsheetMode" onclick="toggleSpreadsheetView()" style="padding:6px 10px;" title="Alternar Visão de Planilha">📊 Planilha</button>
-      <button class="bs sm" onclick="window.exportToGoogleSheets()" style="padding:6px 10px;" title="Exportar para Google Sheets">📈 Google Sheets</button>
+      <button class="bs sm" data-page="dividas" onclick="window.openSubMenuDividas && window.openSubMenuDividas()" style="padding:6px 10px;" title="Ver Controle de Dívidas">💳 Dívidas</button>
+      <button class="bs sm" data-page="calendario" onclick="window.openSubMenuCalendario && window.openSubMenuCalendario()" style="padding:6px 10px;" title="Ver Agenda / Calendário">📅 Calendário</button>
+      <button class="bs sm" id="btnToggleSpreadsheetMode" data-page="lancamentos" onclick="window.toggleSpreadsheetView && window.toggleSpreadsheetView()" style="padding:6px 10px;" title="Alternar Visão de Planilha">📊 Planilha</button>
+      <button class="bs sm" onclick="window.exportToGoogleSheets && window.exportToGoogleSheets()" style="padding:6px 10px;" title="Exportar para Google Sheets">📈 Google Sheets</button>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <button class="ctab" id="pModeWeek" style="padding:5px 12px;font-size:12px">Semanal</button>
@@ -407,7 +407,7 @@
             <h3 id="txTitle">Lançamentos</h3>
             <div class="ca">
               <button class="bs sm" id="btnExportCSV">↓ CSV</button>
-              <button class="bp sm" id="btnNewTx2">+ Lançamento</button>
+              <button class="bp sm" id="btnNewTx2" data-action="open-tx" onclick="window.openTxCreateModal && window.openTxCreateModal()">+ Lançamento</button>
             </div>
           </div>
           <div class="tx-tbl-container">
@@ -600,8 +600,8 @@
       <div class="sec-h">
         <h3>Dinheiro Guardado</h3>
         <div style="display:flex;gap:8px;">
-          <button class="bs sm" onclick="adjustSavingsBalancePrompt()" title="Ajustar saldo total diretamente">✏️ Ajustar Saldo</button>
-          <button class="bp sm" id="btnNewSaving" onclick="openSavingModal()">+ Registrar Reserva</button>
+          <button class="bs sm" onclick="window.adjustSavingsBalancePrompt && window.adjustSavingsBalancePrompt()" title="Ajustar saldo total diretamente">✏️ Ajustar Saldo</button>
+          <button class="bp sm" id="btnNewSaving" data-action="open-saving" onclick="window.openSavingModal && window.openSavingModal()">+ Registrar Reserva</button>
         </div>
       </div>
       <div class="card" style="margin-bottom:16px">

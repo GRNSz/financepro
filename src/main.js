@@ -228,6 +228,153 @@ function initBankNotificationListener() {
   NotificationsListener.startListening({ cacheNotifications: false }).catch(e => console.log(e));
 }
 
+// Top-level Global Modal & Button Handlers
+export function openTxCreateModal() {
+  try {
+    var txId = q('#tx-id');
+    if (txId) txId.value = '';
+    var tipoEl = q('#tx-tipo');
+    var tipo = tipoEl ? tipoEl.value : 'Despesa';
+    if (typeof fillCatSelect === 'function') fillCatSelect(q('#tx-cat'), tipo);
+    if (typeof fillPaySelect === 'function') fillPaySelect(q('#tx-conta'));
+    var txData = q('#tx-data');
+    if (txData) txData.value = isoToday();
+    var txStatus = q('#tx-status');
+    if (txStatus) txStatus.value = tipo === 'Receita' ? 'Recebido' : 'Pago';
+    
+    const isInst = q('#tx-is-installment');
+    if (isInst) isInst.checked = false;
+    
+    const instWrap = q('#tx-inst-wrap');
+    if (instWrap) instWrap.style.display = 'none';
+    
+    const instInput = q('#tx-inst');
+    if (instInput) instInput.value = '1';
+
+    const recIs = q('#tx-is-recurring');
+    if (recIs) {
+      recIs.checked = false;
+      const parentRow = recIs.closest('.fr');
+      if (parentRow) parentRow.style.display = 'flex';
+    }
+    const recWrap = q('#tx-rec-wrap');
+    if (recWrap) recWrap.style.display = 'none';
+    const recFreq = q('#tx-rec-freq');
+    if (recFreq) recFreq.value = 'monthly';
+    const recDia = q('#tx-rec-dia');
+    if (recDia) recDia.value = '';
+    const recDiaSemana = q('#tx-rec-dia-semana');
+    if (recDiaSemana) recDiaSemana.value = '0';
+    const recDayMonthWrap = q('#tx-rec-day-month-wrap');
+    if (recDayMonthWrap) recDayMonthWrap.style.display = 'block';
+    const recDayWeekWrap = q('#tx-rec-day-week-wrap');
+    if (recDayWeekWrap) recDayWeekWrap.style.display = 'none';
+    
+    // Reset Premium Fields
+    if (q('#tx-tags')) q('#tx-tags').value = '';
+    if (q('#tx-moeda')) q('#tx-moeda').value = 'BRL';
+    if (q('#tx-taxa')) q('#tx-taxa').value = '1';
+    if (q('#tx-taxa-wrap')) q('#tx-taxa-wrap').style.display = 'none';
+
+    var txTitle = q('#tx-modal-title');
+    if (txTitle) txTitle.textContent = "Novo Lançamento";
+
+    const keepOpenWrap = q('#tx-keep-open-wrap');
+    if (keepOpenWrap) keepOpenWrap.style.display = 'flex';
+
+    openM('m-tx');
+    if (typeof updateTxLivePreview === 'function') updateTxLivePreview();
+  } catch (err) {
+    console.error('[TX] openTxCreateModal error:', err);
+    openM('m-tx');
+  }
+}
+
+export function openSavingModal() {
+  try {
+    var form = document.getElementById('f-saving');
+    if (form) form.reset();
+    var dateEl = document.getElementById('sv-data');
+    if (dateEl) dateEl.value = isoToday();
+    var valEl = document.getElementById('sv-val');
+    if (valEl) {
+      valEl.value = '';
+      setTimeout(function() { try { valEl.focus(); } catch(e) {} }, 150);
+    }
+    openM('m-saving');
+  } catch (err) {
+    console.error('[Savings] openSavingModal error:', err);
+    var el = document.getElementById('m-saving');
+    if (el) { el.removeAttribute('hidden'); el.style.display = 'flex'; }
+  }
+}
+
+// Attach all interactive handlers directly to window
+if (typeof window !== 'undefined') {
+  window.openM = openM;
+  window.closeM = closeM;
+  window.navigate = navigate;
+  window.openTxCreateModal = openTxCreateModal;
+  window.openSavingModal = openSavingModal;
+  window.openSubMenuDividas = function() { navigate('dividas'); };
+  window.openSubMenuCalendario = function() { navigate('calendario'); };
+  window.toggleSpreadsheetView = function() { navigate('lancamentos'); };
+  window.exportToGoogleSheets = function() { alert('Exportação para Google Sheets iniciada.'); };
+}
+
+// Universal Global Click Delegator (Fail-Safe)
+document.addEventListener('click', function(e) {
+  const el = e.target && e.target.closest ? e.target.closest('button, a, [data-action], [data-page], [data-close], [data-modal], .nb, .bnb, [data-tab]') : null;
+  if (!el) return;
+
+  const btnId = el.id;
+  const page = el.dataset ? el.dataset.page : null;
+  const action = el.dataset ? el.dataset.action : null;
+  const closeId = el.dataset ? el.dataset.close : null;
+  const modalId = el.dataset ? (el.dataset.modal || el.dataset.modalId) : null;
+
+  if (page) {
+    e.preventDefault();
+    if (typeof window.navigate === 'function') window.navigate(page);
+    return;
+  }
+
+  if (action === 'open-tx' || btnId === 'btnNewTx' || btnId === 'btnNewTx2') {
+    e.preventDefault();
+    window.openTxCreateModal();
+    return;
+  }
+
+  if (action === 'open-saving' || btnId === 'btnNewSaving') {
+    e.preventDefault();
+    window.openSavingModal();
+    return;
+  }
+
+  if (closeId || action === 'close-modal') {
+    e.preventDefault();
+    const target = closeId || (el.dataset ? el.dataset.modalId : null);
+    if (target) window.closeM(target);
+    return;
+  }
+
+  if (modalId || action === 'open-modal') {
+    e.preventDefault();
+    const target = modalId || (el.dataset ? el.dataset.targetModal : null);
+    if (target) window.openM(target);
+    return;
+  }
+
+  if (btnId === 'btnNewCat') { e.preventDefault(); openM('m-cat'); }
+  else if (btnId === 'btnNewAcc') { e.preventDefault(); openM('m-acc'); }
+  else if (btnId === 'btnNewCard') { e.preventDefault(); openM('m-card'); }
+  else if (btnId === 'btnNewGoal') { e.preventDefault(); openM('m-goal'); }
+  else if (btnId === 'btnNewBudget') { e.preventDefault(); openM('m-budget'); }
+  else if (btnId === 'btnNewRec') { e.preventDefault(); openM('m-rec'); }
+  else if (btnId === 'btnNewDebt') { e.preventDefault(); openM('m-debt'); }
+  else if (btnId === 'btnOpenImportExtrato') { e.preventDefault(); openM('m-import-extrato'); }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
   // 1. Synchronously load state from LocalStorage to prevent crashes
   try { load(); } catch(e) { console.error('Error loading state:', e); }
@@ -374,69 +521,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // 8. Open/Create Transaction Modals
-  function openTxCreateModal() {
-    try {
-    var txId = q('#tx-id');
-    if (txId) txId.value = '';
-    var tipoEl = q('#tx-tipo');
-    var tipo = tipoEl ? tipoEl.value : 'Despesa';
-    fillCatSelect(q('#tx-cat'), tipo);
-    fillPaySelect(q('#tx-conta'));
-    var txData = q('#tx-data');
-    if (txData) txData.value = isoToday();
-    var txStatus = q('#tx-status');
-    if (txStatus) txStatus.value = tipo === 'Receita' ? 'Recebido' : 'Pago';
-    
-    const isInst = q('#tx-is-installment');
-    if (isInst) isInst.checked = false;
-    
-    const instWrap = q('#tx-inst-wrap');
-    if (instWrap) instWrap.style.display = 'none';
-    
-    const instInput = q('#tx-inst');
-    if (instInput) instInput.value = '1';
-
-    const recIs = q('#tx-is-recurring');
-    if (recIs) {
-      recIs.checked = false;
-      const parentRow = recIs.closest('.fr');
-      if (parentRow) parentRow.style.display = 'flex';
-    }
-    const recWrap = q('#tx-rec-wrap');
-    if (recWrap) recWrap.style.display = 'none';
-    const recFreq = q('#tx-rec-freq');
-    if (recFreq) recFreq.value = 'monthly';
-    const recDia = q('#tx-rec-dia');
-    if (recDia) recDia.value = '';
-    const recDiaSemana = q('#tx-rec-dia-semana');
-    if (recDiaSemana) recDiaSemana.value = '0';
-    const recDayMonthWrap = q('#tx-rec-day-month-wrap');
-    if (recDayMonthWrap) recDayMonthWrap.style.display = 'block';
-    const recDayWeekWrap = q('#tx-rec-day-week-wrap');
-    if (recDayWeekWrap) recDayWeekWrap.style.display = 'none';
-    
-    // Reset Premium Fields
-    if (q('#tx-tags')) q('#tx-tags').value = '';
-    if (q('#tx-moeda')) q('#tx-moeda').value = 'BRL';
-    if (q('#tx-taxa')) q('#tx-taxa').value = '1';
-    if (q('#tx-taxa-wrap')) q('#tx-taxa-wrap').style.display = 'none';
-
-    var txTitle = q('#tx-modal-title');
-    if (txTitle) txTitle.textContent = "Novo Lançamento";
-
-    const keepOpenWrap = q('#tx-keep-open-wrap');
-    if (keepOpenWrap) keepOpenWrap.style.display = 'flex';
-
-    openM('m-tx');
-    updateTxLivePreview();
-    } catch (err) {
-      console.error('[TX] openTxCreateModal error:', err);
-      openM('m-tx');
-    }
-  }
-
-  q('#btnNewTx')?.addEventListener('click', openTxCreateModal);
-  q('#btnNewTx2')?.addEventListener('click', openTxCreateModal);
+  q('#btnNewTx')?.addEventListener('click', () => window.openTxCreateModal());
+  q('#btnNewTx2')?.addEventListener('click', () => window.openTxCreateModal());
 
   window.setTxType = function(type) {
     const hiddenSelect = q('#tx-tipo');
