@@ -1692,7 +1692,7 @@ export function markNotificationAsPaid(txId) {
     // Toast feedback
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,0.4);z-index:9999;animation:fadeup 0.3s ease;';
-    toast.innerHTML = `✅ "${tx.desc}" marcado como pago!`;
+    toast.textContent = `✅ "${tx.desc}" marcado como pago!`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
