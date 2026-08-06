@@ -183,9 +183,10 @@ export function renderDashboard() {
   let totalBal = Array.isArray(S.accounts) ? S.accounts.reduce((s,a)=>s+a.balance,0) : 0;
   if (endIso && Array.isArray(S.transactions)) {
     let afterNet = 0;
+    const accountMap = new Map(S.accounts.map(a => [a.id, a]));
     S.transactions.forEach(t => {
       if (t.data > endIso && t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accountMap.get(t.payId);
         if (acc) {
           afterNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
@@ -633,9 +634,10 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
   let saldoInicial = Array.isArray(S.accounts) ? S.accounts.reduce((s, a) => s + a.balance, 0) : 0;
   if (startIso && Array.isArray(S.transactions)) {
     let afterStartNet = 0;
+    const accountMap = new Map(S.accounts.map(a => [a.id, a]));
     S.transactions.forEach(t => {
       if (t.data >= startIso && t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accountMap.get(t.payId);
         if (acc) {
           afterStartNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
@@ -644,9 +646,10 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
     saldoInicial -= afterStartNet;
   } else if (Array.isArray(S.transactions)) {
     let allNet = 0;
+    const accountMap = new Map(S.accounts.map(a => [a.id, a]));
     S.transactions.forEach(t => {
       if (t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accountMap.get(t.payId);
         if (acc) {
           allNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
@@ -1692,7 +1695,7 @@ export function markNotificationAsPaid(txId) {
     // Toast feedback
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,0.4);z-index:9999;animation:fadeup 0.3s ease;';
-    toast.innerHTML = `✅ "${tx.desc}" marcado como pago!`;
+    toast.textContent = `✅ "${tx.desc}" marcado como pago!`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
@@ -2537,9 +2540,11 @@ export function renderProjecaoFluxoCaixa() {
     if (a.type !== 'Investimentos') currentBalance += (a.initialVal || 0);
   });
 
+  const accountsMap = new Map((S.accounts || []).map(acc => [acc.id, acc]));
+
   (S.transactions || []).forEach(t => {
     if (t.status === 'Pago') {
-      const a = (S.accounts || []).find(acc => acc.id === t.payId);
+      const a = accountsMap.get(t.payId);
       if (!a || a.type !== 'Investimentos') {
         currentBalance += (t.tipo === 'Receita' ? t.val : -t.val);
       }

@@ -3,3 +3,4 @@
 **Learning:** Even internal chat applications need input sanitization. The assumption that user-generated chat input is safe for `innerHTML` without a sanitization step is a common pitfall. The vulnerability is especially dangerous because it could lead to the theft of sensitive data from `localStorage` (like sync passwords or API keys).
 **Prevention:** Always use `textContent` when displaying user input, or pass the input through an `escapeHTML` utility before passing it to `innerHTML`.
 - Cross-Site Scripting (XSS) in Dashboard Recent Transactions fixed. Unescaped variables were being assigned to innerHTML. Fixed by wrapping variables with escapeHtml().
+- XSS Vulnerability in Toast Notifications: User input was unsafely injected into the DOM using innerHTML. Replaced innerHTML with textContent to ensure user input is treated as raw text, mitigating the XSS vector while preserving the intended UI text.

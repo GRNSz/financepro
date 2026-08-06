@@ -23,7 +23,7 @@ function parseOFX(text) {
       const dateStr = rawDate.replace(/^(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3');
 
       results.push({
-        id: '_ofx_' + Math.random().toString(36).slice(2),
+        id: '_ofx_' + crypto.randomUUID(),
         type: rawAmt >= 0 ? 'income' : 'expense',
         description: memo,
         amount: Math.abs(rawAmt),
@@ -39,7 +39,7 @@ function parseOFX(text) {
       if (line === '</STMTTRN>') {
         if (current.date && current.amount !== undefined) {
           results.push({
-            id: '_ofx_' + Math.random().toString(36).slice(2),
+            id: '_ofx_' + crypto.randomUUID(),
             type: current.amount >= 0 ? 'income' : 'expense',
             description: current.memo || 'Importado',
             amount: Math.abs(current.amount),
