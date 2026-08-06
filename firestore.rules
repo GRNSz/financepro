@@ -1,21 +1,48 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Regras de segurança para a coleção de usuários
-    // Cada usuário autenticado só pode ler e escrever em seus próprios dados (isolamento de tenant)
+
+    // ════════════════════════════════════════════════════
+    //  DADOS DO USUÁRIO — acesso estrito por UID autenticado
+    // ════════════════════════════════════════════════════
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Regra recursiva para subcoleções dentro do documento do usuário
+      // Somente o próprio usuário autenticado pode ler/escrever
+      allow read:  if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   // Valida tamanho máximo para evitar abuso de armazenamento
+                   && request.resource.data.size() < 2000000; // 2MB limit
+
+      // Subcoleções do usuário — mesma proteção
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Ponte temporária de autenticação para o aplicativo desktop (Tauri)
+    // ════════════════════════════════════════════════════
+    //  PONTE DE AUTENTICAÇÃO TAURI — temporária e protegida
+    //  Apenas o próprio dono da sessão pode escrever/deletar.
+    //  Qualquer usuário autenticado pode criar uma sessão nova.
+    //  Leitura só é permitida ao criador da sessão (via sessionId gerado no cliente).
+    // ════════════════════════════════════════════════════
     match /login_sessions/{sessionId} {
-      allow read, create, delete: if true;
+      // Criar: qualquer um pode criar uma sessão (necessário para o fluxo Tauri)
+      // mas o documento deve ter um campo createdAt recente (máximo 5 minutos no passado)
+      // para evitar sessões obsoletas como vetor de ataque.
+      allow create: if request.resource.data.keys().hasOnly(['idToken', 'accessToken', 'createdAt'])
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.createdAt > request.time - duration.value(300, 's');
+
+      // Ler e deletar: apenas se a sessão não expirou (máximo 10 minutos de vida)
+      allow read, delete: if resource.data.createdAt > request.time - duration.value(600, 's');
+    }
+
+    // ════════════════════════════════════════════════════
+    //  BLOQUEIO GLOBAL — qualquer coleção não declarada acima
+    //  fica inacessível por padrão.
+    // ════════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

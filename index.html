@@ -191,37 +191,120 @@
   <div id="pages">
 
     <!-- ════ DASHBOARD ════════════════════════════════════════════ -->
+    <!-- ════ DASHBOARD (ULTRAMINIMALISTA APPLE LIQUID GLASS) ════════ -->
     <section id="page-dashboard" class="page on">
       <!-- Alerta de Contas a Vencer/Atrasadas -->
       <div id="dash-bill-alerts" style="display: none; margin-bottom: 20px;"></div>
 
-      <div class="kpi-row">
-        <div class="kpi kpi-bal">
-          <p class="kpi-lbl">Saldo Atual</p>
-          <h2 class="kpi-val" id="k-saldo">R$ 0,00</h2>
-          <p class="kpi-sub" id="k-saldo-sub">Todas as contas</p>
+      <!-- HERO LIQUID GLASS CARD -->
+      <div class="apple-hero-card">
+        <div class="apple-hero-header">
+          <div>
+            <span class="apple-hero-tag">Visão Geral do Seu Patrimônio</span>
+            <h1 class="apple-hero-balance" id="k-saldo">R$ 0,00</h1>
+            <p class="apple-hero-sub" id="k-saldo-sub">Saldo total em todas as contas</p>
+          </div>
+          <div class="apple-hero-actions">
+            <button class="apple-glass-btn primary" id="btnQuickAddTx">
+              <span>+</span> Novo Lançamento
+            </button>
+            <button class="apple-glass-btn" onclick="navigate('graficos')">
+              <span>📈</span> Gráficos
+            </button>
+          </div>
         </div>
-        <div class="kpi kpi-in">
-          <p class="kpi-lbl">Total de Receitas</p>
-          <h2 class="kpi-val" id="k-rec">R$ 0,00</h2>
-          <p class="kpi-sub" id="k-rec-sub">Este mês</p>
-        </div>
-        <div class="kpi kpi-ex">
-          <p class="kpi-lbl">Total de Despesas</p>
-          <h2 class="kpi-val" id="k-desp">R$ 0,00</h2>
-          <p class="kpi-sub" id="k-desp-sub">Este mês</p>
-        </div>
-        <div class="kpi kpi-sv">
-          <p class="kpi-lbl">Dinheiro Guardado</p>
-          <h2 class="kpi-val" id="k-guard">R$ 0,00</h2>
-          <p class="kpi-sub">Total guardado</p>
+
+        <div class="apple-hero-stats">
+          <div class="apple-stat-pill in">
+            <div class="apple-stat-icon">🟢</div>
+            <div>
+              <span class="apple-stat-lbl">Receitas</span>
+              <h3 class="apple-stat-val" id="k-rec">R$ 0,00</h3>
+              <span class="apple-stat-sub" id="k-rec-sub">Este mês</span>
+            </div>
+          </div>
+
+          <div class="apple-stat-pill ex">
+            <div class="apple-stat-icon">🔴</div>
+            <div>
+              <span class="apple-stat-lbl">Despesas</span>
+              <h3 class="apple-stat-val" id="k-desp">R$ 0,00</h3>
+              <span class="apple-stat-sub" id="k-desp-sub">Este mês</span>
+            </div>
+          </div>
+
+          <div class="apple-stat-pill sv">
+            <div class="apple-stat-icon">🐷</div>
+            <div>
+              <span class="apple-stat-lbl">Dinheiro Guardado</span>
+              <h3 class="apple-stat-val" id="k-guard">R$ 0,00</h3>
+              <span class="apple-stat-sub">Economias & Metas</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="d-grid-a">
-        <div class="card">
+      <!-- MINIMALIST GRID CONTENT -->
+      <div class="apple-dash-grid">
+        <!-- COLUNA ESQUERDA: Últimos Lançamentos -->
+        <div class="apple-glass-card">
+          <div class="apple-card-h">
+            <div>
+              <h3>Últimos Lançamentos</h3>
+              <p style="font-size:12px; color:var(--tx2); margin-top:2px;">Movimentações recentes registradas</p>
+            </div>
+            <button class="apple-text-btn" onclick="navigate('lancamentos')">Ver extrato completo →</button>
+          </div>
+          <div id="dash-recent"></div>
+        </div>
+
+        <!-- COLUNA DIREITA: Saúde Financeira, Saldo Previsto & Orçamentos -->
+        <div class="apple-dash-sidebar-col">
+          <!-- CARD: Saúde Financeira -->
+          <div class="apple-glass-card">
+            <div class="apple-card-h">
+              <h3>🌱 Saúde Financeira</h3>
+            </div>
+            <div id="dash-saude">
+              <div style="text-align:center;padding:20px;color:var(--tx2)">Calculando indicadores...</div>
+            </div>
+          </div>
+
+          <!-- CARD: Saldo Previsto -->
+          <div class="apple-glass-card">
+            <div class="apple-card-h">
+              <h3>🔮 Saldo Previsto</h3>
+            </div>
+            <div id="dash-previsto"></div>
+          </div>
+
+          <!-- CARD: Orçamentos do Mês -->
+          <div class="apple-glass-card">
+            <div class="apple-card-h">
+              <h3>🎯 Orçamentos do Mês</h3>
+              <button class="apple-text-btn" onclick="navigate('config')">Ajustar →</button>
+            </div>
+            <div id="dash-budgets" class="list-stack" style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+              <div style="text-align:center;padding:20px;color:var(--tx2);font-size:12.5px;">Carregando orçamentos...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ PAGE: GRÁFICOS & ANÁLISES EXCLUSIVA ════════════════════ -->
+    <section id="page-graficos" class="page">
+      <div class="sec-h" style="margin-bottom:20px;">
+        <div>
+          <h3>📊 Gráficos & Relatórios Financeiros</h3>
+          <p style="font-size:12.5px; color:var(--tx2); margin-top:4px;">Análises visuais completas de evolução, categorias e projeções</p>
+        </div>
+      </div>
+
+      <div class="d-grid-a" style="margin-bottom:20px;">
+        <div class="apple-glass-card">
           <div class="card-h">
-            <h3>Receitas vs Despesas</h3>
+            <h3>Evolução de Receitas vs Despesas</h3>
             <div class="ca">
               <select id="chartMode" class="inp" style="width:auto;padding:5px 28px 5px 8px;font-size:11.5px">
                 <option value="6m">6 meses</option>
@@ -236,48 +319,54 @@
           </div>
           <div class="ch-box"><canvas id="chMain"></canvas></div>
         </div>
-        <div class="card">
+
+        <div class="apple-glass-card">
           <div class="card-h"><h3>Gastos por Categoria</h3></div>
           <div class="ch-box sm"><canvas id="chCat"></canvas></div>
         </div>
       </div>
 
-      <div class="d-grid-b">
-        <div class="card">
-          <div class="card-h"><h3>Saldo Previsto</h3></div>
-          <div id="dash-previsto"></div>
-        </div>
-        <div class="card">
-          <div class="card-h">
-            <h3>Saúde Financeira</h3>
-            <span style="font-size:16px">🌱</span>
+      <!-- 🔮 PROJEÇÃO DE FLUXO DE CAIXA FUTURO -->
+      <div class="apple-glass-card fw" style="margin-bottom: 20px;">
+        <div class="card-h">
+          <div>
+            <h3 style="display:flex; align-items:center; gap:6px;">🔮 Projeção de Fluxo de Caixa Futuro</h3>
+            <p style="font-size:11px; color:var(--tx2); margin:2px 0 0">Estimativa preditiva com base em receitas fixas e recorrentes</p>
           </div>
-          <div id="dash-saude">
-            <div style="text-align:center;padding:20px;color:var(--tx2)">Calculando indicadores...</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-h">
-            <h3>Últimos Lançamentos</h3>
-            <button class="bl" data-page="lancamentos">Ver todos →</button>
-          </div>
-          <div id="dash-recent"></div>
-        </div>
-        <div class="card">
-          <div class="card-h">
-            <h3>🎯 Orçamentos do Mês</h3>
-            <button class="bl" data-page="config">Ajustar →</button>
-          </div>
-          <div id="dash-budgets" class="list-stack" style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
-            <div style="text-align:center;padding:20px;color:var(--tx2);font-size:12.5px;">Carregando orçamentos...</div>
+          <div class="ca">
+            <select id="projecaoMonths" class="inp" style="width:auto; padding:4px 24px 4px 8px; font-size:11px">
+              <option value="3">Próximos 3 Meses</option>
+              <option value="6" selected>Próximos 6 Meses</option>
+              <option value="12">Próximos 12 Meses</option>
+            </select>
           </div>
         </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin: 10px 0 14px;">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--bd2); border-radius:12px; padding:12px 14px;">
+            <p style="font-size:10px; color:var(--tx2); text-transform:uppercase; font-weight:700; margin:0 0 2px;">Saldo Final Estimado</p>
+            <h3 id="proj-val-final" style="font-size:18px; font-weight:800; color:var(--gr); margin:0;">R$ 0,00</h3>
+            <p id="proj-sub-final" style="font-size:10.5px; color:var(--tx2); margin:2px 0 0;">No fim do período</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--bd2); border-radius:12px; padding:12px 14px;">
+            <p style="font-size:10px; color:var(--tx2); text-transform:uppercase; font-weight:700; margin:0 0 2px;">Economia Média Mensal</p>
+            <h3 id="proj-val-media" style="font-size:18px; font-weight:800; color:var(--ac); margin:0;">R$ 0,00</h3>
+            <p style="font-size:10.5px; color:var(--tx2); margin:2px 0 0;">Fluxo líquido estimado/mês</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--bd2); border-radius:12px; padding:12px 14px;">
+            <p style="font-size:10px; color:var(--tx2); text-transform:uppercase; font-weight:700; margin:0 0 2px;">Status de Segurança</p>
+            <h3 id="proj-val-status" style="font-size:14.5px; font-weight:800; color:var(--gr); margin:2px 0 0;">✅ Estável</h3>
+            <p id="proj-sub-status" style="font-size:10.5px; color:var(--tx2); margin:2px 0 0;">Sem déficit projetado</p>
+          </div>
+        </div>
+
+        <div class="ch-box" style="height:220px;"><canvas id="chProjecao"></canvas></div>
       </div>
       
       <!-- Calendário & Relatórios Semanais -->
-      <div class="card fw" style="margin-top: 20px;">
+      <div class="apple-glass-card fw">
         <div class="card-h">
-          <h3>📅 Calendário & Relatórios Semanais</h3>
+          <h3>📅 Relatórios Semanais Agrupados</h3>
           <span style="font-size: 12px; color: var(--tx2);">Despesas agrupadas por semana (Mês Vigente)</span>
         </div>
         <div id="dash-weekly-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 14px;">
@@ -1468,41 +1557,7 @@
         </div>
       </div>
 
-      <!-- 📅 DESAFIO DAS 52 SEMANAS -->
-      <div class="card" style="margin-top:20px">
-        <div class="card-h">
-          <h3>📅 Desafio das 52 Semanas de Poupança</h3>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <label style="font-size:12px; color:var(--tx2); font-weight:600;">Multiplicador:</label>
-            <select id="challenge-multiplier" class="inp sm" style="width:100px; padding:4px 8px; font-size:12px; background-color:var(--s3);">
-              <option value="1">1x (R$ 1)</option>
-              <option value="2">2x (R$ 2)</option>
-              <option value="5">5x (R$ 5)</option>
-              <option value="10">10x (R$ 10)</option>
-            </select>
-          </div>
-        </div>
-        <p style="font-size:12px; color:var(--tx2); margin-top:6px; line-height:1.4">
-          Guarde um valor progressivo toda semana. Semana 1 = R$ 1 × Multiplicador, Semana 2 = R$ 2 × Multiplicador, etc. Ao final de 52 semanas com 1x você terá poupado R$ 1.378!
-        </p>
-        
-        <!-- Progresso -->
-        <div class="challenge-progress-container" style="margin-top:16px;">
-          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:6px;">
-            <span id="challenge-progress-text">Progresso: 0/52 Semanas (0%)</span>
-            <span id="challenge-saved-text">Total Acumulado: R$ 0,00</span>
-          </div>
-          <div class="progress-bar-bg" style="height:10px; background:var(--s2); border-radius:5px; overflow:hidden; border:1px solid var(--bd);">
-            <div id="challenge-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--ac), var(--acg)); transition:width 0.3s ease;"></div>
-          </div>
-        </div>
-
-        <!-- Grade de Semanas -->
-        <div class="challenge-grid" id="challenge-weeks-grid" style="margin-top:16px;">
-          <!-- Preenchido via JS -->
-        </div>
-      </div>
-    </section>
+      </section>
 
   </div><!-- /pages -->
 </main>

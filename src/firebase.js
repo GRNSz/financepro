@@ -1,3 +1,11 @@
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+
+if (typeof window !== 'undefined' && !window.firebase) {
+  window.firebase = firebase;
+}
+
 import { S, setS, load, save, q, registerSaveCallback, initState } from './state.js';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { encryptData, decryptData, generateSecureId } from './crypto.js';
@@ -98,6 +106,15 @@ export function initFirebase() {
     window.firebase.initializeApp(firebaseConfig);
     db = window.firebase.firestore();
     auth = window.firebase.auth();
+
+    // Inicializar Firebase Performance e Analytics (100% gratuito no plano Spark)
+    try {
+      if (window.firebase.performance) window.firebase.performance();
+      if (window.firebase.analytics) window.firebase.analytics();
+    } catch (perfErr) {
+      console.warn('Firebase Performance/Analytics notice:', perfErr);
+    }
+
     console.log('Firebase initialized successfully!');
     window.addDevLog?.('Firebase initialized successfully!', 'success');
     
@@ -142,6 +159,53 @@ export function initFirebase() {
           isAnonymous: user.isAnonymous,
           providerId: user.providerData && user.providerData[0] ? user.providerData[0].providerId : 'password'
         };
+
+        const userEmailLower = currentUser.email ? currentUser.email.toLowerCase() : '';
+
+        // Privilégio Máximo e Plano PRO Vitalício para o Criador do App
+        if (userEmailLower === 'gugzribeiro@gmail.com') {
+          currentUser.isAdmin = true;
+          window.financeIsAdmin = true;
+          const lifetimeExp = Date.now() + 100 * 365 * 24 * 60 * 60 * 1000;
+          S.subscription = {
+            plan: 'pro',
+            expiresAt: lifetimeExp,
+            status: 'active',
+            isLifetime: true,
+            aiQueriesUsed: 0,
+            aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+          };
+          try {
+            localStorage.setItem('poupafy_active_subscription', JSON.stringify({
+              plan: 'pro',
+              expiresAt: lifetimeExp,
+              status: 'active',
+              isLifetime: true
+            }));
+          } catch (e) { console.error('Erro ao gravar assinatura admin:', e); }
+          save();
+        } 
+        // Concessão de Assinatura PRO de Presente / VIP (Teste de 30 Dias)
+        else if (userEmailLower === 'gcubateli@gmail.com') {
+          const giftExp = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 dias de presente
+          S.subscription = {
+            plan: 'pro',
+            expiresAt: giftExp,
+            status: 'active',
+            isGifted: true,
+            aiQueriesUsed: 0,
+            aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+          };
+          try {
+            localStorage.setItem('poupafy_active_subscription', JSON.stringify({
+              plan: 'pro',
+              expiresAt: giftExp,
+              status: 'active',
+              isGifted: true
+            }));
+          } catch (e) { console.error('Erro ao gravar assinatura presente:', e); }
+          save();
+        }
         
         const loginScreen = q('#login-screen');
         if (loginScreen) loginScreen.style.display = 'none';
@@ -315,19 +379,43 @@ export function loginWithGoogle() {
         window.addDevLog?.('Bridge login timed out after 3 minutes.', 'warn');
       }, 180000);
 
-      // Invocar o comando do Rust para abrir o browser padrão
-      if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
-        window.__TAURI__.core.invoke('open_external_url', { url: redirectUrl })
-          .catch(err => {
-            window.addDevLog?.(`Rust open_external_url failed: ${err}`, 'error');
-            console.error('Failed to open external url via Rust command:', err);
-            window.open(redirectUrl, '_blank');
-          });
-      } else {
-        window.addDevLog?.('window.__TAURI__ or invoke function not found. Using window.open fallback.', 'warn');
-        window.open(redirectUrl, '_blank');
-      }
+      // Abrir o navegador padrão do sistema no Tauri
+      const openExternal = async (url) => {
+        window.addDevLog?.(`Opening external URL: ${url}`, 'info');
+        const invokeFn = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+        
+        if (invokeFn) {
+          try {
+            await invokeFn('plugin:opener|open_url', { url });
+            window.addDevLog?.('URL opened via plugin:opener|open_url', 'success');
+            return;
+          } catch (err1) {
+            window.addDevLog?.(`plugin:opener|open_url failed: ${err1}. Trying open_external_url...`, 'warn');
+          }
 
+          try {
+            await invokeFn('open_external_url', { url });
+            window.addDevLog?.('URL opened via open_external_url', 'success');
+            return;
+          } catch (err2) {
+            window.addDevLog?.(`open_external_url failed: ${err2}`, 'warn');
+          }
+        }
+
+        if (window.__TAURI__?.opener?.openUrl) {
+          try {
+            await window.__TAURI__.opener.openUrl(url);
+            window.addDevLog?.('URL opened via window.__TAURI__.opener.openUrl', 'success');
+            return;
+          } catch (err3) {
+            window.addDevLog?.(`opener.openUrl failed: ${err3}`, 'warn');
+          }
+        }
+
+        window.open(url, '_blank');
+      };
+
+      openExternal(redirectUrl);
       return;
     }
 

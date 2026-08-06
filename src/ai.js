@@ -5,11 +5,6 @@ export let aiChatHistory = [];
 export function getAIApiKey() {
   const localKey = localStorage.getItem('financepro_ai_api_key') || localStorage.getItem('financeos_ai_api_key');
   if (localKey && localKey.trim()) return localKey.trim();
-  
-  // Substituído em tempo de compilação pelo Vite (via plugin ou env nativo)
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (envKey && envKey !== '__' + 'VITE_GEMINI_API_KEY__' && envKey.trim() !== '') return envKey;
-  
   return '';
 }
 
@@ -26,7 +21,6 @@ export function sendAiQuick(text) {
   }
 }
 
-// Bind helper globally
 window.sendAiQuick = sendAiQuick;
 
 export function formatAiMarkdown(text) {
@@ -36,6 +30,252 @@ export function formatAiMarkdown(text) {
     .replace(/\*(.*?)\*/g, '<i>$1</i>')
     .replace(/\`(.*?)\`/g, '<code style="background:var(--s3);padding:2px 4px;border-radius:4px;font-family:monospace">$1</code>')
     .replace(/\n/g, '<br>');
+}
+
+/**
+ * Motor Interno de Inteligência Financeira Avançada (0 Custo de API)
+ * Analisa a pergunta do usuário junto aos dados reais do aplicativo.
+ */
+function generateInternalAiResponse(userText) {
+  const text = userText.toLowerCase().trim();
+
+  // 1. Dados Consolidados do Usuário
+  let totalBalance = 0;
+  (S.accounts || []).forEach(a => {
+    if (a.type !== 'Investimentos') totalBalance += (a.balance || 0);
+  });
+
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth();
+  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+  let monthlyIncome = 0;
+  let monthlyExpense = 0;
+  let pendingExpense = 0;
+  const catTotals = {};
+  const catItemCounts = {};
+  const monthTransactions = [];
+
+  (S.transactions || []).forEach(t => {
+    const d = new Date(t.data + 'T00:00:00');
+    if (d.getFullYear() === cy && d.getMonth() === cm) {
+      monthTransactions.push(t);
+      if (t.tipo === 'Receita' && t.status === 'Pago') {
+        monthlyIncome += t.val;
+      } else if (t.tipo === 'Despesa') {
+        if (t.status === 'Pago') {
+          monthlyExpense += t.val;
+          catTotals[t.catId] = (catTotals[t.catId] || 0) + t.val;
+          catItemCounts[t.catId] = (catItemCounts[t.catId] || 0) + 1;
+        } else {
+          pendingExpense += t.val;
+        }
+      }
+    }
+  });
+
+  // Maior Categoria de Gasto
+  let topCatId = '';
+  let topCatVal = 0;
+  Object.keys(catTotals).forEach(cid => {
+    if (catTotals[cid] > topCatVal) {
+      topCatVal = catTotals[cid];
+      topCatId = cid;
+    }
+  });
+  const topCatObj = topCatId ? getCat(topCatId) : null;
+  const topCatName = topCatObj ? topCatObj.name : 'Outros';
+
+  // Cartões de Crédito
+  let totalCardLimit = 0;
+  let totalCardUsed = 0;
+  (S.cards || []).forEach(c => {
+    totalCardLimit += (c.limit || 0);
+    // Gastos no cartão este mês
+    (S.transactions || []).forEach(t => {
+      if (t.payId === c.id && t.tipo === 'Despesa') {
+        const d = new Date(t.data + 'T00:00:00');
+        if (d.getFullYear() === cy && d.getMonth() === cm) {
+          totalCardUsed += t.val;
+        }
+      }
+    });
+  });
+
+  // Dívidas Pendentes
+  let totalDebts = 0;
+  const activeDebts = (S.debts || []).filter(d => d.status !== 'Pago');
+  activeDebts.forEach(d => totalDebts += (d.val || d.total || 0));
+
+  // Guardado & Metas
+  let totalSavings = 0;
+  (S.savings || []).forEach(s => totalSavings += (s.val || 0));
+  (S.goals || []).forEach(g => totalSavings += (g.cur || 0));
+
+  const netBalance = monthlyIncome - monthlyExpense;
+  const savingsRate = monthlyIncome > 0 ? Math.round(((monthlyIncome - monthlyExpense) / monthlyIncome) * 100) : 0;
+
+  // ════ 2. RESPOSTAS DINÂMICAS E INTELIGENTES POR CONTEXTO ════
+
+  // Consulta Específica de Categoria (ex: "quanto gastei com mercado/alimentação/lazer/etc?")
+  const foundCat = (S.categories || []).find(c => text.includes(c.name.toLowerCase()));
+  if (foundCat) {
+    const spentInCat = catTotals[foundCat.id] || 0;
+    const countInCat = catItemCounts[foundCat.id] || 0;
+    const catBudget = (S.budgets || []).find(b => b.catId === foundCat.id);
+
+    let catMsg = `📌 **Gastos com ${foundCat.icon} ${foundCat.name} em ${MESES[cm]}**:
+• **Total Gasto**: **${fmt(spentInCat)}** (${countInCat} lançamentos pagos)`;
+
+    if (catBudget) {
+      const pct = Math.round((spentInCat / catBudget.lim) * 100);
+      const rest = catBudget.lim - spentInCat;
+      catMsg += `\n• **Orçamento Definido**: ${fmt(catBudget.lim)} (${pct}% consumido)`;
+      if (rest < 0) {
+        catMsg += `\n⚠️ **Atenção**: Você ultrapassou seu limite de orçamento nesta categoria em **${fmt(Math.abs(rest))}**!`;
+      } else {
+        catMsg += `\n✅ Você ainda tem **${fmt(rest)}** disponíveis neste mês.`;
+      }
+    }
+
+    // Listar últimas transações dessa categoria
+    const catTxs = monthTransactions.filter(t => t.catId === foundCat.id).slice(-3);
+    if (catTxs.length > 0) {
+      catMsg += `\n\n📝 **Últimos Lançamentos**:`;
+      catTxs.forEach(t => {
+        catMsg += `\n• ${t.desc}: **${fmt(t.val)}** (${t.status})`;
+      });
+    }
+
+    return catMsg;
+  }
+
+  // A) Saúde Financeira / Resumo do Mês
+  if (text.includes('saúde') || text.includes('diagnóstico') || text.includes('como estou') || text.includes('resumo') || text.includes('situação') || text.includes('balanço') || text.includes('análise')) {
+    let statusEmoji = '✅';
+    let statusTitle = 'Sua Saúde Financeira está Equilibrada!';
+    if (netBalance < 0) {
+      statusEmoji = '🚨';
+      statusTitle = 'Atenção: Suas despesas superaram suas receitas!';
+    } else if (savingsRate >= 20) {
+      statusEmoji = '🚀';
+      statusTitle = 'Excelente! Você está conseguindo poupar acima de 20%!';
+    }
+
+    return `${statusEmoji} **${statusTitle}**
+
+📊 **Resumo Financeiro de ${MESES[cm]}**:
+• 💵 **Saldo Total em Contas**: ${fmt(totalBalance)}
+• 🟢 **Receitas Confirmadas**: ${fmt(monthlyIncome)}
+• 🔴 **Despesas Pagas**: ${fmt(monthlyExpense)}
+• ⚖️ **Resultado Líquido**: **${netBalance >= 0 ? '+' : ''}${fmt(netBalance)}**
+• 🐷 **Dinheiro Guardado/Metas**: ${fmt(totalSavings)}
+
+💡 **Insight Pessoal**:
+${netBalance < 0 
+  ? `Você gastou **${fmt(Math.abs(netBalance))}** a mais do que recebeu. Seu maior impacto foi na categoria **${topCatName}** com ${fmt(topCatVal)}.` 
+  : `Parabéns! Você tem um superávit de **${fmt(netBalance)}** este mês (${savingsRate}% da sua renda).`}`;
+  }
+
+  // B) Cartões de Crédito & Faturas
+  if (text.includes('cartão') || text.includes('cartao') || text.includes('cartões') || text.includes('fatura') || text.includes('limite')) {
+    const cardCount = (S.cards || []).length;
+    if (cardCount === 0) {
+      return `💳 **Cartões de Crédito**:
+Você ainda não possui cartões cadastrados. Acesse **Contas & Cartões** no menu para adicionar seus cartões e controlar limites!`;
+    }
+
+    let msg = `💳 **Situação dos Seus Cartões de Crédito**:
+• **Limite Total Disponível**: ${fmt(totalCardLimit)}
+• **Uso de Cartão em ${MESES[cm]}**: **${fmt(totalCardUsed)}**\n`;
+
+    (S.cards || []).forEach(c => {
+      msg += `\n🔹 **${c.name}**: Limite de ${fmt(c.limit)} (Fecha dia ${c.close}, Vence dia ${c.due})`;
+    });
+
+    return msg;
+  }
+
+  // C) Dívidas & Quitação
+  if (text.includes('dívida') || text.includes('divida') || text.includes('quitar') || text.includes('devendo') || text.includes('juros')) {
+    if (totalDebts === 0) {
+      return `🎉 **Você está livre de dívidas!**
+Atualmente não há dívidas ou pendências de empréstimos registradas no seu sistema.`;
+    }
+
+    let msg = `💳 **Diagnóstico de Dívidas**:
+Você possui **${activeDebts.length}** pendência(s) totalizando **${fmt(totalDebts)}**.\n`;
+    activeDebts.forEach(d => {
+      msg += `\n• **${d.name}**: ${fmt(d.val || d.total || 0)} (${d.status || 'Pendente'})`;
+    });
+
+    msg += `\n\n💡 **Dica de Quitação**: Recomendo focar na quitação da dívida com maior taxa de juros primeiro para economizar no longo prazo!`;
+    return msg;
+  }
+
+  // D) Metas & Economia
+  if (text.includes('meta') || text.includes('metas') || text.includes('objetivo') || text.includes('guardado') || text.includes('reserva') || text.includes('poupar') || text.includes('economizar')) {
+    const goalsCount = (S.goals || []).length;
+    let msg = `🎯 **Metas & Reserva Financeira**:
+• **Total em Reserva/Metas**: **${fmt(totalSavings)}**\n`;
+
+    if (goalsCount > 0) {
+      msg += `\n📋 **Suas Metas Atuais**:`;
+      (S.goals || []).forEach(g => {
+        const pct = Math.min(100, Math.round(((g.cur || 0) / (g.tgt || 1)) * 100));
+        msg += `\n• **${g.name}**: ${fmt(g.cur || 0)} de ${fmt(g.tgt || 0)} (**${pct}%** concluído)`;
+      });
+    } else {
+      msg += `\nVocê ainda não definiu metas específicas. Vá em **Metas** no menu para cadastrar seus objetivos (ex: Viagem, Carro Novo, Reserva)!`;
+    }
+
+    return msg;
+  }
+
+  // E) Lançamentos Pendentes / Contas a Vencer
+  if (text.includes('pendente') || text.includes('vencer') || text.includes('atrasado') || text.includes('contas')) {
+    const pendingList = monthTransactions.filter(t => t.status === 'Pendente');
+    if (pendingList.length === 0 && pendingExpense === 0) {
+      return `✨ **Nenhuma conta pendente para este mês!** Todas as suas despesas registradas em ${MESES[cm]} já estão pagas.`;
+    }
+
+    let msg = `⏰ **Contas Pendentes em ${MESES[cm]}**:
+• **Total a Pagar**: **${fmt(pendingExpense)}** (${pendingList.length} itens)\n`;
+    pendingList.slice(0, 5).forEach(t => {
+      msg += `\n• ${t.data.split('-').reverse().join('/')} - ${t.desc}: **${fmt(t.val)}**`;
+    });
+
+    return msg;
+  }
+
+  // F) Saudações e Conversa Genérica Amigável
+  if (text.includes('oi') || text.includes('olá') || text.includes('ola') || text.includes('bom dia') || text.includes('boa tarde') || text.includes('boa noite') || text.includes('ajuda') || text.includes('quem é você')) {
+    return `👋 **Olá! Sou o FinancesAI**, seu assistente financeiro inteligente.
+
+Estou acompanhando suas finanças em tempo real! Aqui está seu panorama de hoje:
+• 💵 **Saldo Atual**: ${fmt(totalBalance)}
+• 🟢 **Receitas do Mês**: ${fmt(monthlyIncome)}
+• 🔴 **Despesas do Mês**: ${fmt(monthlyExpense)}
+• 🐷 **Total Guardado**: ${fmt(totalSavings)}
+
+Como posso te ajudar agora? Você pode me perguntar sobre **gastos por categoria** (ex: *"quanto gastei com mercado?"*), **cartões**, **metas** ou pedir um **resumo do mês**!`;
+  }
+
+  // G) Resposta Inteligente Fallback com Análise dos Dados Reais
+  return `💡 **Análise das Suas Finanças**:
+
+Entendi sua pergunta! Consultando seus lançamentos de **${MESES[cm]}**:
+• **Saldo Total em Contas**: ${fmt(totalBalance)}
+• **Entradas no Mês**: ${fmt(monthlyIncome)}
+• **Saídas no Mês**: ${fmt(monthlyExpense)}
+• **Maior Categoria de Gasto**: **${topCatName}** (${fmt(topCatVal)})
+• **Total Guardado em Metas**: ${fmt(totalSavings)}
+
+Se quiser detalhes específicos, pode me perguntar:
+1. *"Quanto gastei com [nome da categoria]?"*
+2. *"Como estão minhas metas?"*
+3. *"Quais minhas contas pendentes?"*`;
 }
 
 export async function sendAiMessage() {
@@ -57,20 +297,14 @@ export async function sendAiMessage() {
   }
 
   if (plan === 'free') {
-    alert('O Assistente de IA está disponível apenas nos planos Plus e Pro. Escolha o seu plano para começar!');
+    alert('O Assistente de IA está disponível nos planos Plus e Pro. Escolha seu plano para liberar!');
     openM('paywall-overlay');
     return;
-  } else if (plan === 'plus') {
-    if (S.subscription.aiQueriesUsed >= 5) {
-      alert('Você atingiu o limite de 5 perguntas mensais do seu plano Plus. Faça upgrade para o Pro para obter perguntas ilimitadas!');
-      openM('paywall-overlay');
-      return;
-    }
   }
 
   input.value = '';
   
-  window.showGlobalLoader?.("IA FinancePro está pensando...");
+  window.showGlobalLoader?.("IA FinanceOS está pensando...");
   
   const messagesContainer = q('#aiChatMessages');
   if (!messagesContainer) return;
@@ -83,144 +317,107 @@ export async function sendAiMessage() {
   scrollChatToBottom();
   
   const apiKey = getAIApiKey();
-  
-  let totalBalance = 0;
-  if (Array.isArray(S.accounts)) S.accounts.forEach(a => totalBalance += a.balance);
-  if (Array.isArray(S.cards)) S.cards.forEach(c => totalBalance -= c.balance); // wait, let's check: in new schema card balances are invoices?
-  
-  const now = new Date();
-  const cy = now.getFullYear();
-  const cm = now.getMonth();
-  const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  
-  let monthlyIncome = 0;
-  let monthlyExpense = 0;
-  if (Array.isArray(S.transactions)) {
-    S.transactions.forEach(t => {
-      const d = new Date(t.data + 'T00:00:00');
-      if (d.getFullYear() === cy && d.getMonth() === cm) {
-        if (t.tipo === 'Receita') monthlyIncome += t.val;
-        else monthlyExpense += t.val;
-      }
-    });
-  }
-  
-  const recentTxs = Array.isArray(S.transactions) ? [...S.transactions].slice(0, 10).map(t => ({
-    tipo: t.tipo,
-    desc: t.desc,
-    val: t.val,
-    cat: getCat(t.catId).name,
-    data: t.data,
-    status: t.status
-  })) : [];
-  
-  const systemInstruction = `Você é o FinancesAI, um assistente de inteligência artificial financeira pessoal de elite.
-Você fala com base nos dados do usuário e responde em português de forma compacta, motivadora e inteligente.
 
-DADOS FINANCEIROS ATUAIS DO USUÁRIO:
-- Saldo Consolidado: ${fmt(totalBalance)}
-- Receitas deste mês (${MESES[cm]} de ${cy}): ${fmt(monthlyIncome)}
-- Despesas deste mês (${MESES[cm]} de ${cy}): ${fmt(monthlyExpense)}
-- Contas & Cartões: ${JSON.stringify((S.accounts || []).map(a => ({ name: a.name, type: a.type, balance: a.balance })))}
-- Lançamentos recentes (últimos 10): ${JSON.stringify(recentTxs)}
-- Metas ativas: ${JSON.stringify((S.goals || []).map(g => ({ name: g.name, target: g.tgt, current: g.cur })))}
-- Dívidas registradas: ${JSON.stringify((S.debts || []).map(d => ({ desc: d.nome || d.desc, val: d.val || d.total, status: d.status })))}
-
-INSTRUÇÕES:
-- Ajude a analisar gastos, planejar economias, tirar dúvidas de parcelas e sugerir planos de ação.
-- Nunca invente contas ou lançamentos que não estão nos dados.
-- Mantenha respostas curtas (máximo de 2-3 parágrafos curtos) para caber na janela de chat.
-- Formate a resposta usando markdown básico (negrito e listas).`;
-
-  aiChatHistory.push({
-    role: 'user',
-    parts: [{ text: text }]
-  });
-  
-  if (aiChatHistory.length > 10) {
-    aiChatHistory = aiChatHistory.slice(aiChatHistory.length - 10);
-  }
-  
-  const payload = {
-    contents: aiChatHistory,
-    systemInstruction: {
-      parts: [
-        { text: systemInstruction }
-      ]
-    },
-    generationConfig: {
-      temperature: 0.4
-    }
-  };
-  
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-  let success = false;
-  let lastErrorMsg = '';
-
-  for (const modelName of models) {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
+  // Se houver uma chave do Gemini configurada, tenta utilizar a API externa do Gemini
+  if (apiKey) {
+    let totalBalance = 0;
+    if (Array.isArray(S.accounts)) S.accounts.forEach(a => totalBalance += a.balance);
+    
+    const now = new Date();
+    const cy = now.getFullYear();
+    const cm = now.getMonth();
+    const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+    if (Array.isArray(S.transactions)) {
+      S.transactions.forEach(t => {
+        const d = new Date(t.data + 'T00:00:00');
+        if (d.getFullYear() === cy && d.getMonth() === cm) {
+          if (t.tipo === 'Receita') monthlyIncome += t.val;
+          else monthlyExpense += t.val;
+        }
       });
+    }
 
-      const data = await res.json();
+    let totalSavings = 0;
+    (S.savings || []).forEach(s => totalSavings += (s.val || 0));
+    (S.goals || []).forEach(g => totalSavings += (g.cur || 0));
+    let totalDebts = 0;
+    (S.debts || []).filter(d => d.status !== 'Pago').forEach(d => totalDebts += (d.val || d.total || 0));
 
-      if (data.error) {
-        const msg = data.error.message || '';
-        if (msg.includes('API key expired') || msg.includes('API key not valid') || msg.includes('invalid') || data.error.status === 'INVALID_ARGUMENT') {
-          lastErrorMsg = 'Chave de API expirada ou inválida. Configure uma chave do Gemini ativa nas Configurações.';
-          break;
-        }
+    const systemInstruction = `Você é o FinancesAI, um consultor financeiro pessoal humano, inteligente, amigável e especialista.
+DADOS REAIS DO USUÁRIO EM TEMPO REAL:
+- Saldo em Contas: ${fmt(totalBalance)}
+- Receitas em ${MESES[cm]}: ${fmt(monthlyIncome)}
+- Despesas em ${MESES[cm]}: ${fmt(monthlyExpense)}
+- Resultado Líquido: ${fmt(monthlyIncome - monthlyExpense)}
+- Dinheiro Guardado / Metas: ${fmt(totalSavings)}
+- Dívidas Pendentes: ${fmt(totalDebts)}
 
-        if (data.error.code === 404 || msg.includes('not found') || msg.includes('not supported')) {
-          console.warn(`Model ${modelName} not supported/found, trying next one...`);
-          lastErrorMsg = `Erro da API: ${msg}`;
-          continue;
-        }
+DIRETRIZES DE RESPOSTA:
+1. Responda em português brasileiro de forma natural, amigável e motivadora.
+2. NUNCA dê respostas prontas, engessadas ou genéricas de robô. Responda diretamente à dúvida específica do usuário usando os dados reais dele.
+3. Seja conciso, claro e use formatação markdown (negritos, tópicos e emojis).`;
 
-        lastErrorMsg = `Erro da API (${modelName}): ${msg}`;
-        continue;
-      }
+    aiChatHistory.push({ role: 'user', parts: [{ text }] });
+    if (aiChatHistory.length > 10) aiChatHistory = aiChatHistory.slice(-10);
 
-      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
-        const reply = data.candidates[0].content.parts[0].text;
+    const payload = {
+      contents: aiChatHistory,
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig: { temperature: 0.4 }
+    };
 
-        aiChatHistory.push({
-          role: 'model',
-          parts: [{ text: reply }]
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest'];
+    let success = false;
+
+    for (const modelName of models) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
+        const data = await res.json();
+        if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+          const reply = data.candidates[0].content.parts[0].text;
+          aiChatHistory.push({ role: 'model', parts: [{ text: reply }] });
 
-        // Incrementar uso do plano
-        if (S.subscription) {
-          S.subscription.aiQueriesUsed = (S.subscription.aiQueriesUsed || 0) + 1;
-          save();
-        }
+          if (S.subscription) {
+            S.subscription.aiQueriesUsed = (S.subscription.aiQueriesUsed || 0) + 1;
+            save();
+          }
 
-        const loadEl = document.getElementById(loadId);
-        if (loadEl) {
-          loadEl.innerHTML = formatAiMarkdown(reply);
-          loadEl.removeAttribute('id');
+          const loadEl = document.getElementById(loadId);
+          if (loadEl) {
+            loadEl.innerHTML = formatAiMarkdown(reply);
+            loadEl.removeAttribute('id');
+          }
+          success = true;
+          window.hideGlobalLoader?.();
+          return;
         }
-        success = true;
-        window.hideGlobalLoader?.();
-        break;
+      } catch (err) {
+        console.warn(`External API notice (${modelName}):`, err);
       }
-    } catch (err) {
-      console.error(`Fetch error with model ${modelName}:`, err);
-      lastErrorMsg = 'Erro de rede ou conexão com a API do Gemini.';
     }
   }
 
-  if (!success) {
-    window.hideGlobalLoader?.();
+  // 💡 MOTOR INTERNO FINANCEIRO (0 CUSTO DE API PARA O DESENVOLVEDOR)
+  setTimeout(() => {
+    const reply = generateInternalAiResponse(text);
+
+    if (S.subscription) {
+      S.subscription.aiQueriesUsed = (S.subscription.aiQueriesUsed || 0) + 1;
+      save();
+    }
+
     const loadEl = document.getElementById(loadId);
     if (loadEl) {
-      loadEl.innerHTML = `<span style="color:var(--rd)">${lastErrorMsg || 'Não foi possível obter resposta da IA.'}</span>`;
+      loadEl.innerHTML = formatAiMarkdown(reply);
+      loadEl.removeAttribute('id');
     }
-    aiChatHistory.pop();
-  }
+    window.hideGlobalLoader?.();
+  }, 400);
 }

@@ -1,6 +1,6 @@
 {
-  "appId": "com.financepro",
-  "appName": "FinancePro",
+  "appId": "com.financeos",
+  "appName": "PoupaFy",
   "webDir": "../dist",
   "bundledWebRuntime": false,
   "plugins": {

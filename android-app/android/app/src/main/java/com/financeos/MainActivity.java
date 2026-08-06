@@ -1,4 +1,4 @@
-package com.financepro;
+package com.financeos;
 
 import com.getcapacitor.BridgeActivity;
 

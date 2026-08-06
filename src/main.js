@@ -1,3 +1,16 @@
+import Chart from 'chart.js/auto';
+import { NotificationsListener } from 'capacitor-notifications-listener';
+import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
+import { initDevLogger, setupDevConsolePanel } from './devLogs.js';
+
+if (typeof window !== 'undefined') {
+  window.Chart = Chart;
+  window.jsPDF = jsPDF;
+  window.XLSX = XLSX;
+  initDevLogger();
+}
+
 import { 
   S, 
   load, 
@@ -18,6 +31,7 @@ import {
 
 import { hashPin, encryptData, decryptData } from './crypto.js';
 import { syncPassword } from './firebase.js';
+import { redirectToStripeCheckout, handleStripeReturn, openCancelSubscriptionModal, cancelStripeSubscription } from './stripe.js';
 
 import { 
   initFirebase, 
@@ -105,26 +119,157 @@ function checkPaywallAccess() {
   }
 }
 
+export function checkSubscriptionExpirationWarning() {
+  const sub = S.subscription;
+  if (!sub || sub.plan === 'free' || !sub.expiresAt || sub.isLifetime) return;
+
+  const diffMs = sub.expiresAt - Date.now();
+  const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+  if (daysLeft > 0 && daysLeft <= 5) {
+    const warnedKey = `poupafy_exp_warned_${sub.plan}_${daysLeft}`;
+    const alreadyWarned = sessionStorage.getItem(warnedKey);
+    
+    if (!alreadyWarned) {
+      sessionStorage.setItem(warnedKey, 'true');
+      setTimeout(() => {
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;bottom:24px;left:24px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:16px 20px;border-radius:14px;font-size:13px;font-weight:700;box-shadow:0 12px 30px rgba(0,0,0,0.5);z-index:999999;animation:fadeup 0.4s ease;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.2);display:flex;flex-direction:column;gap:8px;max-width:340px;';
+        toast.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span>⚠️ <b>Aviso: Assinatura Vencendo!</b></span>
+            <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#fff;font-weight:bold;cursor:pointer;">✕</button>
+          </div>
+          <div style="font-size:12px;font-weight:500;line-height:1.4;">
+            Sua assinatura do plano <b>${sub.plan.toUpperCase()}</b> vence em <b>${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}</b>. Renove agora para manter seus recursos premium ativos!
+          </div>
+          <button onclick="openM('paywall-overlay'); this.parentElement.remove();" style="background:#fff;color:#d97706;border:none;padding:6px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;align-self:flex-start;margin-top:4px;">Renovar Agora 🚀</button>
+        `;
+        document.body.appendChild(toast);
+      }, 1200);
+    }
+  }
+}
+
 registerAuthCallback((user) => {
+  window.financeCurrentUser = user;
+  if (window.checkAdminView) window.checkAdminView();
   if (window.updateSyncStatusDot) window.updateSyncStatusDot();
   if (user) {
     processRecurringTransactions();
     updateUI();
+    // Processar retorno do Stripe APÓS autenticação — garante sincronização com Firestore
+    handleStripeReturn();
+    checkSubscriptionExpirationWarning();
   }
   checkPaywallAccess();
   window.hideGlobalLoader?.();
 });
 
+function initBankNotificationListener() {
+  if (typeof window === 'undefined' || !window.Capacitor || !window.Capacitor.isNativePlatform()) return;
+
+  NotificationsListener.isListening().then((res) => {
+    if (!res.value) {
+      // Opcional: Aqui poderíamos pedir permissão. Mas para ser menos intrusivo, podemos 
+      // deixar o usuário ativar manualmente nas configurações se avisarmos em alguma tela,
+      // ou apenas chamar:
+      NotificationsListener.requestPermission();
+    }
+  }).catch(e => console.log('Listener init error', e));
+
+  NotificationsListener.addListener('notificationReceivedEvent', (info) => {
+    const text = (info.text || info.title || '').toLowerCase();
+    
+    if (text.includes('aprovada') && (text.includes('compra') || text.includes('pagamento') || text.includes('transfer'))) {
+      const match = text.match(/r\$ ?(\d+[.,]\d{2})/i);
+      let valueStr = '';
+      let valNum = 0;
+      if (match) {
+        valueStr = ` no valor de R$ ${match[1]}`;
+        valNum = parseFloat(match[1].replace(',', '.'));
+      }
+
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Transação Detectada!',
+          text: `Notamos uma compra aprovada${valueStr}. Deseja lançar no app agora?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Sim, lançar!',
+          cancelButtonText: 'Não'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (window.fillCatSelect) window.fillCatSelect(document.getElementById('tx-cat'), 'Despesa');
+            if (window.fillPaySelect) window.fillPaySelect(document.getElementById('tx-conta'));
+            openM('m-tx');
+            if (valNum > 0) document.getElementById('tx-val').value = valNum.toFixed(2);
+            if (window.setTxType) window.setTxType('Despesa');
+            else document.getElementById('tx-tipo').value = 'Despesa';
+            document.getElementById('tx-desc').value = info.title || 'Compra Automática';
+          }
+        });
+      } else {
+        if (confirm(`Notamos uma compra aprovada${valueStr}. Deseja lançar no app agora?`)) {
+          if (window.fillCatSelect) window.fillCatSelect(document.getElementById('tx-cat'), 'Despesa');
+          if (window.fillPaySelect) window.fillPaySelect(document.getElementById('tx-conta'));
+          openM('m-tx');
+          if (valNum > 0) document.getElementById('tx-val').value = valNum.toFixed(2);
+          if (window.setTxType) window.setTxType('Despesa');
+          else document.getElementById('tx-tipo').value = 'Despesa';
+          document.getElementById('tx-desc').value = info.title || 'Compra Automática';
+        }
+      }
+    }
+  });
+
+  NotificationsListener.startListening({ cacheNotifications: false }).catch(e => console.log(e));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   // 1. Synchronously load state from LocalStorage to prevent crashes
   load();
   processRecurringTransactions();
+  initBankNotificationListener();
 
   // 2. Configure Chart.js Defaults if present
   if (window.Chart) {
     window.Chart.defaults.color = '#7c849c';
     window.Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
   }
+
+  // 2b. Registro do PWA ServiceWorker & Instalação
+  if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('PWA ServiceWorker registrado:', reg.scope))
+      .catch(err => console.warn('Erro ao registrar ServiceWorker:', err));
+  }
+
+  let deferredPrompt;
+  const btnInstallPWA = q('#btnInstallPWA');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btnInstallPWA) {
+      btnInstallPWA.style.display = 'inline-block';
+    }
+  });
+
+  btnInstallPWA?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      if (btnInstallPWA) btnInstallPWA.style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+
+  // Seletor de meses da Projeção de Fluxo de Caixa
+  q('#projecaoMonths')?.addEventListener('change', () => {
+    if (window.renderProjecaoFluxoCaixa) window.renderProjecaoFluxoCaixa();
+  });
 
   // 3. Set date header in UI
   const dateEl = q('#tbDate');
@@ -153,17 +298,30 @@ document.addEventListener('DOMContentLoaded', function() {
     navigate('dashboard');
   });
 
+  setupDevConsolePanel();
+
   // Mobile menu sidebar toggle
   q('#menuBtn')?.addEventListener('click', () => {
-    document.getElementById('sidebar')?.classList.toggle('open');
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    sb?.classList.toggle('open');
+    if (ov) ov.classList.toggle('open', sb?.classList.contains('open'));
+  });
+
+  // Close sidebar on overlay click (mobile viewports)
+  q('#sidebar-overlay')?.addEventListener('click', () => {
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('open');
   });
 
   // Close sidebar on outside click (mobile viewports)
   document.addEventListener('click', (e) => {
     const sb = document.getElementById('sidebar');
     const menuBtn = q('#menuBtn');
-    if (window.innerWidth <= 768 && sb?.classList.contains('open') && !sb.contains(e.target) && e.target !== menuBtn) {
+    const ov = document.getElementById('sidebar-overlay');
+    if (window.innerWidth <= 768 && sb?.classList.contains('open') && !sb.contains(e.target) && e.target !== menuBtn && e.target !== ov) {
       sb.classList.remove('open');
+      if (ov) ov.classList.remove('open');
     }
   });
 
@@ -174,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   qa('.mbd').forEach(el => {
     el.addEventListener('click', (e) => {
-      if (e.target === el) el.hidden = true;
+      if (e.target === el) closeM(el.id);
     });
   });
 
@@ -260,13 +418,59 @@ document.addEventListener('DOMContentLoaded', function() {
   q('#btnNewTx')?.addEventListener('click', openTxCreateModal);
   q('#btnNewTx2')?.addEventListener('click', openTxCreateModal);
 
-  q('#tx-tipo')?.addEventListener('change', () => {
-    const val = q('#tx-tipo').value;
-    fillCatSelect(q('#tx-cat'), val);
+  window.setTxType = function(type) {
+    const hiddenSelect = q('#tx-tipo');
+    if (hiddenSelect) hiddenSelect.value = type;
+    
+    const btnExp = q('#btnTypeExpense');
+    const btnInc = q('#btnTypeIncome');
+    const valInput = q('#tx-val');
+    
+    if (type === 'Despesa') {
+      if (btnExp) {
+        btnExp.style.background = 'rgba(239, 68, 68, 0.15)';
+        btnExp.style.borderColor = 'var(--rd)';
+        btnExp.style.color = 'var(--rd)';
+      }
+      if (btnInc) {
+        btnInc.style.background = 'transparent';
+        btnInc.style.borderColor = 'transparent';
+        btnInc.style.color = 'var(--tx2)';
+      }
+      if (valInput) valInput.style.color = 'var(--rd)';
+    } else {
+      if (btnInc) {
+        btnInc.style.background = 'rgba(16, 185, 129, 0.15)';
+        btnInc.style.borderColor = 'var(--gr)';
+        btnInc.style.color = 'var(--gr)';
+      }
+      if (btnExp) {
+        btnExp.style.background = 'transparent';
+        btnExp.style.borderColor = 'transparent';
+        btnExp.style.color = 'var(--tx2)';
+      }
+      if (valInput) valInput.style.color = 'var(--gr)';
+    }
+    
+    fillCatSelect(q('#tx-cat'), type);
     const statusEl = q('#tx-status');
     if (statusEl) {
-      statusEl.value = val === 'Receita' ? 'Recebido' : 'Pago';
+      statusEl.value = type === 'Receita' ? 'Recebido' : 'Pago';
     }
+    updateTxLivePreview();
+  };
+
+  window.setTxQuickDate = function(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const iso = d.toISOString().split('T')[0];
+    const input = q('#tx-data');
+    if (input) input.value = iso;
+  };
+
+  q('#tx-tipo')?.addEventListener('change', () => {
+    const val = q('#tx-tipo').value;
+    window.setTxType(val);
   });
 
   q('#tx-is-installment')?.addEventListener('change', function() {
@@ -313,12 +517,266 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  q('#btnQuickAddCat')?.addEventListener('click', () => {
+    const txType = q('#tx-tipo')?.value || 'Despesa';
+    if (q('#cat-tipo')) q('#cat-tipo').value = txType === 'Receita' ? 'income' : 'expense';
+    openM('m-cat');
+  });
+
+  q('#tx-cat')?.addEventListener('change', function() {
+    if (this.value === '__NEW_CAT__') {
+      const txType = q('#tx-tipo')?.value || 'Despesa';
+      if (q('#cat-tipo')) q('#cat-tipo').value = txType === 'Receita' ? 'income' : 'expense';
+      openM('m-cat');
+      // Reseta para a primeira opção válida temporariamente até salvar
+      const opts = Array.from(this.options);
+      if (opts.length > 1) this.value = opts[0].value;
+    }
+  });
+
   ['#tx-val', '#tx-conta', '#tx-tipo', '#tx-cat', '#tx-status', '#tx-is-installment', '#tx-inst'].forEach(sel => {
     const el = q(sel);
     if (el) {
       el.addEventListener('input', updateTxLivePreview);
       el.addEventListener('change', updateTxLivePreview);
     }
+  });
+
+  // 📷 Função de Compressão Ultra-Leve em WebP (KBs mantendo nitidez de texto)
+  function compressImageToWebP(file, maxDimension = 1000, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve({ dataUrl: e.target.result, sizeKb: Math.round(e.target.result.length / 1024) });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let compressedDataUrl = canvas.toDataURL('image/webp', quality);
+          if (!compressedDataUrl.startsWith('data:image/webp')) {
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+
+          const sizeKb = Math.round((compressedDataUrl.length * 0.75) / 1024);
+          resolve({ dataUrl: compressedDataUrl, sizeKb, width, height });
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 📷 Leitor de Comprovante por Foto / OCR com Tesseract.js (IA de leitura de pixels)
+  q('#btnScanReceipt')?.addEventListener('click', () => {
+    q('#tx-scan-file')?.click();
+  });
+
+  q('#tx-scan-file')?.addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const btn = q('#btnScanReceipt');
+    if (btn) btn.textContent = '⚡ Otimizando imagem e extraindo dados por IA...';
+
+    try {
+      // 1. Comprime a imagem mantendo alta resolução e nitidez para OCR
+      const { dataUrl, sizeKb } = await compressImageToWebP(file, 1200, 0.85);
+
+      const receiptDataInput = q('#tx-receipt-data');
+      if (receiptDataInput) receiptDataInput.value = dataUrl;
+      const previewWrap = q('#tx-receipt-preview-wrap');
+      const previewImg = q('#tx-receipt-preview-img');
+      const receiptName = q('#tx-receipt-name');
+      if (previewWrap && previewImg) {
+        previewImg.src = dataUrl;
+        previewWrap.style.display = 'flex';
+        if (receiptName) receiptName.textContent = `Foto (${sizeKb} KB)`;
+      }
+
+      // 2. Importa e executa Tesseract OCR em Português
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('por');
+      const ret = await worker.recognize(dataUrl);
+      await worker.terminate();
+
+      const extractedText = ret.data.text || '';
+      console.log('📝 OCR Texto Extraído:', extractedText);
+
+      // 3. Parser Inteligente do Conteúdo Lido na Imagem
+      let val = '';
+      let dateIso = '';
+      let desc = '';
+      let location = '';
+      let tags = [];
+
+      // A) Extração do Valor (R$)
+      const valRegexes = [
+        /(?:valor|total|pago|recebido|líquido|bruto|r\$)\s*[:=]?\s*r?\$?\s*(\d+[.,]\d{2})/i,
+        /r\$\s*(\d+[.,]\d{2})/i,
+        /(\d+[.,]\d{2})/g
+      ];
+
+      for (const reg of valRegexes) {
+        const match = extractedText.match(reg);
+        if (match) {
+          if (Array.isArray(match) && !match[1]) {
+            const nums = match.map(v => parseFloat(v.replace('.', '').replace(',', '.'))).filter(n => !isNaN(n) && n > 0);
+            if (nums.length > 0) {
+              val = Math.max(...nums).toFixed(2);
+              break;
+            }
+          } else if (match[1]) {
+            val = match[1].replace(/\./g, '').replace(',', '.');
+            break;
+          }
+        }
+      }
+
+      // Fallback para nome do arquivo se não achar no texto
+      if (!val) {
+        const valMatchFile = file.name.match(/(?:R\$|R)?\s*(\d+[\.,]\d{2})/i);
+        if (valMatchFile) val = valMatchFile[1].replace(',', '.');
+      }
+
+      // B) Extração de Data (DD/MM/YYYY ou DD/MM/YY)
+      const dateMatch = extractedText.match(/(\d{2})[\/\.-](\d{2})[\/\.-](\d{4}|\d{2})/);
+      if (dateMatch) {
+        const d = dateMatch[1].padStart(2, '0');
+        const m = dateMatch[2].padStart(2, '0');
+        let y = dateMatch[3];
+        if (y.length === 2) y = '20' + y;
+        dateIso = `${y}-${m}-${d}`;
+      }
+
+      // C) Reconhecimento de Tipo, Estabelecimento e Tags
+      const textUpper = (extractedText + ' ' + file.name).toUpperCase();
+
+      if (textUpper.includes('PIX')) {
+        desc = 'Pagamento Pix';
+        tags.push('#pix');
+      } else if (textUpper.includes('CARREFOUR') || textUpper.includes('MERCADO') || textUpper.includes('SUPERMERCADO') || textUpper.includes('EXTRA') || textUpper.includes('ASSAI') || textUpper.includes('ATACADAO')) {
+        desc = 'Supermercado';
+        location = 'Supermercado';
+        tags.push('#mercado');
+      } else if (textUpper.includes('POSTO') || textUpper.includes('SHELL') || textUpper.includes('IPIRANGA') || textUpper.includes('PETROBRAS') || textUpper.includes('GASOLINA')) {
+        desc = 'Combustível';
+        location = 'Posto de Gasolina';
+        tags.push('#combustivel');
+      } else if (textUpper.includes('IFOOD') || textUpper.includes('UBER EATS') || textUpper.includes('RESTAURANTE') || textUpper.includes('LANCHONETE')) {
+        desc = 'Alimentação / Refeição';
+        location = 'Restaurante';
+        tags.push('#ifood', '#alimentacao');
+      } else if (textUpper.includes('FARMACIA') || textUpper.includes('DROGARIA') || textUpper.includes('DROGASIL') || textUpper.includes('PAGUE MENOS')) {
+        desc = 'Farmácia';
+        location = 'Farmácia';
+        tags.push('#saude', '#farmacia');
+      } else if (textUpper.includes('UBER') || textUpper.includes('99') || textUpper.includes('TAXI')) {
+        desc = 'Corrida Uber / 99';
+        location = 'Uber';
+        tags.push('#transporte');
+      } else {
+        const lines = extractedText.split('\n').map(l => l.trim()).filter(l => l.length > 3 && !l.includes('HTTP'));
+        if (lines.length > 0) {
+          desc = lines[0].substring(0, 30);
+          location = lines[0].substring(0, 25);
+        } else {
+          desc = 'Comprovante Pagamento';
+        }
+        tags.push('#comprovante');
+      }
+
+      // D) Preenchimento nos campos do formulário
+      const valInput = q('#tx-val');
+      if (valInput && val) valInput.value = val;
+
+      const descInput = q('#tx-desc');
+      if (descInput) descInput.value = desc;
+
+      const locInput = q('#tx-location');
+      if (locInput && location) locInput.value = location;
+
+      const dateInput = q('#tx-data');
+      if (dateInput && dateIso) dateInput.value = dateIso;
+
+      const tagsInput = q('#tx-tags');
+      if (tagsInput && tags.length > 0) {
+        tagsInput.value = tags.join(' ');
+      }
+
+      if (btn) btn.textContent = `✨ Conteúdo lido com sucesso! (${sizeKb} KB)`;
+      setTimeout(() => {
+        if (btn) btn.textContent = '📷 Ler Comprovante por Foto (Preenchimento IA)';
+      }, 4000);
+    } catch (err) {
+      console.error('Erro ao ler comprovante via OCR:', err);
+      if (btn) btn.textContent = '📷 Ler Comprovante por Foto (Preenchimento IA)';
+    }
+  });
+
+  // 📎 Anexo manual de comprovante
+  q('#btnAttachReceipt')?.addEventListener('click', () => {
+    q('#tx-receipt-input')?.click();
+  });
+
+  q('#tx-receipt-input')?.addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const { dataUrl, sizeKb } = await compressImageToWebP(file);
+      const receiptDataInput = q('#tx-receipt-data');
+      if (receiptDataInput) receiptDataInput.value = dataUrl;
+      const previewWrap = q('#tx-receipt-preview-wrap');
+      const previewImg = q('#tx-receipt-preview-img');
+      const receiptName = q('#tx-receipt-name');
+      if (previewWrap && previewImg) {
+        previewImg.src = dataUrl;
+        previewWrap.style.display = 'flex';
+        if (receiptName) receiptName.textContent = `Foto (${sizeKb} KB)`;
+      }
+    } catch (err) {
+      console.error('Erro ao comprimir anexo:', err);
+    }
+  });
+
+  q('#btnRemoveReceipt')?.addEventListener('click', () => {
+    const receiptDataInput = q('#tx-receipt-data');
+    if (receiptDataInput) receiptDataInput.value = '';
+    const previewWrap = q('#tx-receipt-preview-wrap');
+    if (previewWrap) previewWrap.style.display = 'none';
+    const receiptName = q('#tx-receipt-name');
+    if (receiptName) receiptName.textContent = 'Sem foto';
+    const fileInput = q('#tx-receipt-input');
+    if (fileInput) fileInput.value = '';
   });
 
   // Transaction form submit
@@ -337,6 +795,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tags Extraction
     const tagsVal = q('#tx-tags')?.value.trim() || '';
     const tags = tagsVal ? tagsVal.split(/\s+/).map(t => t.startsWith('#') ? t : '#' + t) : [];
+
+    const location = q('#tx-location')?.value.trim() || '';
+    const receiptData = q('#tx-receipt-data')?.value || null;
 
     const desc = q('#tx-desc').value.trim();
     const catId = q('#tx-cat').value;
@@ -367,6 +828,8 @@ document.addEventListener('DOMContentLoaded', function() {
         t.currency = currency;
         t.rate = rate;
         t.tags = tags;
+        t.location = location;
+        t.receiptData = receiptData;
         t.catId = catId;
         t.payId = payId;
         t.data = data;
@@ -395,12 +858,14 @@ document.addEventListener('DOMContentLoaded', function() {
           S.transactions.unshift({
             id: uid(),
             tipo,
-            desc,
+            desc: `${desc} (${i}/${inst})`,
             val: splitVal,
             origVal: splitOrigVal,
             currency,
             rate,
             tags,
+            location,
+            receiptData,
             catId,
             payId,
             data: parts,
@@ -424,6 +889,8 @@ document.addEventListener('DOMContentLoaded', function() {
           currency,
           rate,
           tags,
+          location,
+          receiptData,
           catId,
           payId,
           data,
@@ -518,8 +985,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } else {
       const plan = S.subscription?.plan || 'free';
-      if (plan === 'free' && S.accounts.length >= 1) {
-        alert('O plano Grátis é limitado a 1 conta bancária. Escolha o plano Plus ou Pro para adicionar contas ilimitadas!');
+      const maxAccounts = plan === 'pro' ? 5 : (plan === 'plus' ? 2 : 1);
+      if (S.accounts.length >= maxAccounts) {
+        const planName = plan === 'pro' ? 'Pro (máximo 5 contas)' : (plan === 'plus' ? 'Plus (máximo 2 contas)' : 'Grátis (máximo 1 conta)');
+        alert(`Seu plano ${planName} atingiu o limite de ${maxAccounts} conta(s) bancária(s). Faça upgrade para aumentar seu limite!`);
         openM('paywall-overlay');
         return;
       }
@@ -734,12 +1203,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const ico = q('#cat-ico').value.trim() || '📌';
     const cor = q('#cat-cor').value;
     
-    S.categories.push({ id: 'cc_' + uid(), name: nome, type: tipo, icon: ico, color: cor });
+    const newCatId = 'cc_' + uid();
+    S.categories.push({ id: newCatId, name: nome, type: tipo, icon: ico, color: cor });
     save();
     closeM('m-cat');
     setActiveCT(tipo);
     qa('.ctab').forEach(t => t.classList.toggle('on', t.dataset.ct === tipo));
     renderCatGrid();
+
+    // Se o modal de lançamento estiver visível, atualiza o dropdown e seleciona a nova categoria criada
+    const txCatSelect = q('#tx-cat');
+    const txModal = q('#m-tx');
+    if (txCatSelect && txModal && !txModal.hidden) {
+      const currentTxType = q('#tx-tipo')?.value || 'Despesa';
+      fillCatSelect(txCatSelect, currentTxType);
+      txCatSelect.value = newCatId;
+    }
   });
 
   qa('.ctab').forEach(tab => {
@@ -794,17 +1273,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
   q('#f-saving')?.addEventListener('submit', (e) => {
     e.preventDefault();
+    const val = parseFloat(q('#sv-val').value) || 0;
+    const data = q('#sv-data').value;
+    const desc = q('#sv-desc').value.trim();
+
     S.savings.push({
       id: uid(),
-      val: parseFloat(q('#sv-val').value) || 0,
-      data: q('#sv-data').value,
-      desc: q('#sv-desc').value.trim()
+      val: val,
+      data: data,
+      desc: desc
     });
     
     save();
     closeM('m-saving');
     renderGuardado();
     renderDashboard();
+
+    if (val > 0) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Lançar Despesa?',
+          text: `Deseja lançar essa reserva de R$ ${val.toFixed(2)} como uma despesa em seus Lançamentos?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Sim',
+          cancelButtonText: 'Não'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            if (window.fillCatSelect) window.fillCatSelect(q('#tx-cat'), 'Despesa');
+            if (window.fillPaySelect) window.fillPaySelect(q('#tx-conta'));
+            openM('m-tx');
+            if (window.setTxType) window.setTxType('Despesa');
+            else if (q('#tx-tipo')) q('#tx-tipo').value = 'Despesa';
+            if (q('#tx-val')) q('#tx-val').value = val.toFixed(2);
+            if (q('#tx-data')) q('#tx-data').value = data;
+            if (q('#tx-desc')) q('#tx-desc').value = 'Dinheiro Guardado' + (desc ? ` - ${desc}` : '');
+            if (q('#tx-status')) q('#tx-status').value = 'Pago';
+          }
+        });
+      } else {
+        if (confirm(`Deseja lançar essa reserva de R$ ${val.toFixed(2)} como uma despesa em seus Lançamentos?`)) {
+          if (window.fillCatSelect) window.fillCatSelect(q('#tx-cat'), 'Despesa');
+          if (window.fillPaySelect) window.fillPaySelect(q('#tx-conta'));
+          openM('m-tx');
+          if (window.setTxType) window.setTxType('Despesa');
+          else if (q('#tx-tipo')) q('#tx-tipo').value = 'Despesa';
+          if (q('#tx-val')) q('#tx-val').value = val.toFixed(2);
+          if (q('#tx-data')) q('#tx-data').value = data;
+          if (q('#tx-desc')) q('#tx-desc').value = 'Dinheiro Guardado' + (desc ? ` - ${desc}` : '');
+          if (q('#tx-status')) q('#tx-status').value = 'Pago';
+        }
+      }
+    }
   });
 
   // 17. Backup & Restore / Excel & OFX Importer
@@ -989,32 +1509,37 @@ document.addEventListener('DOMContentLoaded', function() {
   // 18. Theme Manager (Light/Dark and Premium Themes)
   function applyTheme(theme) {
     document.body.classList.remove('light', 'midnight', 'forest', 'sakura', 'cyberpunk');
-    const toggleBtn = q('#themeToggle');
     
+    let icon = '🌙';
     if (theme === 'light') {
       document.body.classList.add('light');
-      if (toggleBtn) toggleBtn.textContent = '☀️';
+      icon = '☀️';
       if (window.Chart) window.Chart.defaults.color = '#475569';
     } else if (theme === 'midnight') {
       document.body.classList.add('midnight');
-      if (toggleBtn) toggleBtn.textContent = '🌌';
+      icon = '🌌';
       if (window.Chart) window.Chart.defaults.color = '#94a3b8';
     } else if (theme === 'forest') {
       document.body.classList.add('forest');
-      if (toggleBtn) toggleBtn.textContent = '🌲';
+      icon = '🌲';
       if (window.Chart) window.Chart.defaults.color = '#a7f3d0';
     } else if (theme === 'sakura') {
       document.body.classList.add('sakura');
-      if (toggleBtn) toggleBtn.textContent = '🌸';
+      icon = '🌸';
       if (window.Chart) window.Chart.defaults.color = '#be123c';
     } else if (theme === 'cyberpunk') {
       document.body.classList.add('cyberpunk');
-      if (toggleBtn) toggleBtn.textContent = '⚡';
+      icon = '⚡';
       if (window.Chart) window.Chart.defaults.color = '#9b9bbd';
     } else { // default dark
-      if (toggleBtn) toggleBtn.textContent = '🌙';
+      icon = '🌙';
       if (window.Chart) window.Chart.defaults.color = '#7c849c';
     }
+
+    const sbIcon = q('#themeToggleSidebar .ni');
+    if (sbIcon) sbIcon.textContent = icon;
+    const ttBtn = q('#themeToggle');
+    if (ttBtn) ttBtn.textContent = icon;
     
     updateThemeButtonsUI(theme);
     
@@ -1035,14 +1560,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  q('#themeToggle')?.addEventListener('click', () => {
-    const themes = ['dark', 'light', 'midnight', 'forest', 'sakura', 'cyberpunk'];
-    const currentTheme = localStorage.getItem('theme') || 'dark';
-    let nextIdx = themes.indexOf(currentTheme) + 1;
-    if (nextIdx >= themes.length) nextIdx = 0;
-    const newTheme = themes[nextIdx];
-    localStorage.setItem('theme', newTheme);
-    applyTheme(newTheme);
+  qa('#themeToggle, #themeToggleSidebar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const themes = ['dark', 'light', 'midnight', 'forest', 'sakura', 'cyberpunk'];
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      let nextIdx = themes.indexOf(currentTheme) + 1;
+      if (nextIdx >= themes.length) nextIdx = 0;
+      const newTheme = themes[nextIdx];
+      localStorage.setItem('theme', newTheme);
+      applyTheme(newTheme);
+    });
   });
 
   // Attach configuration theme buttons listeners
@@ -1105,6 +1632,48 @@ document.addEventListener('DOMContentLoaded', function() {
       calendarState.currentYear++;
     }
     renderCalendar();
+  });
+
+  // Exportar para Google Agenda / Outlook / Apple Agenda via .ics
+  q('#btnExportICS')?.addEventListener('click', () => {
+    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//PoupaFy//Controle Financeiro//PT\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:PoupaFy - Lançamentos e Contas\r\n";
+
+    const txs = S.transactions || [];
+    if (txs.length === 0) {
+      alert("Nenhum lançamento encontrado para exportar para o Google Agenda.");
+      return;
+    }
+
+    txs.forEach(t => {
+      if (!t.data) return;
+      const cleanDate = t.data.replace(/-/g, '');
+      const uidStr = `poupafy-${t.id || Math.random().toString(36).substring(2)}`;
+      const summary = `${t.tipo === 'Receita' ? '🟢' : '🔴'} ${t.desc} (${fmt(t.val)})`;
+      const description = `Lançamento PoupaFy: ${t.tipo} de ${fmt(t.val)} - Status: ${t.status || 'Pendente'}`;
+
+      icsContent += "BEGIN:VEVENT\r\n";
+      icsContent += `UID:${uidStr}\r\n`;
+      icsContent += `DTSTART;VALUE=DATE:${cleanDate}\r\n`;
+      icsContent += `DTEND;VALUE=DATE:${cleanDate}\r\n`;
+      icsContent += `SUMMARY:${summary}\r\n`;
+      icsContent += `DESCRIPTION:${description}\r\n`;
+      icsContent += "STATUS:CONFIRMED\r\n";
+      icsContent += "END:VEVENT\r\n";
+    });
+
+    icsContent += "END:VCALENDAR\r\n";
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `poupafy-google-agenda-${new Date().toISOString().substring(0, 10)}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    alert("📅 Arquivo da Agenda (.ics) gerado com sucesso!\n\nNo Google Agenda (calendar.google.com):\n1. Clique na engrenagem ⚙️ (Configurações)\n2. Acesse 'Importar e Exportar'\n3. Selecione este arquivo para sincronizar todas as suas contas!");
   });
 
   q('#wPrev')?.addEventListener('click', () => {
@@ -1287,6 +1856,137 @@ document.addEventListener('DOMContentLoaded', function() {
       alert('Chave de API salva no navegador com sucesso!');
     }
   });
+
+  // ─── NGROK REMOTE ACCESS TUNNEL ─────────────────────────────────────────────
+  const btnToggleNgrok = q('#btnToggleNgrok');
+  const btnCopyNgrokUrl = q('#btnCopyNgrokUrl');
+  const ngrokStatusDesc = q('#ngrok-status-desc');
+  const ngrokUrlContainer = q('#ngrok-url-container');
+  const ngrokUrlInput = q('#ngrok-url-input');
+
+  const isCapacitor = !!window.Capacitor && window.Capacitor.isNative;
+  if (isCapacitor) {
+    const ngrokCard = btnToggleNgrok?.closest('.card');
+    if (ngrokCard) {
+      ngrokCard.style.display = 'none';
+    }
+  }
+
+  let ngrokActive = false;
+
+  async function updateNgrokStatus() {
+    try {
+      const res = await fetch('/api/tunnel');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.active && data.url) {
+          ngrokActive = true;
+          if (btnToggleNgrok) {
+            btnToggleNgrok.textContent = 'Parar Túnel';
+            btnToggleNgrok.className = 'brd sm';
+          }
+          if (ngrokStatusDesc) {
+            ngrokStatusDesc.innerHTML = `<span style="color:var(--gr); font-weight:bold;">● Ativo e acessível publicamente</span>`;
+          }
+          if (ngrokUrlContainer) ngrokUrlContainer.style.display = 'block';
+          if (ngrokUrlInput) ngrokUrlInput.value = data.url;
+        } else {
+          ngrokActive = false;
+          if (btnToggleNgrok) {
+            btnToggleNgrok.textContent = 'Iniciar Túnel';
+            btnToggleNgrok.className = 'bp sm';
+          }
+          if (ngrokStatusDesc) {
+            ngrokStatusDesc.textContent = 'O túnel está inativo no momento.';
+          }
+          if (ngrokUrlContainer) ngrokUrlContainer.style.display = 'none';
+          if (ngrokUrlInput) ngrokUrlInput.value = '';
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar status do túnel ngrok:', err);
+    }
+  }
+
+  btnToggleNgrok?.addEventListener('click', async () => {
+    btnToggleNgrok.disabled = true;
+    const originalText = btnToggleNgrok.textContent;
+    btnToggleNgrok.textContent = ngrokActive ? 'Parando...' : 'Iniciando...';
+
+    try {
+      const res = await fetch('/api/tunnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: ngrokActive ? 'stop' : 'start' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (!ngrokActive) {
+          alert('Túnel ngrok criado com sucesso! Sua aplicação agora está visível publicamente.');
+        } else {
+          alert('Túnel ngrok encerrado.');
+        }
+        await updateNgrokStatus();
+      } else {
+        alert('Erro ao gerenciar o túnel ngrok: ' + (data.error || 'Erro desconhecido'));
+        btnToggleNgrok.textContent = originalText;
+      }
+    } catch (err) {
+      alert('Falha na comunicação com o servidor local.');
+      btnToggleNgrok.textContent = originalText;
+    } finally {
+      btnToggleNgrok.disabled = false;
+    }
+  });
+
+  btnCopyNgrokUrl?.addEventListener('click', () => {
+    if (ngrokUrlInput && ngrokUrlInput.value) {
+      navigator.clipboard.writeText(ngrokUrlInput.value)
+        .then(() => alert('URL copiada para a área de transferência!'))
+        .catch(err => alert('Falha ao copiar: ' + err));
+    }
+  });
+
+  const btnSaveNgrokToken = q('#btnSaveNgrokToken');
+  const ngrokTokenInput = q('#ngrok-token-input');
+
+  if (ngrokTokenInput) {
+    ngrokTokenInput.value = localStorage.getItem('financepro_ngrok_authtoken') || '';
+  }
+
+  btnSaveNgrokToken?.addEventListener('click', async () => {
+    const token = ngrokTokenInput.value.trim();
+    if (!token) {
+      alert('Por favor, insira um token válido.');
+      return;
+    }
+
+    btnSaveNgrokToken.disabled = true;
+    btnSaveNgrokToken.textContent = 'Salvando...';
+
+    try {
+      const res = await fetch('/api/tunnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set-token', token })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('financepro_ngrok_authtoken', token);
+        alert('Authtoken do ngrok configurado com sucesso no sistema local!');
+      } else {
+        alert('Erro ao salvar token: ' + (data.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      alert('Falha na comunicação com o servidor local.');
+    } finally {
+      btnSaveNgrokToken.disabled = false;
+      btnSaveNgrokToken.textContent = 'Salvar';
+    }
+  });
+
+  // Consultar status ao inicializar
+  updateNgrokStatus();
 
   // 26. Calculator DSR options toggle
   q('#he-has-dsr')?.addEventListener('change', function() {
@@ -1885,50 +2585,86 @@ document.addEventListener('DOMContentLoaded', function() {
   billingCycleToggle?.addEventListener('change', updatePaywallPricing);
   updatePaywallPricing();
 
-  // Fechar paywall
-  btnSelectFree?.addEventListener('click', () => closeM('paywall-overlay'));
-  btnPaywallClose?.addEventListener('click', () => closeM('paywall-overlay'));
-
-  // Simulação de compras para testes
-  q('#btn-simulate-plus')?.addEventListener('click', () => {
-    S.subscription = {
-      plan: 'plus',
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      status: 'active',
-      aiQueriesUsed: 0,
-      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
-    };
-    save();
-    closeM('paywall-overlay');
-    alert('Plano Plus simulado e ativado com sucesso! Limites atualizados.');
-    updateUI();
+  // Abrir paywall do perfil
+  q('#btnOpenChangePlan')?.addEventListener('click', () => {
+    openM('paywall-overlay');
   });
 
-  q('#btn-simulate-pro')?.addEventListener('click', () => {
-    S.subscription = {
-      plan: 'pro',
-      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      status: 'active',
-      aiQueriesUsed: 0,
-      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
-    };
-    save();
-    closeM('paywall-overlay');
-    alert('Plano Pro simulado e ativado com sucesso! Todos os recursos liberados.');
-    updateUI();
+  // 💳 Integração Stripe Checkout
+  // handleStripeReturn() agora é chamado no registerAuthCallback para garantir que
+  // o usuário esteja autenticado antes de ativar o plano e sincronizar com o Firestore.
+
+  // Botões de Cancelamento de Assinatura
+  q('#btnCancelPlan')?.addEventListener('click', () => {
+    openCancelSubscriptionModal();
   });
 
-  q('#btn-simulate-reset')?.addEventListener('click', () => {
-    S.subscription = {
-      plan: 'free',
-      expiresAt: null,
-      status: 'active',
-      aiQueriesUsed: 0,
-      aiQueriesResetMonth: new Date().toISOString().substring(0, 7)
+  q('#btnConfirmCancelStripe')?.addEventListener('click', () => {
+    cancelStripeSubscription();
+  });
+
+  // ── Rotina de Backup & Restauração PoupaFy ──
+  q('#btnBackup')?.addEventListener('click', () => {
+    const backupData = JSON.stringify(S, null, 2);
+    const dateStr = new Date().toISOString().substring(0, 10);
+    const blob = new Blob([backupData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `poupafy-backup-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    alert(`✅ Backup do PoupaFy gerado com sucesso!\n\nVocê pode salvar o arquivo "poupafy-backup-${dateStr}.json" na pasta "poupafy-backup" no seu Google Drive.`);
+  });
+
+  const fileRestoreInput = q('#fileRestore');
+  q('#btnRestore')?.addEventListener('click', () => {
+    if (fileRestoreInput) fileRestoreInput.click();
+  });
+
+  fileRestoreInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (typeof data === 'object' && data !== null) {
+          setS(data);
+          save();
+          alert('✅ Backup do PoupaFy restaurado com sucesso!');
+          updateUI();
+          if (window.renderDashboard) window.renderDashboard();
+        } else {
+          alert('Arquivo de backup inválido.');
+        }
+      } catch (err) {
+        alert('Erro ao ler arquivo de backup JSON: ' + err.message);
+      }
     };
-    save();
-    alert('Assinatura resetada para o Plano Grátis.');
-    updateUI();
+    reader.readAsText(file);
+    fileRestoreInput.value = '';
+  });
+
+  // Alterar Plano de Assinatura via Stripe Checkout
+  q('#btn-select-free')?.addEventListener('click', () => {
+    window.changeSubscriptionPlan('free');
+  });
+
+  q('#btn-buy-plus')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isYearly = q('#billing-cycle-toggle')?.checked || false;
+    redirectToStripeCheckout('plus', isYearly);
+  });
+
+  q('#btn-buy-pro')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isYearly = q('#billing-cycle-toggle')?.checked || false;
+    redirectToStripeCheckout('pro', isYearly);
   });
 
   // 30. Render initial view

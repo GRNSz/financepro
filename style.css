@@ -6,40 +6,44 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 
-/* ── DESIGN TOKENS ── */
+/* ── DESIGN TOKENS (Apple Liquid Glass) ── */
 :root {
   /* Colors */
-  --bg:          #0b0d12;
-  --surface:     #12151d;
-  --surface-2:   #181c26;
-  --surface-3:   #1f2333;
-  --border:      rgba(255,255,255,0.06);
-  --border-hover:rgba(255,255,255,0.13);
-  --text:        #e2e5f0;
-  --text-muted:  #7c849c;
-  --text-faint:  #41495e;
-  --accent:      #6366f1;
-  --accent-lt:   #818cf8;
-  --accent-glow: rgba(99,102,241,0.2);
+  --bg:          #080a0f;
+  --surface:     rgba(18, 23, 36, 0.65);
+  --surface-2:   rgba(26, 33, 50, 0.55);
+  --surface-3:   rgba(36, 46, 68, 0.6);
+  --border:      rgba(255, 255, 255, 0.08);
+  --border-hover:rgba(255, 255, 255, 0.18);
+  --text:        #f1f5f9;
+  --text-muted:  #94a3b8;
+  --text-faint:  #475569;
+  --accent:      #10b981;
+  --accent-lt:   #34d399;
+  --accent-glow: rgba(16, 185, 129, 0.2);
   --green:       #10b981;
   --red:         #f43f5e;
   --amber:       #f59e0b;
-  --purple:      #a855f7;
+  --purple:      #06b6d4;
+
+  /* Glassmorphism */
+  --glass-blur:   blur(18px) saturate(180%);
+  --glass-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 
   /* Radii */
-  --r-xs: 6px;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 20px;
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 22px;
 
   /* Layout */
-  --sidebar-w:  248px;
-  --topbar-h:   60px;
+  --sidebar-w:  256px;
+  --topbar-h:   64px;
   --page-pad:   28px;
 
   /* Font */
-  --font: 'Inter', system-ui, sans-serif;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 /* ── BASE ── */

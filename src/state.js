@@ -101,6 +101,27 @@ export function fixState() {
   if (!S.subscription) {
     S.subscription = { plan: 'free', expiresAt: null, status: 'active' };
   }
+  
+  // Garantir a preservação da assinatura Stripe ativada para evitar que snapshots antigos da nuvem sobrescrevam o plano
+  try {
+    const rawActiveSub = localStorage.getItem('poupafy_active_subscription');
+    if (rawActiveSub) {
+      const activeSub = JSON.parse(rawActiveSub);
+      if (activeSub && activeSub.plan && activeSub.expiresAt && activeSub.expiresAt > Date.now()) {
+        if (S.subscription.plan === 'free' || S.subscription.expiresAt < activeSub.expiresAt) {
+          S.subscription = {
+            plan: activeSub.plan,
+            expiresAt: activeSub.expiresAt,
+            status: 'active',
+            aiQueriesUsed: S.subscription.aiQueriesUsed || 0,
+            aiQueriesResetMonth: S.subscription.aiQueriesResetMonth || new Date().toISOString().substring(0, 7)
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error in fixState subscription check:', e);
+  }
 }
 
 export function setS(newState) {
@@ -140,13 +161,23 @@ export function openM(id) {
   const el = document.getElementById(id);
   if (el) {
     el.hidden = false;
-    el.querySelector('form')?.reset();
+    document.body.style.overflow = 'hidden';
   }
 }
 
 export function closeM(id) {
   const el = document.getElementById(id);
   if (el) el.hidden = true;
+  
+  const openModals = Array.from(document.querySelectorAll('.mbd')).filter(m => !m.hidden && m.style.display !== 'none');
+  if (openModals.length === 0) {
+    document.body.style.overflow = '';
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.openM = openM;
+  window.closeM = closeM;
 }
 
 // Period global state
