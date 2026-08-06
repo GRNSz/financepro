@@ -1506,34 +1506,23 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   q('#btnOpenImportExtrato')?.addEventListener('click', () => openM('m-import-extrato'));
 
-  // 18. Theme Manager (Light/Dark and Premium Themes)
+  // 18. Theme Manager (Light/Dark Apple + Notion Style)
   function applyTheme(theme) {
-    document.body.classList.remove('light', 'midnight', 'forest', 'sakura', 'cyberpunk');
+    let activeTheme = theme;
+    if (activeTheme !== 'light' && activeTheme !== 'dark') {
+      activeTheme = 'dark';
+    }
+
+    document.body.classList.remove('light');
     
     let icon = '🌙';
-    if (theme === 'light') {
+    if (activeTheme === 'light') {
       document.body.classList.add('light');
       icon = '☀️';
       if (window.Chart) window.Chart.defaults.color = '#475569';
-    } else if (theme === 'midnight') {
-      document.body.classList.add('midnight');
-      icon = '🌌';
-      if (window.Chart) window.Chart.defaults.color = '#94a3b8';
-    } else if (theme === 'forest') {
-      document.body.classList.add('forest');
-      icon = '🌲';
-      if (window.Chart) window.Chart.defaults.color = '#a7f3d0';
-    } else if (theme === 'sakura') {
-      document.body.classList.add('sakura');
-      icon = '🌸';
-      if (window.Chart) window.Chart.defaults.color = '#be123c';
-    } else if (theme === 'cyberpunk') {
-      document.body.classList.add('cyberpunk');
-      icon = '⚡';
-      if (window.Chart) window.Chart.defaults.color = '#9b9bbd';
     } else { // default dark
       icon = '🌙';
-      if (window.Chart) window.Chart.defaults.color = '#7c849c';
+      if (window.Chart) window.Chart.defaults.color = '#86868b';
     }
 
     const sbIcon = q('#themeToggleSidebar .ni');
@@ -1541,7 +1530,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ttBtn = q('#themeToggle');
     if (ttBtn) ttBtn.textContent = icon;
     
-    updateThemeButtonsUI(theme);
+    updateThemeButtonsUI(activeTheme);
     
     if (activePage === 'dashboard') {
       renderDashboard();
@@ -1550,7 +1539,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updateThemeButtonsUI(activeTheme) {
     qa('.theme-btn').forEach(btn => {
-      if (btn.dataset.theme === activeTheme) {
+      const bTheme = btn.dataset.theme === 'default' ? 'dark' : btn.dataset.theme;
+      if (bTheme === activeTheme) {
         btn.style.borderColor = 'var(--ac)';
         btn.style.boxShadow = '0 0 8px var(--ac)';
       } else {
@@ -1562,11 +1552,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   qa('#themeToggle, #themeToggleSidebar').forEach(btn => {
     btn.addEventListener('click', () => {
-      const themes = ['dark', 'light', 'midnight', 'forest', 'sakura', 'cyberpunk'];
       const currentTheme = localStorage.getItem('theme') || 'dark';
-      let nextIdx = themes.indexOf(currentTheme) + 1;
-      if (nextIdx >= themes.length) nextIdx = 0;
-      const newTheme = themes[nextIdx];
+      const newTheme = (currentTheme === 'light') ? 'dark' : 'light';
       localStorage.setItem('theme', newTheme);
       applyTheme(newTheme);
     });
@@ -1575,7 +1562,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Attach configuration theme buttons listeners
   qa('.theme-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      const selectedTheme = this.dataset.theme;
+      let selectedTheme = this.dataset.theme;
+      if (selectedTheme === 'default') selectedTheme = 'dark';
       localStorage.setItem('theme', selectedTheme);
       applyTheme(selectedTheme);
     });
