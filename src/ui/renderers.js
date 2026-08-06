@@ -183,9 +183,10 @@ export function renderDashboard() {
   let totalBal = Array.isArray(S.accounts) ? S.accounts.reduce((s,a)=>s+a.balance,0) : 0;
   if (endIso && Array.isArray(S.transactions)) {
     let afterNet = 0;
+    const accMap = new Map(Array.isArray(S.accounts) ? S.accounts.map(a => [a.id, a]) : []);
     S.transactions.forEach(t => {
       if (t.data > endIso && t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accMap.get(t.payId);
         if (acc) {
           afterNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
@@ -631,11 +632,12 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
 
   // 1. Saldo Inicial
   let saldoInicial = Array.isArray(S.accounts) ? S.accounts.reduce((s, a) => s + a.balance, 0) : 0;
+  const accMap = new Map(Array.isArray(S.accounts) ? S.accounts.map(a => [a.id, a]) : []);
   if (startIso && Array.isArray(S.transactions)) {
     let afterStartNet = 0;
     S.transactions.forEach(t => {
       if (t.data >= startIso && t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accMap.get(t.payId);
         if (acc) {
           afterStartNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
@@ -646,7 +648,7 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
     let allNet = 0;
     S.transactions.forEach(t => {
       if (t.status !== 'Pendente') {
-        const acc = S.accounts.find(a => a.id === t.payId);
+        const acc = accMap.get(t.payId);
         if (acc) {
           allNet += (t.tipo === 'Receita' ? t.val : -t.val);
         }
