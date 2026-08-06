@@ -2540,9 +2540,11 @@ export function renderProjecaoFluxoCaixa() {
     if (a.type !== 'Investimentos') currentBalance += (a.initialVal || 0);
   });
 
+  const accountsMap = new Map((S.accounts || []).map(acc => [acc.id, acc]));
+
   (S.transactions || []).forEach(t => {
     if (t.status === 'Pago') {
-      const a = (S.accounts || []).find(acc => acc.id === t.payId);
+      const a = accountsMap.get(t.payId);
       if (!a || a.type !== 'Investimentos') {
         currentBalance += (t.tipo === 'Receita' ? t.val : -t.val);
       }
