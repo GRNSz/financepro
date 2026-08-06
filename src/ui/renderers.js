@@ -710,7 +710,7 @@ export function renderDashPrevisto(mRec, mDesp, totalBal){
 }
 
 export function renderDashRecent(){
-  const recent = Array.isArray(S.transactions) ? [...S.transactions].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,6) : [];
+  const recent = Array.isArray(S.transactions) ? [...S.transactions].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,5) : [];
   const el=q('#dash-recent');
   if(!recent.length){el.innerHTML='<p class="empty">Sem lançamentos.</p>';return;}
   el.innerHTML='<table class="tx-tbl"><tbody>'+recent.map(t=>{
@@ -1785,6 +1785,8 @@ export function updateNotifications() {
     pageCountLbl.textContent = `${items.length} alerta${items.length === 1 ? '' : 's'}`;
   }
   
+  const modalContainer = q('#notif-modal-list');
+
   const emptyHtml = `
     <div style="padding: 32px 16px; text-align: center; color: var(--tx2);">
       <span style="font-size: 32px; display: block; margin-bottom: 8px;">🎉</span>
@@ -1795,13 +1797,14 @@ export function updateNotifications() {
   
   if (items.length === 0) {
     if (dropdownContainer) dropdownContainer.innerHTML = emptyHtml;
+    if (modalContainer) modalContainer.innerHTML = emptyHtml;
     if (pageContainer) pageContainer.innerHTML = emptyHtml;
     return;
   }
   
-  // Render no Dropdown (Versão Compacta com Ação Rápida)
+  // Render no Dropdown (Limitado a no máximo 10 últimas notificações)
   if (dropdownContainer) {
-    dropdownContainer.innerHTML = items.map(item => {
+    dropdownContainer.innerHTML = items.slice(0, 10).map(item => {
       let borderClr = 'var(--am)';
       if (item.type === 'overdue' || item.type === 'budget-over') borderClr = 'var(--rd)';
       
@@ -1816,6 +1819,30 @@ export function updateNotifications() {
             <span style="font-size: 12px; font-weight: 800; color: var(--tx);">${item.title}</span>
           </div>
           <div style="font-size: 11.5px; color: var(--tx2); line-height: 1.4;">${item.desc}</div>
+          ${actionBtn}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Render no Modal de Todas as Notificações
+  if (modalContainer) {
+    modalContainer.innerHTML = items.map(item => {
+      let borderClr = 'var(--am)';
+      let bgGrad = 'var(--s2)';
+      if (item.type === 'overdue' || item.type === 'budget-over') borderClr = 'var(--rd)';
+      
+      const actionBtn = item.txId ? `
+        <button class="bp sm" style="font-size: 11px; padding: 6px 10px; background: #10b981; border: none;" onclick="markNotificationAsPaid('${item.txId}')">
+          ✓ Quitar Agora
+        </button>` : '';
+
+      return `
+        <div style="border-left: 4px solid ${borderClr}; background: ${bgGrad}; padding: 12px 14px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--tx);">${item.title}</div>
+            <div style="font-size: 12px; color: var(--tx2);">${item.desc}</div>
+          </div>
           ${actionBtn}
         </div>
       `;
@@ -2667,3 +2694,36 @@ export function renderProjecaoFluxoCaixa() {
 }
 
 window.renderProjecaoFluxoCaixa = renderProjecaoFluxoCaixa;
+
+window.openSubMenuDividas = function() {
+  navigate('dividas');
+};
+
+window.openSubMenuCalendario = function() {
+  navigate('calendario');
+};
+
+let isSpreadsheetMode = false;
+window.toggleSpreadsheetView = function() {
+  isSpreadsheetMode = !isSpreadsheetMode;
+  const btn = q('#btnToggleSpreadsheetMode');
+  const tableWrap = q('.table-wrap');
+  
+  if (btn) {
+    btn.textContent = isSpreadsheetMode ? '📋 Lista Normal' : '📊 Planilha';
+    btn.style.background = isSpreadsheetMode ? 'var(--ac)' : '';
+    btn.style.color = isSpreadsheetMode ? '#fff' : '';
+  }
+  
+  if (tableWrap) {
+    if (isSpreadsheetMode) {
+      tableWrap.style.overflowX = 'auto';
+      tableWrap.style.boxShadow = '0 0 0 2px var(--ac)';
+      tableWrap.style.borderRadius = '12px';
+      tableWrap.style.background = 'var(--s2)';
+    } else {
+      tableWrap.style.boxShadow = 'none';
+      tableWrap.style.background = '';
+    }
+  }
+};

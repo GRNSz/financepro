@@ -17,29 +17,34 @@ function generateVectorPDF(activeTxs, periodLabel, subLabel, filename) {
   });
   const bal = totalRec - totalDesp;
 
-  // 1. Draw Header Bar
-  doc.setFillColor(15, 17, 26); // dark slate background
-  doc.rect(0, 0, 210, 30, 'F');
+  // 1. Draw Header Bar (Clean Apple/Notion Style)
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, 210, 32, 'F');
+  
+  // Header bottom border
+  doc.setDrawColor(229, 229, 234);
+  doc.setLineWidth(0.4);
+  doc.line(15, 32, 195, 32);
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(29, 29, 31);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.text('💸 FinancePro', 15, 20);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(200, 200, 200);
-  doc.text(subLabel, 15, 25);
-
-  // Header Right Period info
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(periodLabel, 195, 20, { align: 'right' });
+  doc.setFontSize(20);
+  doc.text('💸 PoupaFy', 15, 19);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(200, 200, 200);
+  doc.setTextColor(134, 134, 139);
+  doc.text(subLabel, 15, 25);
+
+  // Header Right Period info
+  doc.setTextColor(29, 29, 31);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text(periodLabel, 195, 19, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(134, 134, 139);
   doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 195, 25, { align: 'right' });
 
   // 2. KPI Metrics Section (Y = 40)
@@ -235,7 +240,7 @@ function generateVectorPDF(activeTxs, periodLabel, subLabel, filename) {
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text(`FinancePro · Página ${i} de ${pageCount}`, 105, 288, { align: 'center' });
+    doc.text(`PoupaFy · Relatório Financeiro · Página ${i} de ${pageCount}`, 105, 288, { align: 'center' });
   }
 
   // Save the PDF

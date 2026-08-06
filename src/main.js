@@ -1328,28 +1328,75 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // 17. Backup & Restore / Excel & OFX Importer
+  // 17. Backup & Restore / Excel & OFX Importer / CSV & Google Sheets
+  function getCatLocal(id) {
+    return (S.categories || []).find(c => c.id === id) || { name: 'Outros', icon: '⚙️', color: '#475569' };
+  }
+  function getPayLocal(id) {
+    const acc = (S.accounts || []).find(a => a.id === id);
+    if (acc) return acc.name;
+    const card = (S.cards || []).find(c => c.id === id);
+    if (card) return card.name;
+    return '—';
+  }
+
   q('#btnExportCSV')?.addEventListener('click', () => {
-    if (!S.transactions.length) {
-      alert('Sem lançamentos.');
+    if (!S.transactions || !S.transactions.length) {
+      alert('Sem lançamentos para exportar.');
       return;
     }
     let c = 'Data,Descrição,Categoria,Tipo,Valor,Status,Conta\n';
     S.transactions.forEach(t => {
-      const cat = getCat(t.catId).name;
-      const pay = getPay(t.payId);
-      c += `${t.data},"${t.desc.replace(/"/g, '""')}","${cat}",${t.tipo},${t.val},${t.status},"${pay}"\n`;
+      const cat = getCatLocal(t.catId).name;
+      const pay = getPayLocal(t.payId);
+      c += `${t.data},"${(t.desc||'').replace(/"/g, '""')}","${cat}",${t.tipo},${t.val},${t.status},"${pay}"\n`;
     });
     
     const blob = new Blob(['\ufeff' + c], { type: 'text/csv;charset=utf-8' });
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = u;
-    a.download = 'lancamentos-' + isoToday() + '.csv';
+    a.download = 'poupafy-lancamentos-' + isoToday() + '.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(u);
   });
+
+  window.exportToGoogleSheets = function() {
+    if (!S.transactions || !S.transactions.length) {
+      alert('Nenhum lançamento para exportar.');
+      return;
+    }
+    let tsv = 'Data\tDescrição\tCategoria\tTipo\tValor\tStatus\tConta\n';
+    S.transactions.forEach(t => {
+      const cat = getCatLocal(t.catId).name;
+      const pay = getPayLocal(t.payId);
+      const valStr = t.val.toFixed(2).replace('.', ',');
+      tsv += `${t.data}\t${t.desc||''}\t${cat}\t${t.tipo}\t${valStr}\t${t.status}\t${pay}\n`;
+    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tsv).then(() => {
+        alert('📊 Dados formatados para o Google Sheets copiados com sucesso!\n\nAbra sua planilha do Google Sheets e pressione Ctrl + V para colar.');
+      }).catch(() => {
+        downloadTsvFile(tsv);
+      });
+    } else {
+      downloadTsvFile(tsv);
+    }
+  };
+
+  function downloadTsvFile(tsv) {
+    const blob = new Blob(['\ufeff' + tsv], { type: 'text/tab-separated-values;charset=utf-8' });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u;
+    a.download = 'poupafy-googlesheets-' + isoToday() + '.tsv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(u);
+  }
 
   q('#btnBackup')?.addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
