@@ -2832,10 +2832,14 @@ export function exportCalendarICS(year, month) {
   
   const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   
+  const categoriesMap = new Map((S.categories || []).map(c => [c.id, c]));
+  const accountsMap = new Map((S.accounts || []).map(a => [a.id, a]));
+  const cardsMap = new Map((S.cards || []).map(c => [c.id, c]));
+
   list.forEach(t => {
-    const cat = S.categories.find(c => c.id === t.catId) || { name: 'Outros', icon: '⚙️' };
-    const acc = S.accounts.find(a => a.id === t.payId);
-    const card = S.cards.find(c => c.id === t.payId);
+    const cat = categoriesMap.get(t.catId) || { name: 'Outros', icon: '⚙️' };
+    const acc = accountsMap.get(t.payId);
+    const card = cardsMap.get(t.payId);
     const payName = acc ? acc.name : card ? card.name : '—';
     
     const startIso = t.data.replace(/-/g, '');
