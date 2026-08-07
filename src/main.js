@@ -2487,7 +2487,7 @@ document.addEventListener('DOMContentLoaded', function() {
   window.showGlobalLoader = showGlobalLoader;
   window.hideGlobalLoader = hideGlobalLoader;
 
-  // ── Lógica da Tela de Planos (Paywall & Mercado Pago) ──
+  // ── Lógica da Tela de Planos (Paywall & Stripe) ──
   const billingCycleToggle = q('#billing-cycle-toggle');
   const btnSelectFree = q('#btn-select-free');
   const btnPaywallClose = q('#btn-paywall-close');
@@ -2509,8 +2509,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (periodPlus) periodPlus.textContent = "/mês (R$ 118,80/ano)";
       if (pricePro) pricePro.textContent = "19,90";
       if (periodPro) periodPro.textContent = "/mês (R$ 238,80/ano)";
-      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financepro-plus-anual";
-      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financepro-pro-anual";
+      if (btnBuyPlus) btnBuyPlus.href = "https://buy.stripe.com/8x26oH3x4gCd48d3CedjO00";
+      if (btnBuyPro) btnBuyPro.href = "https://buy.stripe.com/6oU7sL8Ro99LbAFegSdjO01";
       monthlyLbl?.classList.remove('active');
       yearlyLbl?.classList.add('active');
     } else {
@@ -2518,8 +2518,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (periodPlus) periodPlus.textContent = "/mês";
       if (pricePro) pricePro.textContent = "29,90";
       if (periodPro) periodPro.textContent = "/mês";
-      if (btnBuyPlus) btnBuyPlus.href = "https://link.mercadopago.com.br/financepro-plus-mensal";
-      if (btnBuyPro) btnBuyPro.href = "https://link.mercadopago.com.br/financepro-pro-mensal";
+      if (btnBuyPlus) btnBuyPlus.href = "https://buy.stripe.com/8x26oH3x4gCd48d3CedjO00";
+      if (btnBuyPro) btnBuyPro.href = "https://buy.stripe.com/6oU7sL8Ro99LbAFegSdjO01";
       monthlyLbl?.classList.add('active');
       yearlyLbl?.classList.remove('active');
     }
