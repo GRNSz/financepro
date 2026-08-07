@@ -11,52 +11,36 @@ const puppeteer = require('puppeteer');
   await new Promise(r => setTimeout(r, 1000));
   console.log('Page loaded successfully');
   
-  // Test #btnNewTx
-  try {
-    await page.evaluate(() => document.querySelector('#btnNewTx').click());
-    await new Promise(r => setTimeout(r, 300));
-    const isTxVisible = await page.evaluate(() => {
-      const modal = document.querySelector('#m-tx');
-      return modal && !modal.hidden && window.getComputedStyle(modal).display !== 'none';
-    });
-    console.log('TX Modal visible via #btnNewTx:', isTxVisible);
-    
-    // Close modal
-    await page.evaluate(() => window.closeM('m-tx'));
-    await new Promise(r => setTimeout(r, 200));
-  } catch (e) {
-    console.log('Error testing #btnNewTx:', e.message);
-  }
+  // 1. Initial page (Dashboard)
+  const initialText = await page.evaluate(() => document.querySelector('#btnNewTx').innerText);
+  console.log('Initial top-right button text:', initialText.trim());
   
-  // Test #btnNewSaving
-  try {
-    await page.evaluate(() => document.querySelector('#btnNewSaving').click());
-    await new Promise(r => setTimeout(r, 300));
-    const isSavingVisible = await page.evaluate(() => {
-      const modal = document.querySelector('#m-saving');
-      return modal && !modal.hidden && window.getComputedStyle(modal).display !== 'none';
-    });
-    console.log('Saving Modal visible via #btnNewSaving:', isSavingVisible);
-    
-    // Close modal
-    await page.evaluate(() => window.closeM('m-saving'));
-    await new Promise(r => setTimeout(r, 200));
-  } catch (e) {
-    console.log('Error testing #btnNewSaving:', e.message);
-  }
+  // 2. Navigate to 'guardado'
+  await page.evaluate(() => window.navigate('guardado'));
+  await new Promise(r => setTimeout(r, 300));
+  
+  const guardadoText = await page.evaluate(() => document.querySelector('#btnNewTx').innerText);
+  console.log('Top-right button text on Dinheiro Guardado page:', guardadoText.trim());
+  
+  // Click top-right button on 'guardado'
+  await page.evaluate(() => document.querySelector('#btnNewTx').click());
+  await new Promise(r => setTimeout(r, 300));
+  
+  const isSavingModalVisible = await page.evaluate(() => {
+    const modal = document.querySelector('#m-saving');
+    return modal && !modal.hidden && window.getComputedStyle(modal).display !== 'none';
+  });
+  console.log('Saving Modal opened via dynamic header button:', isSavingModalVisible);
+  
+  await page.evaluate(() => window.closeM('m-saving'));
+  await new Promise(r => setTimeout(r, 200));
 
-  // Test #btnNewTx2
-  try {
-    await page.evaluate(() => document.querySelector('#btnNewTx2').click());
-    await new Promise(r => setTimeout(r, 300));
-    const isTx2Visible = await page.evaluate(() => {
-      const modal = document.querySelector('#m-tx');
-      return modal && !modal.hidden && window.getComputedStyle(modal).display !== 'none';
-    });
-    console.log('TX Modal visible via #btnNewTx2:', isTx2Visible);
-  } catch (e) {
-    console.log('Error testing #btnNewTx2:', e.message);
-  }
+  // 3. Navigate back to 'lancamentos'
+  await page.evaluate(() => window.navigate('lancamentos'));
+  await new Promise(r => setTimeout(r, 300));
+  
+  const lancamentosText = await page.evaluate(() => document.querySelector('#btnNewTx').innerText);
+  console.log('Top-right button text on Lançamentos page:', lancamentosText.trim());
 
   await browser.close();
   process.exit(0);

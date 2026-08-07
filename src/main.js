@@ -339,15 +339,15 @@ document.addEventListener('click', function(e) {
     return;
   }
 
-  if (action === 'open-tx' || btnId === 'btnNewTx' || btnId === 'btnNewTx2') {
-    e.preventDefault();
-    window.openTxCreateModal();
-    return;
-  }
-
   if (action === 'open-saving' || btnId === 'btnNewSaving') {
     e.preventDefault();
     window.openSavingModal();
+    return;
+  }
+
+  if (action === 'open-tx' || btnId === 'btnNewTx' || btnId === 'btnNewTx2') {
+    e.preventDefault();
+    window.openTxCreateModal();
     return;
   }
 

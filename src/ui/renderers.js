@@ -48,6 +48,18 @@ export function navigate(page) {
     if (overlay) overlay.classList.remove('open');
   }
 
+  // Update top-right header button dynamically based on page
+  const headerBtn = q('#btnNewTx');
+  if (headerBtn) {
+    if (page === 'guardado') {
+      headerBtn.innerHTML = '+<span> Lançar Reserva</span>';
+      headerBtn.dataset.action = 'open-saving';
+    } else {
+      headerBtn.innerHTML = '+<span> Lançamento</span>';
+      headerBtn.dataset.action = 'open-tx';
+    }
+  }
+
   // Show/hide global periodBar based on current tab
   const periodPages = ['dashboard', 'graficos', 'lancamentos', 'guardado'];
   const pBar = q('#periodBar');
