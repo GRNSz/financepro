@@ -213,30 +213,35 @@ function renderMainChart() {
   const labels = [], inc = [], exp = [];
   const now = new Date();
 
+  // ⚡ Bolt: Optimize O(N*M) loop to O(N) by pre-calculating monthly totals in a single pass.
+  // We use fast string slicing on 'YYYY-MM-DD' dates to avoid expensive Date parsing.
+  const monthlyData = {};
+  S.transactions.forEach(t => {
+    if (!t.date || t.date.length < 7) return;
+    const yStr = t.date.substring(0, 4);
+    const mStr = t.date.substring(5, 7);
+    const key = `${yStr}-${parseInt(mStr, 10) - 1}`;
+
+    if (!monthlyData[key]) monthlyData[key] = { inc: 0, exp: 0 };
+    if (t.type === 'income') monthlyData[key].inc += t.amount;
+    else monthlyData[key].exp += t.amount;
+  });
+
   if (mode === '6months') {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      labels.push(MONTHS[d.getMonth()]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      labels.push(MONTHS[m]);
+
+      const data = monthlyData[`${y}-${m}`] || { inc: 0, exp: 0 };
+      inc.push(data.inc); exp.push(data.exp);
     }
   } else {
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const data = monthlyData[`${yr}-${m}`] || { inc: 0, exp: 0 };
+      inc.push(data.inc); exp.push(data.exp);
     }
   }
 
