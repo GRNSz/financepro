@@ -78,7 +78,7 @@ export async function redirectToStripeCheckout(plan, isYearly = false) {
         };
 
         if (email) sessionConfig.customerEmail = email;
-        if (uid) sessionConfig.clientReferenceId = uid;
+        if (uid) sessionConfig.clientReferenceId = `${uid}:${plan}`;
 
         const result = await stripe.redirectToCheckout(sessionConfig);
         if (result.error) {
@@ -115,7 +115,7 @@ export async function redirectToStripeCheckout(plan, isYearly = false) {
     const separator = parsedLink.search ? '&' : '?';
     let targetUrl = paymentLink.trim();
     if (email) targetUrl += `${separator}prefilled_email=${encodeURIComponent(email)}`;
-    if (uid)   targetUrl += `&client_reference_id=${encodeURIComponent(uid)}`;
+    if (uid)   targetUrl += `&client_reference_id=${encodeURIComponent(`${uid}:${plan}`)}`;
 
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
     return;

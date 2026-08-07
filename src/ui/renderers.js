@@ -40,6 +40,12 @@ export function navigate(page) {
   q('#pageTitle').textContent = PAGE_TITLES[page]||page;
   activePage = page;
 
+  // Clear stuck body overflow when switching pages if no modal is visible
+  const openModals = Array.from(document.querySelectorAll('.mbd')).filter(m => !m.hidden && m.style.display !== 'none' && m.classList.contains('modal-open'));
+  if (openModals.length === 0) {
+    document.body.style.overflow = '';
+  }
+
   // Close sidebar on mobile
   if(window.innerWidth<=768) {
     const sidebar = document.getElementById('sidebar');
@@ -1296,44 +1302,18 @@ window.delSaving = function(id) {
 window.adjustSavingsBalancePrompt = function() {
   const currentTotal = Array.isArray(S.savings) ? S.savings.reduce((s, sv) => s + (sv.val || 0), 0) : 0;
   
-  const input = prompt(`Digite o novo valor total de Dinheiro Guardado (Saldo Atual: ${fmt(currentTotal)}):`, currentTotal > 0 ? currentTotal.toFixed(2) : '');
-  if (input === null || input.trim() === '') return;
+  const curEl = q('#adj-sv-current');
+  const newValEl = q('#adj-sv-newval');
+  const reasonEl = q('#adj-sv-reason');
   
-  let cleaned = input.replace('R$', '').trim();
-  if (cleaned.includes(',')) {
-    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-  }
-  const newVal = parseFloat(cleaned);
+  if (curEl) curEl.value = fmt(currentTotal);
+  if (newValEl) newValEl.value = currentTotal > 0 ? currentTotal.toFixed(2) : '';
+  if (reasonEl) reasonEl.value = '';
   
-  if (isNaN(newVal) || newVal < 0) {
-    alert('Por favor, digite um valor numérico válido (Ex: 5000.00 ou 5000,00).');
-    return;
-  }
-  
-  const diff = +(newVal - currentTotal).toFixed(2);
-  if (Math.abs(diff) < 0.01) {
-    alert('O valor digitado é igual ao saldo atual.');
-    return;
-  }
-  
-  if (!Array.isArray(S.savings)) S.savings = [];
-  
-  S.savings.push({
-    id: uid(),
-    data: isoToday(),
-    val: diff,
-    desc: diff > 0 ? 'Ajuste Manual de Saldo (+)' : 'Ajuste Manual de Saldo (−)'
-  });
-  
-  save();
-  renderGuardado();
-  renderDashboard();
-  
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#8b5cf6;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,0.4);z-index:9999;animation:fadeup 0.3s ease;';
-  toast.innerHTML = `🐷 Saldo Guardado atualizado com sucesso para ${fmt(newVal)}!`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+  openM('m-adjust-saving');
+  setTimeout(() => {
+    try { if (newValEl) newValEl.focus(); } catch(e) {}
+  }, 150);
 };
 
 window.runSimulation = function() {

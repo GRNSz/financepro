@@ -19,6 +19,17 @@ service cloud.firestore {
       }
     }
 
+    // Status da assinatura escrito pelo webhook via Admin SDK e lido pelo próprio usuário.
+    match /subscriptions/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Controle de idempotência dos webhooks: somente a Function acessa esta coleção.
+    match /stripe_events/{eventId} {
+      allow read, write: if false;
+    }
+
     // ════════════════════════════════════════════════════
     //  PONTE DE AUTENTICAÇÃO TAURI — temporária e protegida
     //  Apenas o próprio dono da sessão pode escrever/deletar.
@@ -26,10 +37,10 @@ service cloud.firestore {
     //  Leitura só é permitida ao criador da sessão (via sessionId gerado no cliente).
     // ════════════════════════════════════════════════════
     match /login_sessions/{sessionId} {
-      // Criar: qualquer um pode criar uma sessão (necessário para o fluxo Tauri)
-      // mas o documento deve ter um campo createdAt recente (máximo 5 minutos no passado)
-      // para evitar sessões obsoletas como vetor de ataque.
+      // Criar: qualquer cliente pode criar uma sessão temporária de ponte OAuth
+      // mas o documento deve ter estrutura válida e createdAt recente (máximo 5 min)
       allow create: if request.resource.data.keys().hasOnly(['idToken', 'accessToken', 'createdAt'])
+                    && request.resource.data.idToken is string
                     && request.resource.data.createdAt is timestamp
                     && request.resource.data.createdAt > request.time - duration.value(300, 's');
 

@@ -27,11 +27,13 @@ export let firebaseConfig = null;
 export let db = null;
 export let auth = null;
 export let firebaseUnsub = null;
+let subscriptionUnsub = null;
 export let currentUser = null; // { uid, email, name, photoURL, isAnonymous, providerId }
 export let guestUser = null;
 
 let syncCallbacks = [];
 let authCallbacks = [];
+let cloudSyncReady = false;
 
 export function registerSyncCallback(cb) {
   syncCallbacks.push(cb);
@@ -150,6 +152,9 @@ export function initFirebase() {
     
     auth.onAuthStateChanged(user => {
       if (user) {
+        // Impede que um save local sobrescreva o documento remoto antes do
+        // primeiro snapshot da conta ser carregado e descriptografado.
+        cloudSyncReady = false;
         window.addDevLog?.(`onAuthStateChanged: User logged in: ${user.email} (${user.uid})`, 'info');
         currentUser = {
           uid: user.uid,
@@ -212,10 +217,16 @@ export function initFirebase() {
         
         updateUserProfileUI();
         syncWithFirestore(user.uid);
+        syncSubscriptionWithFirestore(user.uid);
         authCallbacks.forEach(cb => cb(currentUser));
       } else {
         window.addDevLog?.('onAuthStateChanged: No user logged in (user is null)', 'info');
         currentUser = null;
+        cloudSyncReady = false;
+        if (subscriptionUnsub) {
+          subscriptionUnsub();
+          subscriptionUnsub = null;
+        }
         if (!guestUser) {
           const loginScreen = q('#login-screen');
           if (loginScreen) loginScreen.style.display = 'flex';
@@ -546,6 +557,7 @@ export function updateUserPassword(newPassword) {
 export function signOutUser() {
   const resetAndNavigate = () => {
     currentUser = null;
+    cloudSyncReady = false;
     guestUser = null;
     localStorage.removeItem('financepro_guest_user');
     localStorage.removeItem('financeos_guest_user');
@@ -579,6 +591,7 @@ export function signOutUser() {
 }
 
 let isUnlockModalOpen = false;
+let isSyncMigrationInProgress = false;
 function promptForUnlock(remoteData, docRef) {
   if (isUnlockModalOpen) return;
   isUnlockModalOpen = true;
@@ -591,7 +604,7 @@ function promptForUnlock(remoteData, docRef) {
   
   if (!modal) return;
   
-  modal.hidden = false;
+  openM('modal-crypto-unlock');
   if (errDiv) errDiv.style.display = 'none';
   form.reset();
   
@@ -604,11 +617,28 @@ function promptForUnlock(remoteData, docRef) {
       const decryptedStr = await decryptData(remoteData, pw);
       const decryptedState = JSON.parse(decryptedStr);
       
+      // Migração única de documentos antigos: depois deste desbloqueio, a
+      // sincronização passa a usar a chave automática da conta e não volta a
+      // pedir uma senha separada ao usuário.
+      const automaticKey = currentUser?.uid;
+      if (!automaticKey) throw new Error('Usuário não autenticado para concluir a migração.');
       setSyncPassword(pw);
       setS(decryptedState);
+
+      try {
+        const migratedData = await encryptData(JSON.stringify(decryptedState), automaticKey);
+        await docRef.set(migratedData);
+        setSyncPassword(automaticKey);
+        window.addDevLog?.('Legacy sync password removed after one-time migration.', 'success');
+      } catch (migrationError) {
+        // Os dados já foram desbloqueados. Se a rede falhar agora, mantemos a
+        // chave antiga neste dispositivo e tentamos migrar no próximo sync.
+        window.addDevLog?.(`One-time sync migration postponed: ${migrationError.message}`, 'warn');
+      }
       
-      modal.hidden = true;
+      closeM('modal-crypto-unlock');
       isUnlockModalOpen = false;
+      cloudSyncReady = true;
       window.hideGlobalLoader?.();
       
       syncCallbacks.forEach(cb => {
@@ -628,10 +658,10 @@ function promptForUnlock(remoteData, docRef) {
   form.addEventListener('submit', handleSubmit);
   
   cancelBtn.onclick = () => {
-    modal.hidden = true;
+    closeM('modal-crypto-unlock');
     isUnlockModalOpen = false;
     form.removeEventListener('submit', handleSubmit);
-    signOut();
+    signOutUser();
   };
 }
 
@@ -648,7 +678,7 @@ function promptForSetup(legacyData, docRef) {
   
   if (!modal) return;
   
-  modal.hidden = false;
+  openM('modal-crypto-setup');
   form.reset();
   
   const handleSubmit = async (e) => {
@@ -668,7 +698,7 @@ function promptForSetup(legacyData, docRef) {
       
       await docRef.set(encrypted);
       
-      modal.hidden = true;
+      closeM('modal-crypto-setup');
       isSetupModalOpen = false;
       window.hideGlobalLoader?.();
       
@@ -687,10 +717,10 @@ function promptForSetup(legacyData, docRef) {
   form.addEventListener('submit', handleSubmit);
   
   cancelBtn.onclick = () => {
-    modal.hidden = true;
+    closeM('modal-crypto-setup');
     isSetupModalOpen = false;
     form.removeEventListener('submit', handleSubmit);
-    signOut();
+    signOutUser();
   };
 }
 
@@ -700,6 +730,7 @@ export function syncWithFirestore(uid) {
     return;
   }
   window.addDevLog?.(`syncWithFirestore: Starting sync for uid=${uid}`, 'info');
+  cloudSyncReady = false;
   window.showGlobalLoader?.("Sincronizando dados com a Nuvem...");
   const docRef = db.collection('users').doc(uid);
   firebaseUnsub = docRef.onSnapshot(async doc => {
@@ -710,38 +741,138 @@ export function syncWithFirestore(uid) {
       console.log('Data loaded from Firestore. Encrypted:', !!remoteData.encrypted);
       
       if (remoteData.encrypted) {
+        // 1. Tentar desbloquear com a senha salva localmente
+        let success = false;
         if (syncPassword) {
           try {
             const decryptedStr = await decryptData(remoteData, syncPassword);
             const decryptedState = JSON.parse(decryptedStr);
             setS(decryptedState);
+            success = true;
             window.addDevLog?.('Local state updated from Firestore successfully (Decrypted).', 'success');
-            syncCallbacks.forEach(cb => {
-              try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
-            });
+
+            // Uma senha antiga ainda salva neste dispositivo é suficiente para
+            // migrar silenciosamente o documento para a chave da própria conta.
+            if (syncPassword !== uid && !isSyncMigrationInProgress) {
+              isSyncMigrationInProgress = true;
+              try {
+                const migratedData = await encryptData(JSON.stringify(decryptedState), uid);
+                await docRef.set(migratedData);
+                setSyncPassword(uid);
+                window.addDevLog?.('Legacy sync password removed after automatic migration.', 'success');
+              } catch (migrationError) {
+                window.addDevLog?.(`Automatic password migration postponed: ${migrationError.message}`, 'warn');
+              } finally {
+                isSyncMigrationInProgress = false;
+              }
+            }
           } catch (err) {
-            window.addDevLog?.(`Stored password failed to decrypt: ${err.message}. Prompting...`, 'warn');
-            setSyncPassword(null);
-            promptForUnlock(remoteData, docRef);
+            window.addDevLog?.(`Stored password failed to decrypt: ${err.message}. Trying UID fallback...`, 'warn');
           }
+        }
+
+        // 2. Se falhar ou não houver senha salva, tentar o UID (chave automática transparente)
+        if (!success) {
+          try {
+            const decryptedStr = await decryptData(remoteData, uid);
+            const decryptedState = JSON.parse(decryptedStr);
+            setSyncPassword(uid);
+            setS(decryptedState);
+            success = true;
+            window.addDevLog?.('Cloud state unlocked transparently using Account UID key.', 'success');
+          } catch (err) {
+            window.addDevLog?.('UID fallback failed. User has custom master password. Prompting...', 'info');
+          }
+        }
+
+        if (success) {
+          cloudSyncReady = true;
+          syncCallbacks.forEach(cb => {
+            try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+          });
         } else {
-          window.addDevLog?.('Cloud document is encrypted. Prompting user for password...', 'info');
           promptForUnlock(remoteData, docRef);
         }
       } else {
-        // Document is not encrypted (legacy migration)
-        window.addDevLog?.('Cloud document is not encrypted (legacy). Prompting user to set a password...', 'warn');
-        promptForSetup(remoteData, docRef);
+        // Documento não criptografado (migração legado): migrar automaticamente usando UID.
+        // Nenhuma senha adicional é solicitada.
+        try {
+          setSyncPassword(uid);
+          const encrypted = await encryptData(JSON.stringify(remoteData), uid);
+          await docRef.set(encrypted);
+          setS(remoteData);
+          cloudSyncReady = true;
+          syncCallbacks.forEach(cb => {
+            try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+          });
+        } catch (e) {
+          window.addDevLog?.(`Automatic cloud migration failed: ${e.message}`, 'error');
+          console.error('Automatic cloud migration failed:', e);
+        }
       }
     } else {
-      console.log('No data found in Firestore. Creating document with current local state.');
-      window.addDevLog?.('No document found in Firestore. Prompting user to set a sync password...', 'warn');
-      promptForSetup(null, docRef);
+      // Novo usuário: criar documento criptografado automaticamente com a chave do UID sem interromper a navegação
+      try {
+        console.log('No data found in Firestore. Initializing cloud document with current local state.');
+        setSyncPassword(uid);
+        const encrypted = await encryptData(JSON.stringify(S), uid);
+        await docRef.set(encrypted);
+        cloudSyncReady = true;
+        window.addDevLog?.('Created initial cloud backup document using account UID key.', 'success');
+        syncCallbacks.forEach(cb => {
+          try { cb(); } catch (e) { window.addDevLog?.(`Sync callback crash: ${e.message}`, 'error'); }
+        });
+      } catch (err) {
+        console.error('Failed to create initial cloud state:', err);
+        window.addDevLog?.(`Failed to initialize cloud sync without a password: ${err.message}`, 'error');
+      }
     }
   }, err => {
     window.hideGlobalLoader?.();
     window.addDevLog?.(`Firestore subscription error (onSnapshot failed): ${err.message}`, 'error');
     console.error('Firestore subscription error:', err);
+  });
+}
+
+// Assinaturas são mantidas em uma coleção própria pelo webhook Stripe.
+// Isso evita tentar alterar o documento financeiro criptografado no servidor.
+export function syncSubscriptionWithFirestore(uid) {
+  if (subscriptionUnsub) {
+    subscriptionUnsub();
+    subscriptionUnsub = null;
+  }
+  if (!db || !uid) return;
+
+  subscriptionUnsub = db.collection('subscriptions').doc(uid).onSnapshot(doc => {
+    const remoteSubscription = doc.exists ? doc.data() : null;
+    const isAdmin = currentUser?.isAdmin || currentUser?.email?.toLowerCase() === 'gugzribeiro@gmail.com';
+    if (!remoteSubscription || isAdmin) return;
+
+    S.subscription = {
+      ...S.subscription,
+      plan: remoteSubscription.plan || 'free',
+      status: remoteSubscription.status || 'active',
+      expiresAt: remoteSubscription.currentPeriodEnd || null,
+      cancelAtPeriodEnd: Boolean(remoteSubscription.cancelAtPeriodEnd),
+      stripeCustomerId: remoteSubscription.stripeCustomerId || null,
+      stripeSubscriptionId: remoteSubscription.stripeSubscriptionId || null,
+      source: remoteSubscription.source || 'stripe'
+    };
+
+    if (S.subscription.plan === 'free') {
+      localStorage.removeItem('poupafy_active_subscription');
+    } else if (S.subscription.expiresAt) {
+      localStorage.setItem('poupafy_active_subscription', JSON.stringify({
+        plan: S.subscription.plan,
+        expiresAt: S.subscription.expiresAt,
+        status: S.subscription.status
+      }));
+    }
+    save();
+    window.renderSubscriptionInfo?.();
+    window.renderDashboard?.();
+  }, error => {
+    console.error('Subscription listener error:', error);
   });
 }
 
@@ -798,18 +929,15 @@ export function updateUserProfileUI() {
 
 // Hook state save to sync with firestore (encrypted)
 registerSaveCallback(async (state) => {
-  if (db && currentUser && !currentUser.isAnonymous) {
-    if (syncPassword) {
-      try {
-        const encrypted = await encryptData(JSON.stringify(state), syncPassword);
-        db.collection('users').doc(currentUser.uid).set(encrypted)
-          .then(() => console.log('Saved encrypted state to Firestore successfully'))
-          .catch(err => console.error('Error saving to Firestore:', err));
-      } catch (err) {
-        console.error('Failed to encrypt state for saving:', err);
-      }
-    } else {
-      console.warn('Cannot save to cloud: syncPassword is not set');
+  if (db && currentUser && !currentUser.isAnonymous && cloudSyncReady) {
+    const activePw = syncPassword || currentUser.uid;
+    try {
+      const encrypted = await encryptData(JSON.stringify(state), activePw);
+      db.collection('users').doc(currentUser.uid).set(encrypted)
+        .then(() => console.log('Saved encrypted state to Firestore successfully'))
+        .catch(err => console.error('Error saving to Firestore:', err));
+    } catch (err) {
+      console.error('Failed to encrypt state for saving:', err);
     }
   }
 });

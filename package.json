@@ -23,9 +23,11 @@
     "capacitor-notifications-listener": "^0.4.0",
     "chart.js": "^4.5.1",
     "firebase": "^10.14.1",
+    "firebase-admin": "^13.0.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "tesseract.js": "^7.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "stripe": "^18.0.0"
   }
 }

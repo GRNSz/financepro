@@ -13,18 +13,18 @@ if (typeof window !== 'undefined') {
   initDevLogger();
 }
 
-import { 
-  S, 
-  load, 
-  save, 
-  uid, 
-  fmt, 
-  fmtD, 
-  q, 
-  qa, 
-  isoToday, 
-  openM, 
-  closeM, 
+import {
+  S,
+  load,
+  save,
+  uid,
+  fmt,
+  fmtD,
+  q,
+  qa,
+  isoToday,
+  openM,
+  closeM,
   periodState,
   initState,
   setS,
@@ -35,14 +35,14 @@ import { hashPin, encryptData, decryptData } from './crypto.js';
 import { syncPassword } from './firebase.js';
 import { redirectToStripeCheckout, handleStripeReturn, openCancelSubscriptionModal, cancelStripeSubscription } from './stripe.js';
 
-import { 
-  initFirebase, 
-  loadFirebaseConfig, 
-  checkGuestLogin, 
-  loginWithGoogle, 
-  loginWithEmail, 
-  loginAsGuest, 
-  signOutUser, 
+import {
+  initFirebase,
+  loadFirebaseConfig,
+  checkGuestLogin,
+  loginWithGoogle,
+  loginWithEmail,
+  loginAsGuest,
+  signOutUser,
   currentUser,
   registerSyncCallback,
   registerAuthCallback,
@@ -53,39 +53,39 @@ import {
   deleteAccountAndData
 } from './firebase.js';
 
-import { 
-  handleImportFile, 
-  selectAllImport, 
-  saveImportedTransactions 
+import {
+  handleImportFile,
+  selectAllImport,
+  saveImportedTransactions
 } from './importer.js';
 
-import { 
-  pressCalc, 
-  calculateOvertime, 
-  switchCalcTab, 
-  calculateAmortization, 
-  calculateFire 
+import {
+  pressCalc,
+  calculateOvertime,
+  switchCalcTab,
+  calculateAmortization,
+  calculateFire
 } from './calculator.js';
 
 import { sendAiMessage } from './ai.js';
 import { exportWeeklyPDF, exportMonthlyPDF } from './pdf.js';
 
-import { 
-  navigate, 
-  renderPage, 
-  updateUI, 
-  updatePeriodLabel, 
-  renderDashboard, 
-  renderContas, 
-  renderMetas, 
-  renderDividas, 
-  renderGuardado, 
-  renderBudgets, 
-  renderRecurring, 
-  renderCatGrid, 
-  activePage, 
-  applyFilters, 
-  fillCatSelect, 
+import {
+  navigate,
+  renderPage,
+  updateUI,
+  updatePeriodLabel,
+  renderDashboard,
+  renderContas,
+  renderMetas,
+  renderDividas,
+  renderGuardado,
+  renderBudgets,
+  renderRecurring,
+  renderCatGrid,
+  activePage,
+  applyFilters,
+  fillCatSelect,
   fillPaySelect,
   updateNotifications,
   updateTxLivePreview,
@@ -131,7 +131,7 @@ export function checkSubscriptionExpirationWarning() {
   if (daysLeft > 0 && daysLeft <= 5) {
     const warnedKey = `poupafy_exp_warned_${sub.plan}_${daysLeft}`;
     const alreadyWarned = sessionStorage.getItem(warnedKey);
-    
+
     if (!alreadyWarned) {
       sessionStorage.setItem(warnedKey, 'true');
       setTimeout(() => {
@@ -173,7 +173,7 @@ function initBankNotificationListener() {
 
   NotificationsListener.isListening().then((res) => {
     if (!res.value) {
-      // Opcional: Aqui poderíamos pedir permissão. Mas para ser menos intrusivo, podemos 
+      // Opcional: Aqui poderíamos pedir permissão. Mas para ser menos intrusivo, podemos
       // deixar o usuário ativar manualmente nas configurações se avisarmos em alguma tela,
       // ou apenas chamar:
       NotificationsListener.requestPermission();
@@ -182,7 +182,7 @@ function initBankNotificationListener() {
 
   NotificationsListener.addListener('notificationReceivedEvent', (info) => {
     const text = (info.text || info.title || '').toLowerCase();
-    
+
     if (text.includes('aprovada') && (text.includes('compra') || text.includes('pagamento') || text.includes('transfer'))) {
       const match = text.match(/r\$ ?(\d+[.,]\d{2})/i);
       let valueStr = '';
@@ -241,13 +241,13 @@ export function openTxCreateModal() {
     if (txData) txData.value = isoToday();
     var txStatus = q('#tx-status');
     if (txStatus) txStatus.value = tipo === 'Receita' ? 'Recebido' : 'Pago';
-    
+
     const isInst = q('#tx-is-installment');
     if (isInst) isInst.checked = false;
-    
+
     const instWrap = q('#tx-inst-wrap');
     if (instWrap) instWrap.style.display = 'none';
-    
+
     const instInput = q('#tx-inst');
     if (instInput) instInput.value = '1';
 
@@ -269,7 +269,7 @@ export function openTxCreateModal() {
     if (recDayMonthWrap) recDayMonthWrap.style.display = 'block';
     const recDayWeekWrap = q('#tx-rec-day-week-wrap');
     if (recDayWeekWrap) recDayWeekWrap.style.display = 'none';
-    
+
     // Reset Premium Fields
     if (q('#tx-tags')) q('#tx-tags').value = '';
     if (q('#tx-moeda')) q('#tx-moeda').value = 'BRL';
@@ -423,11 +423,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // 3. Set date header in UI
   const dateEl = q('#tbDate');
   if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('pt-BR', { 
-      weekday: 'short', 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
+    dateEl.textContent = new Date().toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
     });
   }
 
@@ -520,18 +520,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // 8. Open/Create Transaction Modals
-  q('#btnNewTx')?.addEventListener('click', () => window.openTxCreateModal());
-  q('#btnNewTx2')?.addEventListener('click', () => window.openTxCreateModal());
-
   window.setTxType = function(type) {
     const hiddenSelect = q('#tx-tipo');
     if (hiddenSelect) hiddenSelect.value = type;
-    
+
     const btnExp = q('#btnTypeExpense');
     const btnInc = q('#btnTypeIncome');
     const valInput = q('#tx-val');
-    
+
     if (type === 'Despesa') {
       if (btnExp) {
         btnExp.style.background = 'rgba(239, 68, 68, 0.15)';
@@ -557,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       if (valInput) valInput.style.color = 'var(--gr)';
     }
-    
+
     fillCatSelect(q('#tx-cat'), type);
     const statusEl = q('#tx-status');
     if (statusEl) {
@@ -890,14 +886,14 @@ document.addEventListener('DOMContentLoaded', function() {
     e.preventDefault();
     const id = q('#tx-id').value;
     const tipo = q('#tx-tipo').value;
-    
+
     // Multi-currency Support & Conversion
     const currency = q('#tx-moeda')?.value || 'BRL';
     const rate = currency !== 'BRL' ? (parseFloat(q('#tx-taxa')?.value) || 1) : 1;
     const rawVal = parseFloat(q('#tx-val').value) || 0;
     const val = +(rawVal * rate).toFixed(2); // stored in BRL
     const origVal = currency !== 'BRL' ? rawVal : null;
-    
+
     // Tags Extraction
     const tagsVal = q('#tx-tags')?.value.trim() || '';
     const tags = tagsVal ? tagsVal.split(/\s+/).map(t => t.startsWith('#') ? t : '#' + t) : [];
@@ -925,7 +921,7 @@ document.addEventListener('DOMContentLoaded', function() {
             oldAcc.balance -= oldChange;
           }
         }
-        
+
         // Update fields
         t.tipo = tipo;
         t.desc = desc;
@@ -940,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function() {
         t.payId = payId;
         t.data = data;
         t.status = stat;
-        
+
         // Apply new balance impact (BRL value)
         if (stat !== 'Pendente') {
           const newAcc = S.accounts.find(a => a.id === payId);
@@ -960,7 +956,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const splitVal = +(val / inst).toFixed(2);
           const splitOrigVal = origVal ? +(origVal / inst).toFixed(2) : null;
           const currentStat = i === 1 ? stat : 'Pendente';
-          
+
           S.transactions.unshift({
             id: uid(),
             tipo,
@@ -979,7 +975,7 @@ document.addEventListener('DOMContentLoaded', function() {
             inst: i,
             total: inst
           });
-          
+
           if (currentStat !== 'Pendente') {
             const acc = S.accounts.find(a => a.id === payId);
             if (acc) acc.balance += (tipo === 'Receita' ? splitVal : -splitVal);
@@ -1004,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function() {
           inst: null,
           total: null
         });
-        
+
         if (stat !== 'Pendente') {
           const acc = S.accounts.find(a => a.id === payId);
           if (acc) acc.balance += (tipo === 'Receita' ? val : -val);
@@ -1035,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     }
-    
+
     save();
 
     const keepOpen = q('#tx-keep-open')?.checked;
@@ -1079,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const balance = parseFloat(q('#acc-bal').value) || 0;
     const broker = q('#acc-broker').value.trim();
     const rent = q('#acc-rent').value.trim();
-    
+
     if (id) {
       const acc = S.accounts.find(a => a.id === id);
       if (acc) {
@@ -1107,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', function() {
         rent: type === 'Investimentos' ? rent : ''
       });
     }
-    
+
     save();
     closeM('m-acc');
     renderContas();
@@ -1128,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const limit = parseFloat(q('#card-lim').value) || 0;
     const close = parseInt(q('#card-fech').value) || 1;
     const due = parseInt(q('#card-venc').value) || 10;
-    
+
     if (id) {
       const c = S.cards.find(x => x.id === id);
       if (c) {
@@ -1140,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       S.cards.push({ id: uid(), name, limit, close, due });
     }
-    
+
     save();
     closeM('m-card');
     renderContas();
@@ -1159,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const name = q('#goal-nome').value.trim();
     const tgt = parseFloat(q('#goal-tgt').value) || 0;
     const dl = q('#goal-data').value;
-    
+
     if (id) {
       const g = S.goals.find(x => x.id === id);
       if (g) {
@@ -1180,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       S.goals.push({ id: uid(), name, tgt, cur: 0, dl });
     }
-    
+
     save();
     closeM('m-goal');
     renderMetas();
@@ -1193,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const v = parseFloat(q('#goal-mv-val').value) || 0;
     const g = S.goals.find(x => x.id === id);
     if (!g) return;
-    
+
     g.cur = op === 'dep' ? g.cur + v : Math.max(0, g.cur - v);
     save();
     closeM('m-goal-mv');
@@ -1211,13 +1207,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const catId = q('#bud-cat').value;
     const lim = parseFloat(q('#bud-lim').value) || 0;
     const idx = S.budgets.findIndex(b => b.catId === catId);
-    
+
     if (idx >= 0) {
       S.budgets[idx].lim = lim;
     } else {
       S.budgets.push({ catId, lim });
     }
-    
+
     save();
     closeM('m-budget');
     renderBudgets();
@@ -1227,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', function() {
   q('#btnNewRec')?.addEventListener('click', () => {
     fillCatSelect(q('#rec-cat'), 'Despesa');
     fillPaySelect(q('#rec-conta'));
-    
+
     // Reset recurrence form inputs
     const recFreq = q('#rec-freq');
     if (recFreq) recFreq.value = 'monthly';
@@ -1285,7 +1281,7 @@ document.addEventListener('DOMContentLoaded', function() {
       day: recurrenceDay,
       last: null
     });
-    
+
     save();
     closeM('m-rec');
     renderRecurring();
@@ -1308,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tipo = q('#cat-tipo').value;
     const ico = q('#cat-ico').value.trim() || '📌';
     const cor = q('#cat-cor').value;
-    
+
     const newCatId = 'cc_' + uid();
     S.categories.push({ id: newCatId, name: nome, type: tipo, icon: ico, color: cor });
     save();
@@ -1351,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const oferta = parseFloat(q('#dbt-oferta').value) || 0;
     const status = q('#dbt-status').value;
     const forma = q('#dbt-forma').value;
-    
+
     if (id) {
       const d = S.debts.find(x => x.id === id);
       if (d) {
@@ -1364,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       S.debts.push({ id: uid(), nome, total, oferta, status, forma });
     }
-    
+
     save();
     closeM('m-debt');
     renderDividas();
@@ -1397,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const pay = getPayLocal(t.payId);
       c += `${t.data},"${(t.desc||'').replace(/"/g, '""')}","${cat}",${t.tipo},${t.val},${t.status},"${pay}"\n`;
     });
-    
+
     const blob = new Blob(['\ufeff' + c], { type: 'text/csv;charset=utf-8' });
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1474,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', function() {
           S.recurring = d.recurring;
           S.savings = d.savings;
           S.debts = d.debts;
-          
+
           save();
           alert('Backup restaurado!');
           navigate('dashboard');
@@ -1494,15 +1490,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const category = q('#support-category-input').value;
     const message = q('#support-message-input').value.trim();
     const attachLogs = q('#support-attach-logs').checked;
-    
+
     const name = q('#support-name-input')?.value.trim() || 'Usuário Local';
     const email = q('#support-email-input')?.value.trim() || 'local@financepro.app';
-    
+
     let logsText = '';
     if (attachLogs && window.devLogs) {
       logsText = window.devLogs.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`).join('\n');
     }
-    
+
     const ticketId = 'tk_' + uid();
     const newTicket = {
       id: ticketId,
@@ -1515,16 +1511,16 @@ document.addEventListener('DOMContentLoaded', function() {
       date: new Date().toLocaleDateString('pt-BR'),
       status: 'Enviado'
     };
-    
+
     if (!Array.isArray(S.supportTickets)) {
       S.supportTickets = [];
     }
     S.supportTickets.unshift(newTicket);
     save();
-    
+
     const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@financepro.app';
     const emailSubject = `[FinancePro Suporte] [${category.toUpperCase()}] ${subject}`;
-    
+
     let emailBody = `Olá, gostaria de abrir um chamado de suporte.\n\n`;
     emailBody += `=== DETALHES DO CHAMADO ===\n`;
     emailBody += `ID: ${ticketId}\n`;
@@ -1534,16 +1530,16 @@ document.addEventListener('DOMContentLoaded', function() {
     emailBody += `Categoria: ${category}\n`;
     emailBody += `Assunto: ${subject}\n\n`;
     emailBody += `Mensagem:\n${message}\n\n`;
-    
+
     if (attachLogs && logsText) {
       emailBody += `=== LOGS DO SISTEMA ===\n`;
       emailBody += `${logsText}\n`;
     }
-    
+
     const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    
+
     window.open(mailtoUrl, '_blank');
-    
+
     const statusMsg = q('#support-status-msg');
     if (statusMsg) {
       statusMsg.innerHTML = `<span style="color:#10b981">Chamado criado! Caso seu app de e-mail não abra, envie para ${supportEmail}.</span>`;
@@ -1551,11 +1547,11 @@ document.addEventListener('DOMContentLoaded', function() {
         statusMsg.innerHTML = '';
       }, 6000);
     }
-    
+
     q('#support-subject-input').value = '';
     q('#support-message-input').value = '';
     q('#support-attach-logs').checked = false;
-    
+
     if (window.renderSuporte) {
       window.renderSuporte();
     }
@@ -1607,7 +1603,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.body.classList.remove('light');
-    
+
     let icon = '🌙';
     if (activeTheme === 'light') {
       document.body.classList.add('light');
@@ -1622,9 +1618,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sbIcon) sbIcon.textContent = icon;
     const ttBtn = q('#themeToggle');
     if (ttBtn) ttBtn.textContent = icon;
-    
+
     updateThemeButtonsUI(activeTheme);
-    
+
     if (activePage === 'dashboard') {
       renderDashboard();
     }
@@ -1812,13 +1808,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const cleanState = initState();
       setS(cleanState);
       save();
-      
+
       if (db && currentUser && !currentUser.isAnonymous) {
         const resetPromise = syncPassword
           ? encryptData(JSON.stringify(cleanState), syncPassword)
               .then(encrypted => db.collection('users').doc(currentUser.uid).set(encrypted))
           : db.collection('users').doc(currentUser.uid).set(cleanState);
-          
+
         resetPromise
           .then(() => {
             localStorage.clear();
@@ -1920,7 +1916,7 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.removeItem('financepro_ai_api_key');
       localStorage.removeItem('financeos_ai_api_key');
     }
-    
+
     try {
       const res = await fetch('/api/save-env', {
         method: 'POST',
@@ -2068,12 +2064,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirm('Tem certeza que deseja SOBRESCREVER os dados da nuvem com os dados locais desta máquina? Esta ação substituirá o banco de dados na nuvem.')) {
       const btn = q('#btnForceUploadCloud');
       if (btn) btn.disabled = true;
-      
+
       try {
-        const dataToSave = syncPassword 
-          ? await encryptData(JSON.stringify(S), syncPassword) 
-          : S;
-          
+        const automaticKey = syncPassword || currentUser.uid;
+        const dataToSave = await encryptData(JSON.stringify(S), automaticKey);
+
         await db.collection('users').doc(currentUser.uid).set(dataToSave);
         alert('Dados locais enviados para a nuvem com sucesso!');
       } catch (err) {
@@ -2093,28 +2088,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirm('Deseja puxar os dados atualizados da nuvem? Isso substituirá as informações locais desta máquina.')) {
       const btn = q('#btnForceDownloadCloud');
       if (btn) btn.disabled = true;
-      
+
       db.collection('users').doc(currentUser.uid).get()
         .then(async doc => {
           if (doc.exists) {
             const remoteData = doc.data();
             let stateToLoad = remoteData;
-            
+
             if (remoteData.encrypted) {
-              if (!syncPassword) {
-                alert('Erro: Seus dados na nuvem estão criptografados, mas a senha de sincronização local não foi configurada.');
-                return;
-              }
               try {
-                const decryptedStr = await decryptData(remoteData, syncPassword);
+                const decryptedStr = await decryptData(remoteData, syncPassword || currentUser.uid);
                 stateToLoad = JSON.parse(decryptedStr);
               } catch (decErr) {
                 console.error('Failed to decrypt data on manual download:', decErr);
-                alert('Erro ao descriptografar os dados baixados: senha incorreta ou dados corrompidos.');
+                alert('Estes dados usam a criptografia antiga. Entre novamente para concluir a migração automática da sincronização.');
                 return;
               }
             }
-            
+
             setS(stateToLoad);
             processRecurringTransactions();
             updateUI();
@@ -2235,7 +2226,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const hasPin = !!(localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code'));
     const pinConfirmSection = q('#pin-confirm-section');
     const pinCurrentInput = q('#pin-current');
-    
+
     if (hasPin) {
       if (pinConfirmSection) pinConfirmSection.style.display = 'block';
       if (pinCurrentInput) pinCurrentInput.required = true;
@@ -2248,7 +2239,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       if (btnDisablePin) btnDisablePin.style.display = 'none';
     }
-    
+
     if (pinInput1) { pinInput1.value = ''; pinInput1.required = true; }
     if (pinInput2) { pinInput2.value = ''; pinInput2.required = true; }
     openM('modal-config-pin');
@@ -2258,13 +2249,13 @@ document.addEventListener('DOMContentLoaded', function() {
   btnDisablePin?.addEventListener('click', async () => {
     const storedPin = localStorage.getItem('financepro_pin_code') || localStorage.getItem('financeos_pin_code');
     const currentVal = pinCurrent ? pinCurrent.value : '';
-    
+
     const hashedCurrent = await hashPin(currentVal);
     if (hashedCurrent !== storedPin) {
       alert('PIN atual incorreto!');
       return;
     }
-    
+
     localStorage.removeItem('financepro_pin_code');
     localStorage.removeItem('financeos_pin_code');
     localStorage.setItem('financepro_pin_enabled', 'false');
@@ -2415,7 +2406,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateSyncStatusDot() {
     const dot = q('#sync-status-indicator');
     if (!dot) return;
-    
+
     if (currentUser && !currentUser.isAnonymous) {
       dot.style.backgroundColor = 'var(--gr)'; // Verde
       dot.title = `Conectado e Sincronizado: ${currentUser.email}`;
@@ -2500,7 +2491,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const billingCycleToggle = q('#billing-cycle-toggle');
   const btnSelectFree = q('#btn-select-free');
   const btnPaywallClose = q('#btn-paywall-close');
-  
+
   // Atualizar preços iniciais
   function updatePaywallPricing() {
     const isYearly = billingCycleToggle?.checked;
@@ -2540,6 +2531,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // Abrir paywall do perfil
   q('#btnOpenChangePlan')?.addEventListener('click', () => {
     openM('paywall-overlay');
+  });
+
+  // Atalho dedicado no menu lateral para planos e assinatura
+  q('#btnSubscriptionMenu')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigate('perfil');
+    setTimeout(() => openM('paywall-overlay'), 0);
   });
 
   // 💳 Integração Stripe Checkout
@@ -2604,7 +2602,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Alterar Plano de Assinatura via Stripe Checkout
   q('#btn-select-free')?.addEventListener('click', () => {
-    window.changeSubscriptionPlan('free');
+    if ((S.subscription?.plan || 'free') === 'free') {
+      closeM('paywall-overlay');
+    } else {
+      window.changeSubscriptionPlan('free');
+    }
+  });
+
+  btnPaywallClose?.addEventListener('click', () => {
+    closeM('paywall-overlay');
   });
 
   q('#btn-buy-plus')?.addEventListener('click', (e) => {
@@ -2677,6 +2683,13 @@ document.addEventListener('DOMContentLoaded', function() {
       var descEl = document.getElementById('sv-desc');
       var desc = descEl ? (descEl.value || '').trim() : '';
 
+      var typeVal = (document.getElementById('sv-type') || {}).value || 'deposit';
+      if (typeVal === 'withdraw') {
+        val = -Math.abs(val);
+      } else {
+        val = Math.abs(val);
+      }
+
       if (isNaN(val) || val === 0) {
         showSavingToast('⚠️ Informe um valor diferente de zero.', '#e17055');
         var focus1 = document.getElementById('sv-val');
@@ -2716,6 +2729,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  function handleAdjustSavingSubmit(e) {
+    if (e) e.preventDefault();
+    try {
+      var currentTotal = Array.isArray(S.savings) ? S.savings.reduce(function(s, sv) { return s + (sv.val || 0); }, 0) : 0;
+      var newValRaw = (document.getElementById('adj-sv-newval') || {}).value || '';
+      var cleaned = newValRaw.replace('R$', '').trim();
+      if (cleaned.includes(',')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      }
+      var newVal = parseFloat(cleaned);
+
+      if (isNaN(newVal) || newVal < 0) {
+        alert('Por favor, informe um valor numérico válido.');
+        return;
+      }
+
+      var diff = +(newVal - currentTotal).toFixed(2);
+      if (Math.abs(diff) < 0.01) {
+        alert('O valor digitado é igual ao saldo atual.');
+        return;
+      }
+
+      var reasonInput = document.getElementById('adj-sv-reason');
+      var reason = (reasonInput && reasonInput.value ? reasonInput.value.trim() : '') || (diff > 0 ? 'Ajuste Manual de Saldo (+)' : 'Ajuste Manual de Saldo (−)');
+
+      if (!Array.isArray(S.savings)) S.savings = [];
+      S.savings.push({
+        id: uid(),
+        data: isoToday(),
+        val: diff,
+        desc: reason
+      });
+
+      save();
+      closeM('m-adjust-saving');
+      var form = document.getElementById('f-adjust-saving');
+      if (form) form.reset();
+
+      if (typeof renderGuardado === 'function') renderGuardado();
+      if (typeof renderDashboard === 'function') renderDashboard();
+
+      showSavingToast('🐷 Saldo Guardado atualizado com sucesso para ' + fmt(newVal) + '!');
+    } catch (err) {
+      console.error('[AdjustSavings] submit error:', err);
+      alert('Erro ao ajustar saldo: ' + err.message);
+    }
+  }
+
   // Register on DOMContentLoaded to bind to form
   document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('btnNewSaving');
@@ -2730,43 +2791,64 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
       form.addEventListener('submit', handleSavingSubmit);
     }
+    var adjForm = document.getElementById('f-adjust-saving');
+    if (adjForm) {
+      adjForm.addEventListener('submit', handleAdjustSavingSubmit);
+    }
+
+    var depBtn = document.getElementById('sv-type-deposit');
+    var wdBtn = document.getElementById('sv-type-withdraw');
+    var svTypeInput = document.getElementById('sv-type');
+
+    if (depBtn && wdBtn && svTypeInput) {
+      depBtn.addEventListener('click', function() {
+        svTypeInput.value = 'deposit';
+        depBtn.className = 'bp sm';
+        wdBtn.className = 'bs sm';
+      });
+      wdBtn.addEventListener('click', function() {
+        svTypeInput.value = 'withdraw';
+        wdBtn.className = 'bp sm';
+        depBtn.className = 'bs sm';
+      });
+    }
   });
 })();
 
 export function processRecurringTransactions() {
   if (!S || !Array.isArray(S.recurring)) return;
-  
+
   let changed = false;
   const todayStr = getLocalToday();
   const yesterdayStr = getLocalYesterday();
-  
+
   S.recurring.forEach(r => {
     // 1. Initialize last run date if null/empty
     if (!r.last) {
       r.last = yesterdayStr;
       changed = true;
     }
-    
+
     let current = new Date(r.last + 'T12:00:00');
     const targetDate = new Date(todayStr + 'T12:00:00');
     targetDate.setDate(targetDate.getDate() + 180);
     let loopCount = 0;
-    
+
     while (true) {
       current.setDate(current.getDate() + 1);
       if (current > targetDate) break;
-      
+
       loopCount++;
       if (loopCount > 185) { // Safety limit slightly above 180 days
         console.warn('Recurring engine reached safety limit for rule:', r);
         break;
       }
-      
+
       const y = current.getFullYear();
       const m = String(current.getMonth() + 1).padStart(2, '0');
       const d = String(current.getDate()).padStart(2, '0');
       const currentStr = `${y}-${m}-${d}`;
-      
+
       let matches = false;
       if (r.frequency === 'weekly') {
         const wDay = current.getDay();
@@ -2782,17 +2864,17 @@ export function processRecurringTransactions() {
           matches = (mDay === targetMDay);
         }
       }
-      
+
       if (matches) {
         // Double check to prevent duplicate transactions
-        const alreadyExists = S.transactions.some(t => 
-          t.desc === r.desc && 
-          t.tipo === r.tipo && 
-          t.val === r.val && 
+        const alreadyExists = S.transactions.some(t =>
+          t.desc === r.desc &&
+          t.tipo === r.tipo &&
+          t.val === r.val &&
           t.data === currentStr &&
           t.catId === r.catId
         );
-        
+
         if (!alreadyExists) {
           S.transactions.push({
             id: uid(),
@@ -2809,12 +2891,12 @@ export function processRecurringTransactions() {
           changed = true;
         }
       }
-      
+
       r.last = currentStr;
       changed = true;
     }
   });
-  
+
   if (changed) {
     save();
   }
@@ -2842,12 +2924,12 @@ export function exportCalendarICS(year, month) {
     const d = new Date(t.data + 'T00:00:00');
     return d.getFullYear() === year && d.getMonth() === month;
   });
-  
+
   if (!list.length) {
     alert('Nenhum lançamento encontrado neste mês para exportar!');
     return;
   }
-  
+
   let ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -2855,9 +2937,9 @@ export function exportCalendarICS(year, month) {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH'
   ];
-  
+
   const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  
+
   const catMap = new Map((S.categories || []).map(c => [c.id, c]));
   const accMap = new Map((S.accounts || []).map(a => [a.id, a]));
   const cardMap = new Map((S.cards || []).map(c => [c.id, c]));
@@ -2867,16 +2949,16 @@ export function exportCalendarICS(year, month) {
     const acc = accMap.get(t.payId);
     const card = cardMap.get(t.payId);
     const payName = acc ? acc.name : card ? card.name : '—';
-    
+
     const startIso = t.data.replace(/-/g, '');
     const d = new Date(t.data + 'T00:00:00');
     d.setDate(d.getDate() + 1);
     const endIso = d.toISOString().split('T')[0].replace(/-/g, '');
-    
+
     const valueStr = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.val);
     const summary = `${t.tipo === 'Receita' ? '📈' : '📉'} ${t.desc} (${valueStr})`;
     const description = `Tipo: ${t.tipo}\\nValor: ${valueStr}\\nCategoria: ${cat.name}\\nConta/Cartão: ${payName}\\nStatus: ${t.status}`;
-    
+
     ics.push('BEGIN:VEVENT');
     ics.push(`UID:${t.id}@financepro.app`);
     ics.push(`DTSTAMP:${timestamp}`);
@@ -2886,9 +2968,9 @@ export function exportCalendarICS(year, month) {
     ics.push(`DESCRIPTION:${description}`);
     ics.push('END:VEVENT');
   });
-  
+
   ics.push('END:VCALENDAR');
-  
+
   const icsString = ics.join('\r\n');
   const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -2904,14 +2986,14 @@ export function checkUpcomingBillsNotifications() {
   const notifEnabled = localStorage.getItem('financepro_notifications') || localStorage.getItem('financeos_notifications');
   if (notifEnabled !== 'true') return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  
+
   const today = new Date();
   today.setHours(0,0,0,0);
   const todayStr = today.toISOString().split('T')[0];
-  
+
   const notifiedTxs = JSON.parse(sessionStorage.getItem('financepro_notified_txs') || sessionStorage.getItem('financeos_notified_txs') || '{}');
   let hasNewNotification = false;
-  
+
   (S.transactions || []).forEach(t => {
     if (t.tipo === 'Despesa' && t.status === 'Pendente' && t.data === todayStr) {
       if (!notifiedTxs[t.id]) {
@@ -2925,7 +3007,7 @@ export function checkUpcomingBillsNotifications() {
       }
     }
   });
-  
+
   if (hasNewNotification) {
     sessionStorage.setItem('financepro_notified_txs', JSON.stringify(notifiedTxs));
   }
@@ -2971,7 +3053,7 @@ export function depositChallengeWeek(weekIndex, valueBRL) {
   q('#tx-tipo').value = 'Despesa';
   fillCatSelect(q('#tx-cat'), 'Despesa');
   fillPaySelect(q('#tx-conta'));
-  
+
   const catSelect = q('#tx-cat');
   const options = Array.from(catSelect.options);
   const matchPoup = options.find(o => o.text.toLowerCase().includes('poup'));
@@ -3028,9 +3110,9 @@ window.openTutorial = function(card) {
   const content = card.querySelector('.tut-full-content').innerHTML;
   const viewTitle = document.getElementById('tut-view-title');
   const viewBody = document.getElementById('tut-view-body');
-  
+
   if (viewTitle) viewTitle.textContent = title;
   if (viewBody) viewBody.innerHTML = content;
-  
+
   openM('m-tutorial-view');
 };

@@ -110,6 +110,7 @@
   <button class="nb" data-page="guardado"><span class="ni">🐷</span>Dinheiro Guardado</button>
   <button class="nb" data-page="contas"><span class="ni">🏦</span>Contas &amp; Cartões</button>
   <button class="nb" data-page="calculadora"><span class="ni">🧮</span>Calculadora</button>
+  <button class="nb" id="btnSubscriptionMenu" data-page="perfil" title="Ver planos e gerenciar assinatura"><span class="ni">💳</span>Assinatura</button>
   <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
   <button class="nb" data-page="perfil"><span class="ni">👤</span>Meu Perfil</button>
 
@@ -154,7 +155,7 @@
       </div>
       <button class="bs sm" id="btnStealthToggle" style="font-size:14px;padding:6px 10px" title="Ocultar Saldos (Privacidade)">👁️</button>
       <button class="bs sm" id="themeToggle" style="font-size:14px;padding:6px 10px" title="Alternar Modo Claro/Escuro">🌙</button>
-      <button class="bp sm" id="btnNewTx" data-action="open-tx" onclick="window.openTxCreateModal && window.openTxCreateModal()">+<span> Lançamento</span></button>
+      <button class="bp sm" id="btnNewTx" data-action="open-tx">+<span> Lançamento</span></button>
     </div>
   </header>
 
@@ -200,7 +201,7 @@
             <p class="apple-hero-sub" id="k-saldo-sub">Saldo total em todas as contas</p>
           </div>
           <div class="apple-hero-actions">
-            <button class="apple-glass-btn primary" id="btnQuickAddTx" data-action="open-tx" onclick="window.openTxCreateModal && window.openTxCreateModal()">
+            <button class="apple-glass-btn primary" id="btnQuickAddTx" data-action="open-tx">
               <span>+</span> Novo Lançamento
             </button>
             <button class="apple-glass-btn" onclick="navigate('graficos')">
@@ -407,7 +408,7 @@
             <h3 id="txTitle">Lançamentos</h3>
             <div class="ca">
               <button class="bs sm" id="btnExportCSV">↓ CSV</button>
-              <button class="bp sm" id="btnNewTx2" data-action="open-tx" onclick="window.openTxCreateModal && window.openTxCreateModal()">+ Lançamento</button>
+              <button class="bp sm" id="btnNewTx2" data-action="open-tx">+ Lançamento</button>
             </div>
           </div>
           <div class="tx-tbl-container">
@@ -1215,6 +1216,18 @@
         </div>
       </div>
 
+      <div class="card subscription-card" id="profile-subscription-card" style="margin-top:20px">
+        <div class="card-h">
+          <h3>💳 Minha Assinatura</h3>
+          <span class="status-pill s-pendente" id="profile-plan-badge">⚡ Plano GRATUITO</span>
+        </div>
+        <p id="profile-plan-desc" style="font-size:12px;color:var(--tx2);margin-top:8px;line-height:1.5">Escolha um plano para liberar mais recursos do PoupaFy.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+          <button class="bp sm" id="btnOpenChangePlan" type="button">Ver planos e assinar</button>
+          <button class="brd sm" id="btnCancelPlan" type="button" style="display:none">Cancelar assinatura</button>
+        </div>
+      </div>
+
       <div class="card" id="profile-edit-card" style="margin-top:20px">
         <div class="card-h">
           <h3>Editar Perfil</h3>
@@ -1548,6 +1561,7 @@
       </div>
     </form>
   </div>
+</div>
 <!-- NOTIFICAÇÕES (VER TODAS) -->
 <div id="m-notifications" class="mbd" hidden>
   <div class="modal" style="max-width:520px">
@@ -1676,17 +1690,68 @@
   </div>
 </div>
 
-<!-- DINHEIRO GUARDADO -->
+<!-- DINHEIRO GUARDADO (LANÇAMENTO EXCLUSIVO) -->
 <div id="m-saving" class="mbd" hidden>
   <div class="modal">
-    <div class="mhd"><h3>Registrar Dinheiro Guardado</h3><button class="mclose" data-close="m-saving">✕</button></div>
+    <div class="mhd">
+      <h3>🐷 Guardar Dinheiro / Reserva</h3>
+      <button class="mclose" data-close="m-saving">✕</button>
+    </div>
     <form id="f-saving">
-      <div class="fg"><label>Valor (R$)</label><input type="number" id="sv-val" class="inp" step="0.01" placeholder="Ex: 500,00 (negativo para retirada)" required></div>
-      <div class="fg"><label>Data</label><input type="date" id="sv-data" class="inp" required></div>
-      <div class="fg"><label>Descrição (opcional)</label><input type="text" id="sv-desc" class="inp" placeholder="Ex: Economizado em julho"></div>
+      <div class="fg">
+        <label>Operação</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="sv-type-deposit" class="bp sm" style="flex:1;padding:8px;font-weight:700;">➕ Aporte (Guardar)</button>
+          <button type="button" id="sv-type-withdraw" class="bs sm" style="flex:1;padding:8px;font-weight:700;">➖ Retirada</button>
+        </div>
+        <input type="hidden" id="sv-type" value="deposit">
+      </div>
+      <div class="fg">
+        <label>Valor (R$)</label>
+        <input type="number" id="sv-val" class="inp" step="0.01" min="0.01" placeholder="Ex: 500,00" required>
+      </div>
+      <div class="fg">
+        <label>Data</label>
+        <input type="date" id="sv-data" class="inp" required>
+      </div>
+      <div class="fg">
+        <label>Descrição (opcional)</label>
+        <input type="text" id="sv-desc" class="inp" placeholder="Ex: Economizado no mês">
+      </div>
       <div class="mfooter">
         <button type="button" class="bg sm" data-close="m-saving">Cancelar</button>
-        <button type="submit" class="bp sm">Registrar</button>
+        <button type="submit" class="bp sm">Registrar Reserva</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- AJUSTAR SALDO GUARDADO (MODAL DEDICADO) -->
+<div id="m-adjust-saving" class="mbd" hidden>
+  <div class="modal">
+    <div class="mhd">
+      <h3>✏️ Ajustar Saldo de Dinheiro Guardado</h3>
+      <button class="mclose" data-close="m-adjust-saving">✕</button>
+    </div>
+    <form id="f-adjust-saving">
+      <p style="font-size:12.5px;color:var(--tx2);margin-bottom:12px;">
+        Altere diretamente o montante total acumulado na sua reserva de emergência ou poupança.
+      </p>
+      <div class="fg">
+        <label>Saldo Atual</label>
+        <input type="text" id="adj-sv-current" class="inp" readonly style="opacity:0.7;background:var(--s2);font-weight:700;">
+      </div>
+      <div class="fg">
+        <label>Novo Saldo Total (R$)</label>
+        <input type="number" id="adj-sv-newval" class="inp" step="0.01" placeholder="Ex: 5000.00" required autofocus>
+      </div>
+      <div class="fg">
+        <label>Motivo / Observação (opcional)</label>
+        <input type="text" id="adj-sv-reason" class="inp" placeholder="Ex: Correção de saldo inicial">
+      </div>
+      <div class="mfooter">
+        <button type="button" class="bg sm" data-close="m-adjust-saving">Cancelar</button>
+        <button type="submit" class="bp sm">Confirmar Ajuste</button>
       </div>
     </form>
   </div>
@@ -1993,16 +2058,9 @@
     <!-- Rodapé com Simulação e Descarte -->
     <div style="display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:10px; width:100%;">
       <div style="font-size:10.5px; color:var(--tx3); text-align:center; max-width:85%;">
-        Pagamentos processados de forma segura via Mercado Pago. Ao clicar em assinar, você será redirecionado para o checkout.
+        Pagamentos processados de forma segura via Stripe. Ao clicar em assinar, você será redirecionado para o checkout.
       </div>
       
-      <!-- Seção de Testes (Cheat/Simulação) -->
-      <div style="background:rgba(99,102,241,0.08); border:1px dashed var(--ac); border-radius:10px; padding:10px; display:flex; justify-content:center; gap:8px; width:100%; box-sizing:border-box; margin-top:4px; flex-wrap:wrap;">
-        <button type="button" class="bs sm" id="btn-simulate-plus" style="font-size:10px; padding:5px 10px;">🧪 Simular Plus</button>
-        <button type="button" class="bs sm" id="btn-simulate-pro" style="font-size:10px; padding:5px 10px; border-color:#f59e0b; color:#f59e0b;">🧪 Simular Pro</button>
-        <button type="button" class="bs sm" id="btn-simulate-reset" style="font-size:10px; padding:5px 10px; border-color:var(--rd); color:var(--rd);">🧪 Resetar Grátis</button>
-      </div>
-
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <button type="button" class="bl" id="btn-paywall-close" style="font-size:12px; color:var(--tx2);">Continuar com Plano Grátis (Limites locais)</button>
       </div>
