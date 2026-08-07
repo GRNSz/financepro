@@ -110,7 +110,7 @@
   <button class="nb" data-page="guardado"><span class="ni">🐷</span>Dinheiro Guardado</button>
   <button class="nb" data-page="contas"><span class="ni">🏦</span>Contas &amp; Cartões</button>
   <button class="nb" data-page="calculadora"><span class="ni">🧮</span>Calculadora</button>
-  <button class="nb" id="btnSubscriptionMenu" data-page="perfil" title="Ver planos e gerenciar assinatura"><span class="ni">💳</span>Assinatura</button>
+  <button class="nb" id="btnSubscriptionMenu" data-page="perfil" title="Ver planos e gerenciar assinatura" onclick="document.getElementById('paywall-overlay').hidden=false; document.getElementById('paywall-overlay').style.display='flex';"><span class="ni">💳</span>Assinatura</button>
   <button class="nb" data-page="config"><span class="ni">⚙️</span>Configurações</button>
   <button class="nb" data-page="perfil"><span class="ni">👤</span>Meu Perfil</button>
 
@@ -1223,7 +1223,7 @@
         </div>
         <p id="profile-plan-desc" style="font-size:12px;color:var(--tx2);margin-top:8px;line-height:1.5">Escolha um plano para liberar mais recursos do PoupaFy.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-          <button class="bp sm" id="btnOpenChangePlan" type="button">Ver planos e assinar</button>
+          <button class="bp sm" id="btnOpenChangePlan" type="button" onclick="document.getElementById('paywall-overlay').hidden=false; document.getElementById('paywall-overlay').style.display='flex';">Ver planos e assinar</button>
           <button class="brd sm" id="btnCancelPlan" type="button" style="display:none">Cancelar assinatura</button>
         </div>
       </div>
