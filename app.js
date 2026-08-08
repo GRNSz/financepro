@@ -159,12 +159,13 @@ let chartCat  = null;
 function renderDashboard() {
   const now = new Date();
   const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
 
+  // ⚡ Bolt: Fast date parsing via string slicing avoids parseLocalDate object creation inside loop
   // Month figures
   let mIncome = 0, mExpense = 0, mIncCount = 0, mExpCount = 0;
   S.transactions.forEach(t => {
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    if (t.date.substring(0, 7) === targetPrefix) {
       if (t.type === 'income')  { mIncome  += t.amount; mIncCount++; }
       else                      { mExpense += t.amount; mExpCount++; }
     }
@@ -196,9 +197,11 @@ function cardInvoice(cardId, year, month) {
   let total = 0;
   S.transactions.forEach(t => {
     if (t.payId !== cardId || t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    let im = d.getMonth(), iy = d.getFullYear();
-    if (d.getDate() > card.closingDay) {
+    // ⚡ Bolt: Fast date extraction using substring avoids parseLocalDate object creation
+    let iy = parseInt(t.date.substring(0, 4), 10);
+    let im = parseInt(t.date.substring(5, 7), 10) - 1;
+    const id = parseInt(t.date.substring(8, 10), 10);
+    if (id > card.closingDay) {
       im++; if (im > 11) { im = 0; iy++; }
     }
     if (iy === year && im === month) total += t.amount;
@@ -217,10 +220,11 @@ function renderMainChart() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       labels.push(MONTHS[d.getMonth()]);
+      const targetPrefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       let si = 0, se = 0;
       S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
+        // ⚡ Bolt: Fast date matching
+        if (t.date.substring(0, 7) === targetPrefix) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
       });
@@ -229,10 +233,11 @@ function renderMainChart() {
   } else {
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
+      const targetPrefix = `${yr}-${String(m + 1).padStart(2, '0')}`;
       let si = 0, se = 0;
       S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
+        // ⚡ Bolt: Fast date matching
+        if (t.date.substring(0, 7) === targetPrefix) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
       });
@@ -264,11 +269,12 @@ function renderMainChart() {
 
 function renderCatChart() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const map = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    // ⚡ Bolt: Fast date matching
+    if (t.date.substring(0, 7) === targetPrefix) {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     }
   });
@@ -302,11 +308,12 @@ function renderCatChart() {
 
 function renderDashBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    // ⚡ Bolt: Fast date matching
+    if (t.date.substring(0, 7) === targetPrefix) {
       spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
     }
   });
@@ -374,12 +381,15 @@ function applyFilters() {
     if (type !== 'all' && t.type !== type) return false;
     if (catId !== 'all' && t.categoryId !== catId) return false;
     if (accId !== 'all' && t.payId !== accId) return false;
+    // ⚡ Bolt: Fast string prefix checks instead of new Date() parsing
     if (period !== 'all') {
-      const d = parseLocalDate(t.date);
-      if (period === 'thisMonth'  && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return false;
-      if (period === 'lastMonth') {
+      if (period === 'thisMonth') {
+        const targetPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        if (t.date.substring(0, 7) !== targetPrefix) return false;
+      } else if (period === 'lastMonth') {
         const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        if (d.getMonth() !== lm.getMonth() || d.getFullYear() !== lm.getFullYear()) return false;
+        const targetPrefix = `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}`;
+        if (t.date.substring(0, 7) !== targetPrefix) return false;
       }
     }
     return true;
@@ -546,11 +556,14 @@ function renderSettings() {
 
 function renderBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
+    // ⚡ Bolt: Fast date matching
+    if (t.date.substring(0, 7) === targetPrefix) {
+      spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
+    }
   });
 
   const el = document.getElementById('budgetList');
