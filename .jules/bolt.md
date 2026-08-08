@@ -1,0 +1,3 @@
+## 2024-05-18 - Replacing Date parsing with fast string slicing in large loops
+**Learning:** In this codebase, parsing native `Date` objects inside large transaction loops (e.g., iterating through `S.transactions`) causes significant overhead. Since all transaction dates are strictly formatted as 'YYYY-MM-DD', object creation (`new Date()`) and parsing can be completely avoided.
+**Action:** Always prefer O(1) string prefix matching (`substring(0, 7) === targetPrefix`) or fast integer parsing (`parseInt(date.substring(...), 10)`) to extract year and month directly from ISO strings inside large loops to improve loop execution speed.
