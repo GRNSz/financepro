@@ -213,30 +213,36 @@ function renderMainChart() {
   const labels = [], inc = [], exp = [];
   const now = new Date();
 
+  // ⚡ Bolt: O(N) map aggregation avoiding expensive Date parsing inside loops
+  const monthAgg = {};
+  S.transactions.forEach(t => {
+    // Fast string slice 'YYYY-MM'
+    const ym = t.date.substring(0, 7);
+    if (!monthAgg[ym]) monthAgg[ym] = { inc: 0, exp: 0 };
+    if (t.type === 'income') monthAgg[ym].inc += t.amount;
+    else monthAgg[ym].exp += t.amount;
+  });
+
   if (mode === '6months') {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       labels.push(MONTHS[d.getMonth()]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const yStr = String(d.getFullYear());
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const key = `${yStr}-${mStr}`;
+
+      inc.push(monthAgg[key] ? monthAgg[key].inc : 0);
+      exp.push(monthAgg[key] ? monthAgg[key].exp : 0);
     }
   } else {
+    const yStr = String(yr);
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const mStr = String(m + 1).padStart(2, '0');
+      const key = `${yStr}-${mStr}`;
+
+      inc.push(monthAgg[key] ? monthAgg[key].inc : 0);
+      exp.push(monthAgg[key] ? monthAgg[key].exp : 0);
     }
   }
 
