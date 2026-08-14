@@ -1,0 +1,3 @@
+## 2024-08-14 - Replace Native Date Parsing in Large Loops with String Slicing
+**Learning:** Native `Date` parsing (`new Date(dateStr)`) inside large `transactions.forEach` loops creates a massive bottleneck. The original implementation resulted in O(N*M) complexity with repetitive slow parsing.
+**Action:** When aggregating records by month/year in Javascript, avoid native `Date` object parsing if the dates are in ISO-like strings (e.g. 'YYYY-MM-DD'). Instead, use fast string slicing (`substring(0, 4)` for year, `substring(5, 7)` for month) or `.startsWith()` with pre-computed prefixes to achieve a fast O(N) single pass.
