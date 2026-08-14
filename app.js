@@ -213,31 +213,38 @@ function renderMainChart() {
   const labels = [], inc = [], exp = [];
   const now = new Date();
 
+  // BOLT OPTIMIZATION: Replaced O(N*M) loop and expensive Date parsing
+  // with O(N) single pass and fast string slicing.
   if (mode === '6months') {
+    const prefixes = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       labels.push(MONTHS[d.getMonth()]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      prefixes.push(`${d.getFullYear()}-${m}`);
+      inc.push(0); exp.push(0);
     }
+
+    S.transactions.forEach(t => {
+      const prefix = t.date.substring(0, 7);
+      const idx = prefixes.indexOf(prefix);
+      if (idx !== -1) {
+        if (t.type === 'income') inc[idx] += t.amount; else exp[idx] += t.amount;
+      }
+    });
   } else {
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      inc.push(0); exp.push(0);
     }
+
+    const prefix = yr.toString();
+    S.transactions.forEach(t => {
+      if (t.date.substring(0, 4) === prefix) {
+        const m = parseInt(t.date.substring(5, 7), 10) - 1;
+        if (t.type === 'income') inc[m] += t.amount; else exp[m] += t.amount;
+      }
+    });
   }
 
   const ctx = document.getElementById('chartMain').getContext('2d');
