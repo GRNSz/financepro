@@ -162,9 +162,10 @@ function renderDashboard() {
 
   // Month figures
   let mIncome = 0, mExpense = 0, mIncCount = 0, mExpCount = 0;
+  // ⚡ Bolt: Use fast string matching for dates instead of parsing Date objects
+  const targetMonthPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   S.transactions.forEach(t => {
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    if (t.date.substring(0, 7) === targetMonthPrefix) {
       if (t.type === 'income')  { mIncome  += t.amount; mIncCount++; }
       else                      { mExpense += t.amount; mExpCount++; }
     }
@@ -218,9 +219,10 @@ function renderMainChart() {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       labels.push(MONTHS[d.getMonth()]);
       let si = 0, se = 0;
+      // ⚡ Bolt: Use fast string matching for dates
+      const targetMonthPrefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
+        if (t.date.substring(0, 7) === targetMonthPrefix) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
       });
@@ -230,9 +232,10 @@ function renderMainChart() {
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
       let si = 0, se = 0;
+      // ⚡ Bolt: Use fast string matching for dates
+      const targetMonthPrefix = `${yr}-${String(m + 1).padStart(2, '0')}`;
       S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
+        if (t.date.substring(0, 7) === targetMonthPrefix) {
           if (t.type === 'income') si += t.amount; else se += t.amount;
         }
       });
@@ -265,10 +268,11 @@ function renderMainChart() {
 function renderCatChart() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
   const map = {};
+  // ⚡ Bolt: Use fast string matching for dates
+  const targetMonthPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    if (t.date.substring(0, 7) === targetMonthPrefix) {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     }
   });
@@ -303,10 +307,11 @@ function renderCatChart() {
 function renderDashBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
   const spent = {};
+  // ⚡ Bolt: Use fast string matching for dates
+  const targetMonthPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    if (t.date.substring(0, 7) === targetMonthPrefix) {
       spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
     }
   });
@@ -547,10 +552,11 @@ function renderSettings() {
 function renderBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
   const spent = {};
+  // ⚡ Bolt: Use fast string matching for dates
+  const targetMonthPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
+    if (t.date.substring(0, 7) === targetMonthPrefix) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
   });
 
   const el = document.getElementById('budgetList');
