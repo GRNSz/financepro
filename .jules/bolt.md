@@ -1,0 +1,3 @@
+## 2024-11-20 - Fast String Substring Matching for Dates
+**Learning:** For rendering large arrays of date-related data (e.g., rendering charts or dashboard data month-by-month), repeatedly parsing ISO date strings with `new Date()` is a significant CPU bottleneck. Since dates are formatted consistently as 'YYYY-MM-DD', substring slicing (`date.substring(0, 7) === targetMonthPrefix`) yields a 10x+ speedup.
+**Action:** When filtering or aggregating records by month/year in large loops, build a target prefix using `String.padStart()` and check using `substring()` rather than parsing `Date` objects inside the loop.
