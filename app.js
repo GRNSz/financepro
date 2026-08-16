@@ -159,12 +159,13 @@ let chartCat  = null;
 function renderDashboard() {
   const now = new Date();
   const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
 
   // Month figures
   let mIncome = 0, mExpense = 0, mIncCount = 0, mExpCount = 0;
   S.transactions.forEach(t => {
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    // ⚡ Bolt: Fast date prefix matching (O(1) vs Date parsing)
+    if (t.date.startsWith(targetPrefix)) {
       if (t.type === 'income')  { mIncome  += t.amount; mIncCount++; }
       else                      { mExpense += t.amount; mExpCount++; }
     }
@@ -264,11 +265,12 @@ function renderMainChart() {
 
 function renderCatChart() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const map = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    // ⚡ Bolt: Fast date prefix matching (O(1) vs Date parsing)
+    if (t.date.startsWith(targetPrefix)) {
       map[t.categoryId] = (map[t.categoryId] || 0) + t.amount;
     }
   });
@@ -302,11 +304,12 @@ function renderCatChart() {
 
 function renderDashBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) {
+    // ⚡ Bolt: Fast date prefix matching (O(1) vs Date parsing)
+    if (t.date.startsWith(targetPrefix)) {
       spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
     }
   });
@@ -546,11 +549,12 @@ function renderSettings() {
 
 function renderBudgets() {
   const now = new Date(); const cy = now.getFullYear(), cm = now.getMonth();
+  const targetPrefix = `${cy}-${String(cm + 1).padStart(2, '0')}`;
   const spent = {};
   S.transactions.forEach(t => {
     if (t.type !== 'expense') return;
-    const d = parseLocalDate(t.date);
-    if (d.getFullYear() === cy && d.getMonth() === cm) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
+    // ⚡ Bolt: Fast date prefix matching (O(1) vs Date parsing)
+    if (t.date.startsWith(targetPrefix)) spent[t.categoryId] = (spent[t.categoryId] || 0) + t.amount;
   });
 
   const el = document.getElementById('budgetList');
