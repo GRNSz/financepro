@@ -213,30 +213,32 @@ function renderMainChart() {
   const labels = [], inc = [], exp = [];
   const now = new Date();
 
+  // ⚡ Bolt Optimization: Group transactions in a single O(N) pass map aggregation
+  // using string prefix matching instead of parsing Date in an O(N * M) loop
+  const monthlyAgg = {};
+  for (let i = 0; i < S.transactions.length; i++) {
+    const t = S.transactions[i];
+    if (!t.date) continue;
+    const prefix = t.date.substring(0, 7); // Extracts 'YYYY-MM'
+    if (!monthlyAgg[prefix]) monthlyAgg[prefix] = { inc: 0, exp: 0 };
+    if (t.type === 'income') monthlyAgg[prefix].inc += t.amount;
+    else monthlyAgg[prefix].exp += t.amount;
+  }
+
   if (mode === '6months') {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       labels.push(MONTHS[d.getMonth()]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth()) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      inc.push(monthlyAgg[prefix]?.inc || 0);
+      exp.push(monthlyAgg[prefix]?.exp || 0);
     }
   } else {
     for (let m = 0; m < 12; m++) {
       labels.push(MONTHS[m]);
-      let si = 0, se = 0;
-      S.transactions.forEach(t => {
-        const td = parseLocalDate(t.date);
-        if (td.getFullYear() === yr && td.getMonth() === m) {
-          if (t.type === 'income') si += t.amount; else se += t.amount;
-        }
-      });
-      inc.push(si); exp.push(se);
+      const prefix = `${yr}-${String(m + 1).padStart(2, '0')}`;
+      inc.push(monthlyAgg[prefix]?.inc || 0);
+      exp.push(monthlyAgg[prefix]?.exp || 0);
     }
   }
 
